@@ -1,0 +1,16 @@
+#include <cvode/cvode.h>            /* prototypes for CVODE fcts., consts.  */
+#include <nvector/nvector_serial.h> /* access to serial N_Vector            */
+#include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
+#include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+namespace py = pybind11;
+extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data);
+void updateCdlp(std::unordered_map<std::string, double>& params, double Cdlp);
+extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
+double mono_E(const std::unordered_map<std::string, double>& params, double t, double phase);
+double mono_dE(const std::unordered_map<std::string, double>& params, double t, double phase);
+double Marcus_kinetics_oxidation(const std::unordered_map<std::string, double>& params, double Er);
+double Marcus_kinetics_reduction(const std::unordered_map<std::string, double>& params, double Er);
+double BV_oxidation(std::unordered_map<std::string, double>& params, double Er);
+double BV_reduction(std::unordered_map<std::string, double>& params, double Er);
