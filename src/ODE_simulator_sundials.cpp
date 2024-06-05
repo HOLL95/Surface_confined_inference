@@ -20,17 +20,31 @@ using namespace std;
 #define FSYM "f"
 #endif
 
-/
+
 
 #define Ith(v, i) NV_Ith_S(v, i - 1) /* i-th vector component i=1..NEQ */
 #define IJth(A, i, j) \
   SM_ELEMENT_D(A, i - 1, j - 1) /* (i,j)-th matrix component i,j=1..NEQ */
 
+/* Problem Constants */
+
+
+/* Functions Called by the Solver */
+
+
+
+
+/* Private function to check function return values */
 
 static int check_retval(void* returnvalue, const char* funcname, int opt);
 
 
 
+/*
+ *-------------------------------
+ * Main Program
+ *-------------------------------
+ */
 
 
 

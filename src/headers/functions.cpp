@@ -15,7 +15,7 @@ extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_dat
 {
 
   //sunrealtype I, theta, dtheta;
-  auto params = static_cast<std::unordered_map<std::string, double>*>(user_data);
+  double params = static_cast<std::unordered_map<std::string, double>*>(user_data);
   double I = Ith(y, 1);
   double theta = Ith(y, 2);
   double kox, kred, dIdt, Cdlp;
