@@ -49,7 +49,7 @@ static int check_retval(void* returnvalue, const char* funcname, int opt);
 
 
 
-py::object BV_test(std::vector<double> times, std::unordered_map<std::string, double> params){
+py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string, double> params){
     #define NEQ   2               /* number of equations  */
     #define RTOL  SUN_RCONST(1.0e-5) /* scalar relative tolerance            */
     #define ATOL1 SUN_RCONST(1.0e-6) /* vector absolute tolerance components */
@@ -152,14 +152,6 @@ py::object BV_test(std::vector<double> times, std::unordered_map<std::string, do
         
         
         if (check_retval(&retval, "CVode", 1)) { break; }
-        /*
-        if (retval == CV_SUCCESS)
-        {
-            
-            std::cout<<iout<<"\n";
-        }
-        */
-        
         
         }
 
@@ -224,8 +216,8 @@ py::object BV_test(std::vector<double> times, std::unordered_map<std::string, do
     }
 
 
-    PYBIND11_MODULE(CVODE_test, m) {
-    m.def("BV_test", &BV_test, "solve for I_tot using the brent minimisation method");
+    PYBIND11_MODULE(SurfaceODESolver, m) {
+    m.def("ODEsimulate", &ODEsimulate, "solve for I");
     m.def("mono_E", &mono_E, "potential_function");
 
     }

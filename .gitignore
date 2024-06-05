@@ -1,0 +1,10 @@
+/env/
+*.egg-info
+*.cmake
+src/CMakeCache.txt
+src/CMakeFiles
+src/DartConfiguration.tcl
+src/Makefile
+src/pybind11
+*.so
+Testing/
