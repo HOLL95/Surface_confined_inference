@@ -11,11 +11,6 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-if (DEFINED ENV{PYBIND11_PYTHON})
-  set (PYBIND11_PYTHON_VERSION $ENV{PYBIND11_PYTHON})
-else()
-  set (PYBIND11_PYTHON_VERSION python_version)
-endif()
 set(INCLUDE_DIR, "headers")
 
 
