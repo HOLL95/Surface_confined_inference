@@ -130,8 +130,8 @@ package_dir = os.path.join(os.path.dirname(__file__))
 setup(
     name="SurfaceODESolver",
     version="0.0.1",
-    #ext_modules=[CMakeExtension("SurfaceODESolver", sourcedir="C_src")],
-    #cmdclass={"build_ext": CMakeBuild},
+    ext_modules=[CMakeExtension("SurfaceODESolver", sourcedir="C_src")],
+    cmdclass={"build_ext": CMakeBuild},
     packages=find_packages(include=["Surface_confined_inference", "Surface_confined_inference.*"]),
     package_dir={"": package_dir},
     zip_safe=False,

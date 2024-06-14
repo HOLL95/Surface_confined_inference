@@ -17,7 +17,6 @@ class NDParams:
             time_constant=input_parameters["v"]
         elif experiment_type in Omega_nondim:
             time_constant=input_parameters["omega"]
-            
         self.c_T0=abs(self.c_E0/time_constant)
         if experiment_type in K_nondim:
             self.c_T0=1/time_constant
