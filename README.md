@@ -1,11 +1,11 @@
 Python project for surface confined electrochemistry problems - a work in progress! 
 #Linux Installation Guide
-##Cloning
+## Cloning
 Obtain the software by running the following command in an appropriate directory
 ```
 git clone https://github.com/HOLL95/Surface_confined_inference/ --recurse-submodules
 ```
-##CVODE
+## CVODE
 This project depends on many things, most of which are downloaded automatically. However, the C++ ODE solver package CVODE requires user install
 To install CVODE please download the software [here](https://computing.llnl.gov/projects/sundials/sundials-software) and follow the installation instructions found [here](https://computing.llnl.gov/projects/sundials/sundials-software), which tells you to make a ```buildir```
 Once you have installed CVODE, please tell CMake the location of the buildir, either by editing in your .bashrc file
@@ -20,7 +20,7 @@ running the command in your terminal
 ```
 export CVODE_PATH="/absolute/path/to/builddir"
 ```
-or replacing the appropriate line in the surface_confined_inference/C_src/CMakeLists.txt file directly.
+or replacing the appropriate line in the ```Surface_confined_inference/C_src/CMakeLists.txt``` file directly.
 ```
 set (SUNDIALS_DIR /path/to/builddir)
 ```
@@ -28,7 +28,7 @@ You can check that the former two approaches have worked by noting the output fr
 ```
 echo $CVODE_PATH
 ```
-##Installing
+## Installing
 We recommend that you use a virtual environment ([install instructions](https://virtualenv.pypa.io/en/latest/installation.html)). To activate:
 ```
 python -m venv venv
