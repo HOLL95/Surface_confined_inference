@@ -1,5 +1,5 @@
 Python project for surface confined electrochemistry problems - a work in progress! 
-#Linux Installation Guide
+# Linux Installation Guide
 ## Cloning
 Obtain the software by running the following command in an appropriate directory
 ```
