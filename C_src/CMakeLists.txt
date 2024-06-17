@@ -25,11 +25,10 @@ if (IN_VIKING STREQUAL "true")
   set(SUNDIALS_LIBRARY_DIRS "/opt/apps/eb/software/SUNDIALS/2.7.0-foss-2021b/lib")
   set(pybind11_DIR  /opt/apps/eb/software/pybind11/2.11.1-GCCcore-12.3.0/share/cmake/pybind11)
   find_library(SUNDIALS_NVECSERIAL_LIB NAMES sundials_nvecserial PATHS ${SUNDIALS_LIBRARY_DIRS})
-  find_library(SUNDIALS_SUNLINSOLDENSE_LIB NAMES sundials_sunlinsoldense PATHS ${SUNDIALS_LIBRARY_DIRS})
   find_library(SUNDIALS_SUNMATRIXDENSE_LIB NAMES sundials_sunmatrixdense PATHS ${SUNDIALS_LIBRARY_DIRS})
   find_library(SUNDIALS_CVODE_LIB NAMES sundials_cvode PATHS ${SUNDIALS_LIBRARY_DIRS})
   find_package(pybind11 REQUIRED PATHS ${pybind11_DIR})
-  link_libraries(SUNDIALS::cvode SUNDIALS::nvecserial SUNDIALS::sunlinsoldense SUNDIALS::core SUNDIALS::sunmatrixdense)
+  #link_libraries(SUNDIALS::cvode SUNDIALS::nvecserial SUNDIALS::sunlinsoldense SUNDIALS::core SUNDIALS::sunmatrixdense)
 
   # Add pybind11 module
   pybind11_add_module(SurfaceODESolver SHARED ODE_simulator_sundials.cpp headers/functions.cpp)
