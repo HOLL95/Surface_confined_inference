@@ -21,14 +21,12 @@ else()
 endif()
 
 if (IN_VIKING STREQUAL "true")
-  set(PREFIX_PATHS
-    "/opt/apps/eb/software/SUNDIALS/2.7.0-foss-2021b"
-    "/opt/apps/eb/software/pybind11/2.11.1-GCCcore-12.3.0"
-)
-
-  set(CMAKE_PREFIX_PATH "${PREFIX_PATHS}" ${CMAKE_PREFIX_PATH})
+  set(CMAKE_PREFIX_PATH "/opt/apps/eb/software/SUNDIALS/2.7.0-foss-2021b" ${CMAKE_PREFIX_PATH})
+  set(CMAKE_LIBRARY_PATH "/opt/apps/eb/software/SUNDIALS/2.7.0-foss-2021b/lib" ${CMAKE_LIBRARY_PATH})
+  set(CMAKE_INCLUDE_PATH "/opt/apps/eb/software/SUNDIALS/2.7.0-foss-2021b/include" ${CMAKE_INCLUDE_PATH})
   find_package(SUNDIALS REQUIRED)
-  find_package(PYBIND11 REQUIRED)
+  set(PYBIND11_DIR  /opt/apps/eb/software/pybind11/2.11.1-GCCcore-12.3.0/share/cmake/pybind11)
+  find_package(PYBIND11 REQUIRED PATHS ${PYBIND11_DIR})
 else()
   add_subdirectory("../lib/pybind11" pybind11)
   include_directories("../lib")
