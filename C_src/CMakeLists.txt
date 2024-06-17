@@ -1,35 +1,48 @@
-# Set the minimum required cmake version
+# Set the minimum required CMake version
 cmake_minimum_required(VERSION 3.1)
 
-# Set cache variables for C compilers and flags
 # Specify project name and languages
 project(SurfaceODESolver)
 include(CMakePrintHelpers)
 
-
+# Set C++ compiler flags
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-set(INCLUDE_DIR, "headers")
+# Set the include directory
+set(INCLUDE_DIR "headers")
 
 
-add_subdirectory("../lib/pybind11" pybind11)
-include_directories("../lib")
-
-
-
-
-
-# Specify the path to SUNDIALSConfig.cmake
-if (DEFINED ENV{CVODE_PATH})
-  set (SUNDIALS_DIR $ENV{CVODE_PATH})
+if (DEFINED ENV{IN_VIKING})
+  set(IN_VIKING $ENV{IN_VIKING})
 else()
-  set (SUNDIALS_DIR /path/to/env)
+  set(IN_VIKING "false")
 endif()
-find_package(SUNDIALS REQUIRED PATHS  ${SUNDIALS_DIR})
 
+if (IN_VIKING STREQUAL "true")
+  set(CMAKE_LIBRARY_PATH ${LIBRARY_PATH})
+  find_package(SUNDIALS)
+  find_package(PYBIND11)
+else()
+  add_subdirectory("../lib/pybind11" pybind11)
+  include_directories("../lib")
+
+  # Specify the path to SUNDIALSConfig.cmake
+  if (DEFINED ENV{CVODE_PATH})
+    set(SUNDIALS_DIR $ENV{CVODE_PATH})
+  else()
+    set(SUNDIALS_DIR /path/to/env)
+  endif()
+
+  find_package(SUNDIALS REQUIRED PATHS ${SUNDIALS_DIR})
+endif()
+
+# Link SUNDIALS libraries
 link_libraries(SUNDIALS::cvode SUNDIALS::nvecserial SUNDIALS::sunlinsoldense SUNDIALS::core SUNDIALS::sunmatrixdense)
+
+# Add pybind11 module
 pybind11_add_module(SurfaceODESolver SHARED ODE_simulator_sundials.cpp headers/functions.cpp)
-target_include_directories(SurfaceODESolver  PRIVATE
-                           ${INCLUDE_DIR})
+
+# Specify include directories
+target_include_directories(SurfaceODESolver PRIVATE ${INCLUDE_DIR})

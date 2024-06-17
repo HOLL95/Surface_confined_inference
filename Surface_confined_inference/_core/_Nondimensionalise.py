@@ -11,7 +11,7 @@ class NDParams:
         self.T=input_parameters["Temp"]
         self.c_E0=(self.R*self.T)/self.F
         V_nondim=["FTACV", "DCV", "TrumpetPlot"]
-        Omega_nondim=["PSV", "HarmonicMinimum", "TimeDomainEIS", "SquareWave"]
+        Omega_nondim=["PSV", "SquareWave"]
         K_nondim=["SquareWave"]
         if experiment_type in V_nondim:
             time_constant=input_parameters["v"]
