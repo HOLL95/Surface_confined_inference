@@ -289,7 +289,7 @@ class SingleExperiment():
             self._internal_memory["boundaries"]=boundaries
         for key in self._internal_memory["boundaries"].keys():
             if self._internal_memory["boundaries"][key][0]>=self._internal_memory["boundaries"][key][1]:
-                raise Exception(f"{key}: {self._internal_memory["boundaries"][key][0]} is greater than or equal to {self._internal_memory["boundaries"][key][1]}")
+                raise Exception(f'{key}: {self._internal_memory["boundaries"][key][0]} is greater than or equal to {self._internal_memory["boundaries"][key][1]}')
     def simulation_dict_construction(self, parameters):
         """
         Args:
