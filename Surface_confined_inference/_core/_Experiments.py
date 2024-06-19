@@ -43,7 +43,7 @@ class SingleExperiment():
         for key in extra_args.keys():
             accepted_arguments[key]+=extra_args[key]
         if experiment_type not in all_experiments:
-            raise Exception("\'{0}\' not in list of experiments. Simulated experiments are \n{1}".format(experiment_type, ("\n").join(all_experiments)))
+            raise Exception("\'{0}\' not in list of experiments. Simulated experiments are \n{1}".format(experiment_type, (",  ").join(all_experiments)))
         self._internal_memory={"input_parameters":experiment_parameters, "boundaries":{}, "fixed_parameters":{}}
         kwargs["experiment_type"]=experiment_type
         self._internal_options=OptionsDecorator(**kwargs)
@@ -253,7 +253,7 @@ class SingleExperiment():
             if parameters[i] not in self._internal_memory["boundaries"]:
                 missing_parameters.append(parameters[i])
         if len(missing_parameters)>0:        
-            raise Exception("Need to define boundaries for:\n %s" % ("\n").join(missing_parameters))
+            raise Exception("Need to define boundaries for:\n %s" % (", ").join(missing_parameters))
         self.dispersion_checking(parameters)
         if "cap_phase" not in parameters:
             self._internal_options.phase_only=True
@@ -333,9 +333,8 @@ class SingleExperiment():
                 else:
                     missing_parameters.append(key)
         if len(missing_parameters)>0:
-            raise Exception(f"The following parameters either need to be set in optim_list, "
-                f"or set at a value using the fixed_parameters variable\n"
-                f"{('\n').join(missing_parameters)}")
+            raise Exception(f"The following parameters either need to be set in optim_list, or set at a value using the fixed_parameters variable\n"
+                f"{(", ").join(missing_parameters)}")
         
         elif self._internal_options.kinetics!="Marcus":
             simulation_dict["Marcus_flag"]=0
@@ -631,7 +630,7 @@ class Options:
         elif "args" in defaults:
             if value not in defaults["args"]:
                 
-                raise Exception("Value '{0}' not part of the following allowed arguments:\n{1}".format(value, ("\n").join(defaults["args"])) )
+                raise Exception("Value '{0}' not part of the following allowed arguments:\n{1}".format(value, (", ").join(defaults["args"])) )
     
 
 class OptionsDecorator:
