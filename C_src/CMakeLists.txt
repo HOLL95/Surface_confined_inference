@@ -40,11 +40,11 @@ else()
  
 endif()
 
- # Link SUNDIALS libraries
-  link_libraries(SUNDIALS::cvode SUNDIALS::nvecserial SUNDIALS::sunlinsoldense SUNDIALS::core SUNDIALS::sunmatrixdense)
+# Link SUNDIALS libraries
+link_libraries(SUNDIALS::cvode SUNDIALS::nvecserial SUNDIALS::sunlinsoldense SUNDIALS::sunmatrixdense)
 
-  # Add pybind11 module
-  pybind11_add_module(SurfaceODESolver SHARED ODE_simulator_sundials.cpp headers/functions.cpp)
+# Add pybind11 module
+pybind11_add_module(SurfaceODESolver SHARED ODE_simulator_sundials.cpp headers/functions.cpp)
 
-  # Specify include directories
-  target_include_directories(SurfaceODESolver PRIVATE ${INCLUDE_DIR})
+# Specify include directories
+target_include_directories(SurfaceODESolver PRIVATE ${INCLUDE_DIR})
