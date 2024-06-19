@@ -5,6 +5,7 @@
 #include <nvector/nvector_serial.h> /* access to serial N_Vector            */
 #include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
 #include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
+#include <sundials/sundials_types.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "headers/functions.h"
@@ -78,8 +79,11 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     LS        = NULL;
     cvode_mem = NULL;
 
-    /* Create the SUNDIALS context */
-    retval = SUNContext_Create(SUN_COMM_NULL, &sunctx);
+    #ifdef SUNDIALS_VERSION_7
+        retval = SUNContext_Create(SUN_COMM_NULL, &sunctx);
+    #else
+        retval = SUNContext_Create(NULL, &sunctx);
+    #endif
     if (check_retval(&retval, "SUNContext_Create", 1)) { return (return_val); }
 
     /* Initial conditions */

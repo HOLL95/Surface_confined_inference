@@ -217,7 +217,7 @@ class SingleExperiment():
                 min_diff=min(difference)
                 best_guess=distribution_keys[difference.index(min_diff)]
                 if min_diff!=0:
-                    raise Exception(f"Dispersed parameter {param}, assuming the distribution is {best_guess} requires {[f"{param}_{x}" for x in list(distribution_dict[best_guess])]} but only {[f"{param}_{x}" for x in list(param_set)]} found")
+                    raise Exception(f"Dispersed parameter {param}, assuming the distribution is {best_guess} requires {[f'{param}_{x}' for x in list(distribution_dict[best_guess])]} but only {[f'{param}_{x}' for x in list(param_set)]} found")
                 else:
                     dispersion_distributions.append(best_guess)
             orig_GH_value=self._internal_options.GH_quadrature

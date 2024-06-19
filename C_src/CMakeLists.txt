@@ -39,7 +39,9 @@ else()
   find_package(SUNDIALS REQUIRED PATHS ${SUNDIALS_DIR})#
  
 endif()
-
+if(${SUNDIALS_VERSION} VERSION_GREATER_EQUAL "7.0.0")
+    add_definitions(-DSUNDIALS_VERSION_7)
+endif()
 # Link SUNDIALS libraries
 link_libraries(SUNDIALS::cvode SUNDIALS::nvecserial SUNDIALS::sunlinsoldense SUNDIALS::sunmatrixdense)
 
