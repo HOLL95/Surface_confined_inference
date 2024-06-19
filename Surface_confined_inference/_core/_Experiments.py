@@ -333,7 +333,9 @@ class SingleExperiment():
                 else:
                     missing_parameters.append(key)
         if len(missing_parameters)>0:
-            raise Exception(f"The following parameters either need to be set in optim_list, or set at a value using the fixed_parameters variable\n{("\n").join(missing_parameters)}" )
+            raise Exception(f"The following parameters either need to be set in optim_list, "
+                f"or set at a value using the fixed_parameters variable\n"
+                f"{('\n').join(missing_parameters)}")
         
         elif self._internal_options.kinetics!="Marcus":
             simulation_dict["Marcus_flag"]=0
