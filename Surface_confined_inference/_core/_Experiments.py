@@ -156,7 +156,22 @@ class SingleExperiment():
             int: length of the `_optim_list` variable
         """
         return len(self._optim_list)
-    
+    def get_voltage(self, times, input_parameters=None):
+        """
+        Args:
+            times (list): list of timepoints
+            input_parameters (dict, optional): dictionary of input parameters 
+        Returns:
+            list: list of potential values at the provided time points
+        """
+        if input_parameters==None:
+            input_parameters=self._internal_memory["input_parameters"]
+        else:
+            sci.check_input_dict(input_parameters, list(self._internal_memory["input_parameters"].keys()))
+        input_parameters=self.validate_input_parameters(input_parameters)
+        input_parameters["omega"]*=2*np.pi
+        return sos.potential(times, input_parameters)
+
     def dispersion_checking(self, optim_list):
         """
 
@@ -184,14 +199,13 @@ class SingleExperiment():
 
         """
         all_parameters=list(set(optim_list+list(self._internal_memory["fixed_parameters"].keys())))
-        
-        disp_check_flags=["mean", "logscale", "upper",  "skew","logupper"]#Must be unique for each distribution!
-        disp_check=[[y in x for y in disp_check_flags] for x in all_parameters]
-        if True in [True in x for x in disp_check]:
+        disp_flags=[["mean", "std"], ["logmean","logscale"], ["lower","upper"], ["mean","std", "skew"], ["logupper", "loglower"]]#Set not name must be unique
+        all_disp_flags = list(set(itertools.chain(*disp_flags)))
+        disp_check = [any(flag in param for flag in all_disp_flags) for param in all_parameters]
+        if any(disp_check):
             self._internal_options.dispersion=True
             
-            disp_flags=[["mean", "std"], ["logmean","logscale"], ["lower","upper"], ["mean","std", "skew"], ["logupper", "loglower"]]#Set not name must be unique
-            all_disp_flags = list(set(itertools.chain(*disp_flags)))
+          
             distribution_names=["normal", "lognormal", "uniform", "skewed_normal","log_uniform"]
             distribution_dict=dict(zip(distribution_names, [set(x) for x in disp_flags]))
             disp_param_dict={}
@@ -290,6 +304,23 @@ class SingleExperiment():
         for key in self._internal_memory["boundaries"].keys():
             if self._internal_memory["boundaries"][key][0]>=self._internal_memory["boundaries"][key][1]:
                 raise Exception(f'{key}: {self._internal_memory["boundaries"][key][0]} is greater than or equal to {self._internal_memory["boundaries"][key][1]}')
+    def validate_input_parameters(self, inputs):
+        """
+        Args:
+            inputs (dict): Dictionary of parameters
+        Returns:
+            dict : modified dictionary of input parameters according to the method assigned to the class
+        """
+        if self._internal_options.experiment_type=="DCV" :
+            inputs["tr"]=self.nondim_t(abs(inputs["E_reverse"]-inputs["E_start"])/inputs["v"])
+            inputs["omega"]=0
+            inputs["delta_E"]=0
+        elif self._internal_options.experiment_type=="FTACV":
+            inputs["tr"]=  tr=self.nondim_t(abs(inputs["E_reverse"]-inputs["E_start"])/inputs["v"])
+        elif self._internal_options.experiment_type=="PSV":
+            inputs["tr"]=-10
+            inputs["v"]=0
+        return inputs
     def simulation_dict_construction(self, parameters):
         """
         Args:
@@ -304,7 +335,7 @@ class SingleExperiment():
             a) If dispersion is present, then the parameter will be set as part of the `dispersion_simulator` function, so it is set to 0
             b) Else, if the missing parameter is one of the nonlinear capacitance parameters these are set to 0 for convenience
             c) Else an error is thrown
-        4) Input parameters are fixed for each technique as appropriate
+        4) Input parameters are fixed for each technique as appropriate using `validate_input_parameters`
         5) Each parameter is then assigned its own nondimensionalisation function using `NDclass`
         
         """
@@ -337,16 +368,8 @@ class SingleExperiment():
         
         elif self._internal_options.kinetics!="Marcus":
             simulation_dict["Marcus_flag"]=0
-      
-        if self._internal_options.experiment_type=="DCV" :
-            simulation_dict["tr"]=self.nondim_t(abs(simulation_dict["E_reverse"]-simulation_dict["E_start"])/simulation_dict["v"])
-            simulation_dict["omega"]=0
-            simulation_dict["delta_E"]=0
-        elif self._internal_options.experiment_type=="FTACV":
-            simulation_dict["tr"]=  tr=self.nondim_t(abs(simulation_dict["E_reverse"]-simulation_dict["E_start"])/simulation_dict["v"])
-        elif self._internal_options.experiment_type=="PSV":
-            simulation_dict["tr"]=-10
-            simulation_dict["v"]=0
+        simulation_dict=self.validate_input_parameters(simulation_dict)
+       
         self._internal_memory["simulation_dict"]=simulation_dict
         
 

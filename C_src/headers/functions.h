@@ -9,6 +9,7 @@ extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_dat
 void updateCdlp(std::unordered_map<std::string, double>& params, double Cdlp);
 extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
 double mono_E(const std::unordered_map<std::string, double>& params, double t, double phase);
+std::vector<double> potential(std::vector<double> times,const std::unordered_map<std::string, double>& params);
 double mono_dE(const std::unordered_map<std::string, double>& params, double t, double phase);
 double Marcus_kinetics_oxidation(const std::unordered_map<std::string, double>& params, double Er);
 double Marcus_kinetics_reduction(const std::unordered_map<std::string, double>& params, double Er);

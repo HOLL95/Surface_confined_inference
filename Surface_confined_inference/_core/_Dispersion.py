@@ -47,7 +47,7 @@ class Dispersion:
             elif self.distributions[i]=="lognormal":
                     param_loc=0
                     param_shape=dim_dict[self.dispersion_parameters[i]+"_shape"]
-                    param_scale=dim_dict[self.dispersion_parameters[i]+"_scale"]
+                    param_scale=np.exp(dim_dict[self.dispersion_parameters[i]+"_scale"])
                     value_range=np.linspace(1e-4, 1-(1e-4), self.bins[i])
                     #min_val=lognorm.ppf(1e-4, param_shape, loc=param_loc, scale=param_scale)
                     #max_val=lognorm.ppf(1-1e-4, param_shape, loc=param_loc, scale=param_scale)

@@ -223,5 +223,5 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     PYBIND11_MODULE(SurfaceODESolver, m) {
     m.def("ODEsimulate", &ODEsimulate, "solve for I");
     m.def("mono_E", &mono_E, "potential_function");
-
+    m.def("potential", &potential, "Get the full list of potential values");
     }

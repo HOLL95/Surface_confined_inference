@@ -87,6 +87,15 @@ double mono_dE(const std::unordered_map<std::string, double>& params, double t, 
 
 	return E_dc+(params.at("delta_E")*params.at("omega")*std::cos(params.at("omega")*t+phase));
 }
+std::vector<double> potential(std::vector<double> times,const std::unordered_map<std::string, double>& params){
+  vector<double> potential_values;
+  int num_times=times.size();
+  potential_values.resize(num_times);
+  for (int i=0;i<num_times; i++){
+    potential_values[i]=mono_E(params, times[i], params.at("phase"));
+  }
+return potential_values;
+}
 double Marcus_kinetics_oxidation(const std::unordered_map<std::string, double>& params, double Er){
   return 0;
 }
