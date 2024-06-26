@@ -29,8 +29,8 @@ class CMakeExtension(Extension):
 class CMakeBuild(build_ext):
     def build_extension(self, ext: CMakeExtension) -> None:
         # Must be in this form due to bug in .resolve() only fixed in Python 3.10+
-        
-        ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name) 
+
+        ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)
         extdir = ext_fullpath.parent.resolve()
 
         # Using this requires trailing slash for auto-detection & inclusion of
@@ -123,6 +123,7 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", ".", *build_args], cwd=build_temp, check=True
         )
 
+
 package_dir = os.path.join(os.path.dirname(__file__))
 
 # The information here can also be placed in setup.cfg - better separation of
@@ -132,7 +133,9 @@ setup(
     version="0.0.1",
     ext_modules=[CMakeExtension("SurfaceODESolver", sourcedir="C_src")],
     cmdclass={"build_ext": CMakeBuild},
-    packages=find_packages(include=["Surface_confined_inference", "Surface_confined_inference.*"]),
+    packages=find_packages(
+        include=["Surface_confined_inference", "Surface_confined_inference.*"]
+    ),
     package_dir={"": package_dir},
     zip_safe=False,
     extras_require={"test": ["pytest>=6.0"]},
