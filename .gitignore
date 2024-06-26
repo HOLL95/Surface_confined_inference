@@ -10,4 +10,4 @@ C_src/pybind11
 Testing/
 /build/
 *__pycache__
-tests/
+localtests/

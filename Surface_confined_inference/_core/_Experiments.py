@@ -77,10 +77,10 @@ class SingleExperiment:
             experiment_parameters,
             accepted_arguments[self._internal_options.experiment_type],
         )
-        self.NDclass = sci.NDParams(
+        self._NDclass = sci.NDParams(
             self._internal_options.experiment_type, experiment_parameters
         )
-        self.essential_parameters = [
+        self._essential_parameters = [
             "E0",
             "k0",
             "Cdl",
@@ -94,7 +94,7 @@ class SingleExperiment:
         ]
         self._optim_list = None
 
-    def calculate_times(self, sampling_factor=200, dimensional=False):
+    def calculate_times(self, **kwargs):
         """
         Calculates the time of an experiment e.g. for sythetnic data. Each experiment has an end time, and a timestep.
         FTV/DCV: Defined by the voltage window (V) and scan rate (V s^-1), doubled as you go up and down
@@ -111,7 +111,14 @@ class SingleExperiment:
             NotImplementedError: Squarewave currently not implemented
         """
         params = self._internal_memory["input_parameters"]
-
+        if "sampling_factor" not in kwargs:
+            sampling_factor=200
+        else:
+            sampling_factor=kwargs["sampling_factor"]
+        if "dimensional" not in kwargs:
+            dimensional=False
+        else:
+            dimensional=kwargs["dimensional"]
         if (
             self._internal_options.experiment_type == "FTACV"
             or self._internal_options.experiment_type == "DCV"
@@ -146,7 +153,7 @@ class SingleExperiment:
         Returns:
             np.ndarray: list of dimensional current values
         """
-        return np.multiply(current, self.NDclass.c_I0)
+        return np.multiply(current, self._NDclass.c_I0)
 
     def dim_e(self, potential):
         """
@@ -156,7 +163,7 @@ class SingleExperiment:
         Returns:
             np.ndarray: list of dimensional potential values
         """
-        return np.multiply(potential, self.NDclass.c_E0)
+        return np.multiply(potential, self._NDclass.c_E0)
 
     def dim_t(self, time):
         """
@@ -167,7 +174,7 @@ class SingleExperiment:
             np.ndarray: list of dimensional time values
         """
 
-        return np.multiply(time, self.NDclass.c_T0)
+        return np.multiply(time, self._NDclass.c_T0)
 
     def nondim_i(self, current):
         """
@@ -177,7 +184,7 @@ class SingleExperiment:
         Returns:
             np.ndarray: list of non-dimensional current values
         """
-        return np.divide(current, self.NDclass.c_I0)
+        return np.divide(current, self._NDclass.c_I0)
 
     def nondim_e(self, potential):
         """
@@ -187,7 +194,7 @@ class SingleExperiment:
         Returns:
             np.ndarray: list of non-dimensional potential values
         """
-        return np.divide(potential, self.NDclass.c_E0)
+        return np.divide(potential, self._NDclass.c_E0)
 
     def nondim_t(self, time):
         """
@@ -197,7 +204,7 @@ class SingleExperiment:
         Returns:
             np.ndarray: list of non-dimensional time values
         """
-        return np.divide(time, self.NDclass.c_T0)
+        return np.divide(time, self._NDclass.c_T0)
 
     def n_parameters(
         self,
@@ -210,21 +217,32 @@ class SingleExperiment:
         """
         return len(self._optim_list)
 
-    def get_voltage(self, times, input_parameters=None):
+    def get_voltage(self, times, **kwargs):
         """
         Args:
             times (list): list of timepoints
             input_parameters (dict, optional): dictionary of input parameters
+            dimensional (bool, optional): whether or not the times are in dimensional format or not
         Returns:
             list: list of potential values at the provided time points
         """
+        if "input_parameters" not in kwargs:
+            input_parameters=None
+        else:
+            input_parameters=kwargs["input_parameters"]
+        if "dimensional" not in kwargs:
+            kwargs["dimensional"]=False
         if input_parameters == None:
             input_parameters = self._internal_memory["input_parameters"]
         else:
             sci.check_input_dict(
                 input_parameters, list(self._internal_memory["input_parameters"].keys())
             )
+        input_parameters=copy.deepcopy(input_parameters)
         input_parameters = self.validate_input_parameters(input_parameters)
+        if "tr" in input_parameters:
+            if kwargs["dimensional"]==True:
+                input_parameters["tr"]*=self._NDclass.c_T0
         input_parameters["omega"] *= 2 * np.pi
         return sos.potential(times, input_parameters)
 
@@ -462,7 +480,7 @@ class SingleExperiment:
                     )
             elif key in self._internal_memory["fixed_parameters"]:
                 simulation_dict[key] = self._internal_memory["fixed_parameters"][key]
-        for key in self.essential_parameters:
+        for key in self._essential_parameters:
             if key not in simulation_dict:
                 if self._internal_options.dispersion == True:
                     if key in self._disp_class.dispersion_parameters:
@@ -485,7 +503,7 @@ class SingleExperiment:
 
         self._internal_memory["simulation_dict"] = simulation_dict
 
-        self.NDclass.construct_function_dict(self._internal_memory["simulation_dict"])
+        self._NDclass.construct_function_dict(self._internal_memory["simulation_dict"])
 
     @property
     def fixed_parameters(self):
@@ -504,10 +522,7 @@ class SingleExperiment:
         else:
             self._internal_memory["fixed_parameters"] = parameter_values
 
-    def GH_setup(
-        self,
-        dispersion_distributions,
-    ):
+    def GH_setup(self,dispersion_distributions):
         """
         Args:
             dispersion_distributions: list - list of distributions involved in dispersion
@@ -556,7 +571,7 @@ class SingleExperiment:
 
         Note - this convenience method assumes the values are the parameters associated with the current parameters in optim_list
         """
-        normed_params = np.zeros(len(parameters))
+        normed_params = copy.deepcopy(parameters)
         if method == "un_norm":
             for i in range(0, len(parameters)):
                 normed_params[i] = self.un_normalise(
@@ -595,22 +610,20 @@ class SingleExperiment:
 
         """
         nd_dict = self.nondimensionalise(sim_params)
-        disp_params, self.values, self.weights = self._disp_class.generic_dispersion(
+        disp_params, self._values, self._weights = self._disp_class.generic_dispersion(
             self._internal_memory["simulation_dict"], self._internal_memory["GH_values"]
         )
         time_series = np.zeros(len(times))
-        self.disp_test = []
-        for i in range(0, len(self.weights)):
+        self._disp_test = []
+        for i in range(0, len(self._weights)):
             for j in range(0, len(disp_params)):
-                self._internal_memory["simulation_dict"][disp_params[j]] = self.values[
-                    i
-                ][j]
+                self._internal_memory["simulation_dict"][disp_params[j]] = self._values[i][j]
             nd_dict = self.nondimensionalise(sim_params)
             time_series_current = np.array(solver(times, nd_dict))[0, :]
             if self._internal_options.dispersion_test == True:
-                self.disp_test.append(time_series_current)
+                self._disp_test.append(time_series_current)
             time_series = np.add(
-                time_series, np.multiply(time_series_current, np.prod(self.weights[i]))
+                time_series, np.multiply(time_series_current, np.prod(self._weights[i]))
             )
         return time_series
 
@@ -627,7 +640,7 @@ class SingleExperiment:
         for key in self._optim_list:
             self._internal_memory["simulation_dict"][key] = sim_params[key]
         for key in self._internal_memory["simulation_dict"].keys():
-            nd_dict[key] = self.NDclass.function_dict[key](
+            nd_dict[key] = self._NDclass.function_dict[key](
                 self._internal_memory["simulation_dict"][key]
             )
         if self._internal_options.phase_only == True:
@@ -658,7 +671,7 @@ class SingleExperiment:
 
         if dimensional == False:
             true_harm = (
-                self._internal_memory["simulation_dict"]["omega"] * self.NDclass.c_T0
+                self._internal_memory["simulation_dict"]["omega"] * self._NDclass.c_T0
             )
         elif dimensional == True:
             true_harm = self._internal_memory["simulation_dict"]["omega"]
@@ -698,7 +711,17 @@ class SingleExperiment:
             return comp_results
         elif self._internal_options.Fourier_function == "inverse":
             return np.fft.ifft(results)
-
+    def RMSE(self, simulation, data):
+        """
+        Args:
+            simulation (list): list of simlation points
+            data (list): list of data points to be compared to - needs to be the same length as simulation
+        Returns:
+            float: root mean squared error between the simulation and data
+        """
+        if len(simulation)!=len(data):
+            raise ValueError("Simulation and data needs to be the same length simulation={0}, data={1}".format(len(simulation), len(data)))
+        return np.sqrt(np.mean(np.square(simulation-data)))
     def simulate(self, times, parameters):
         """
         Args:
@@ -720,7 +743,7 @@ class SingleExperiment:
             raise Exception(
                 f"Parameters and optim_list need to be the same length, currently parameters={len(parameters)} and optim_list={len(self._optim_list)}"
             )
-        if self._internal_options.normalise == True:
+        if self._internal_options.normalise_parameters == True:
             sim_params = dict(
                 zip(
                     self._optim_list,
@@ -759,6 +782,8 @@ class SingleExperiment:
             setattr(self._internal_options, name, value)
             super().__setattr__(name, value)
         else:
+            if name not in Options().other_attributes:
+                print("Warning: {0} is not in the list of accepted options and will not change the behaviour of the simulations".format(name))
             super().__setattr__(name, value)
 
 
@@ -772,7 +797,7 @@ class Options:
             "experiment_type": {"type": str, "default": None},
             "GH_quadrature": {"type": bool, "default": False},
             "phase_only": {"type": bool, "default": True},
-            "normalise": {"type": bool, "default": False},
+            "normalise_parameters": {"type": bool, "default": False},
             "kinetics": {
                 "args": ["ButlerVolmer", "Marcus", "Nernst"],
                 "default": "ButlerVolmer",
@@ -793,6 +818,7 @@ class Options:
             "top_hat_width": {"type": numbers.Number, "default": 0.5},
             "dispersion_test": {"type": bool, "default": False},
         }
+        self.other_attributes=["_internal_memory", "_internal_options", "_NDclass", "_essential_parameters", "_optim_list", "boundaries", "fixed_parameters", "optim_list", "_disp_class", "_weights", "_disp_test", "_values"]
         if len(kwargs) == 0:
             self.options_dict = self.accepted_arguments
         else:
