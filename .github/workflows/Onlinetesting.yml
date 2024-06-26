@@ -1,0 +1,45 @@
+name: Building Surface confined inference
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+   - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: true  
+    - name: Install Sundials
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsundials-dev
+    - name: Install CMake
+      run: |
+        sudo apt-get install -y cmake
+    - name: Locate SUNDIALS CMake Config
+      id: locate_sundials
+      run: |
+        CVODE_PATH=$(dpkg -L libsundials-dev | grep 'SUNDIALSConfig.cmake' | xargs dirname)
+        echo "CVODE_PATH=${CVODE_PATH}" >> $GITHUB_ENV
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+    - name: Test with pytest
+      run: |
+        pytest tests/SingleExperiment_tests.py

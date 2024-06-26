@@ -4,6 +4,7 @@ import numpy as np
 from scipy.signal import decimate
 from Surface_confined_inference import SingleExperiment, NDParams, Dispersion
 from Surface_confined_inference._core import OptionsDecorator
+import os
 class TestSingleExperiment(unittest.TestCase):
 
     def setUp(self):
@@ -33,7 +34,11 @@ class TestSingleExperiment(unittest.TestCase):
         self.times=self.experiment.calculate_times()
         predicted_current=self.experiment.simulate(self.times, [])
         self.decimated_current=decimate(predicted_current, 8)
-
+        cwd=os.getcwd()
+        if "Surface_confined_inference/tests" in cwd:
+            self.data_loc=cwd+"/testdata"
+        else:
+            self.data_loc=cwd+"/tests/testdata"
 
     def test_init(self):
         self.assertEqual(self.experiment._internal_options.experiment_type, "FTACV")
@@ -119,25 +124,25 @@ class TestSingleExperiment(unittest.TestCase):
             self.assertAlmostEqual(elem[0], elem[1])
     
     def test_simulate(self):
-        test_current=np.load("testdata/Current.npy")
+        test_current=np.load(self.data_loc+"/Current.npy")
         error=self.experiment.RMSE(test_current, self.decimated_current)
         self.assertTrue(error<1e-4)
     def test_top_hat_filter(self):
-        test_FT=np.load("testdata/CurrentFT.npy")
+        test_FT=np.load(self.data_loc+"/CurrentFT.npy")
         self.experiment.Fourier_filtering=True
         self.experiment.Fourier_function="abs"
         FT=self.experiment.top_hat_filter(decimate(self.times, 8), self.decimated_current)
         error=self.experiment.RMSE(FT, test_FT)
         self.assertTrue(error<0.3)
     def test_get_voltage(self):
-        test_voltage=np.load("testdata/Potential.npy")
+        test_voltage=np.load(self.data_loc+"/Potential.npy")
         times=self.experiment.dim_t(self.times)
         voltage=self.experiment.get_voltage(times, dimensional=True)
         voltage=decimate(voltage, 8)
         error=self.experiment.RMSE(voltage, test_voltage)
         self.assertTrue(error<1e-9)
     def test_dispersion_simulate(self):
-        test_current=np.load("testdata/DispersedCurrent.npy")
+        test_current=np.load(self.data_loc+"/DispersedCurrent.npy")
         self.experiment.dispersion_bins = [16]
         self.experiment.GH_quadrature = True
         self.experiment.fixed_parameters={
