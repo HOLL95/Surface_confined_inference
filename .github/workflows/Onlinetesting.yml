@@ -45,7 +45,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        
+        python -m pip install --upgrade .
     - name: Test with pytest
       run: |
         python -m pytest tests/SingleExperiment_tests.py
