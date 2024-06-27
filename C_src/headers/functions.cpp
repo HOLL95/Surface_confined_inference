@@ -5,6 +5,7 @@
 #include <nvector/nvector_serial.h> /* access to serial N_Vector            */
 #include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
 #include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
+#include <sundials/sundials_types.h>
 #include <pybind11/pybind11.h>
 #include "functions.h"
 using namespace std;
