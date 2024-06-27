@@ -20,7 +20,12 @@ using namespace std;
 #define ESYM "e"
 #define FSYM "f"
 #endif
-
+#ifdef SUNDIALS_HAS_SUNREALTYPE
+// newer SUNDIALS versions
+#else
+// older SUNDIALS versions
+typedef realtype sunrealtype;
+#endif
 
 
 #define Ith(v, i) NV_Ith_S(v, i - 1) /* i-th vector component i=1..NEQ */
