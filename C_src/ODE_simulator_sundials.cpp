@@ -8,6 +8,7 @@
 #include <sundials/sundials_types.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <sundials/sundials_context.h>
 #include "headers/functions.h"
 namespace py = pybind11;
 using namespace std;
@@ -63,7 +64,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     #define ATOL3 SUN_RCONST(1.0e-5)
     #define ZERO SUN_RCONST(0.0)
 
-    SUNContext sunctx;
+    sundials::SUNContext sunctx;
     sunrealtype t, tout;
     N_Vector y;
     N_Vector abstol;
