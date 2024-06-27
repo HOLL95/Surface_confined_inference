@@ -22,10 +22,13 @@ jobs:
       with:
         submodules: true  
         
-    - name: Install Sundials
+    - name: Install SUNDIALS using Spack
       run: |
-        sudo apt-get update
-        sudo apt-get install -y libsundials-dev
+        echo "Installing SUNDIALS using Spack..."
+        git clone https://github.com/spack/spack.git
+        . spack/share/spack/setup-env.sh
+        spack install sundials
+        spack load sundials
         
     - name: Install CMake
       run: |
@@ -34,7 +37,7 @@ jobs:
     - name: Locate SUNDIALS CMake Config
       id: locate_sundials
       run: |
-        CVODE_PATH=$(dpkg -L libsundials-dev | grep 'SUNDIALSConfig.cmake' | xargs dirname)
+        CVODE_PATH=$(spack location -i sundials | grep 'SUNDIALSConfig.cmake' | xargs dirname)
         echo "CVODE_PATH=${CVODE_PATH}" >> $GITHUB_ENV
     - name: Run cmake
       run: |
