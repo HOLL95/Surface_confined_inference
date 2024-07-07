@@ -1,5 +1,6 @@
 import Surface_confined_inference as sci
 from Surface_confined_inference.plot import plot_harmonics
+from Surface_confined_inference.infer import get_input_parameters
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,20 +27,26 @@ ftv.fixed_parameters = {
     "alpha": 0.5,
     "Ru": 100,
 }
-ftv.dispersion_bins=[16]
+ftv.dispersion_bins=[2]
 ftv.GH_quadrature=True
 ftv.optim_list = ["E0_std","k0"]
 nondim_t = ftv.calculate_times(sampling_factor=200, dimensional=False)
 dim_t = ftv.dim_t(nondim_t)
 dec_amount=8
 voltage=ftv.get_voltage(dim_t, dimensional=True)
-current = ftv.simulate(nondim_t, [0.03,100])
+
+current = ftv.dim_i(ftv.simulate(nondim_t, [0.03,100]))
+sci.infer.get_input_parameters(dim_t, sci._utils.add_noise(voltage, 0.01*max(voltage)), current, "FTACV", plot_results=True)
 current_fig, current_ax = plt.subplots()
 current_ax.plot(dim_t, current)
+current_ax.set_xlabel("Time (s)")
+current_ax.set_ylabel("Current (A)")
 plot_harmonics(
     Synthetic_data={"time": dim_t, "current": current},
     hanning=False,
     plot_func=abs,
     harmonics=list(range(3, 9)),
+    xlabel="Time (s)",
+    ylabel="Current (A)"
 )
 plt.show()

@@ -138,6 +138,6 @@ setup(
     ),
     package_dir={"": package_dir},
     zip_safe=False,
-    install_requires=["numpy","scipy", "matplotlib", "pandas", "PyQt5", "pytest", "pytest-cov"],
+    install_requires=["numpy","scipy", "matplotlib", "pandas", "PyQt5", "pytest", "pytest-cov", "pints","tabulate"],
     python_requires=">=3.7",
 )

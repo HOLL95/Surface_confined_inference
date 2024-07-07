@@ -3,6 +3,8 @@ from ._core._InputChecking import (
     check_input_dict,
     get_frequency,
     maximum_availiable_harmonics,
+    get_DC_component
 )
 from ._core._Nondimensionalise import NDParams
 from ._core._Dispersion import Dispersion
+from . import (infer, plot, _utils)

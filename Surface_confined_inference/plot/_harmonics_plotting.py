@@ -231,21 +231,7 @@ def plot_harmonics(**kwargs):
     for label in label_list:
 
         if kwargs["xaxis"] == "DC_potential":
-            time_series_dict[label]["potential"]
-            fft_pot = np.fft.fft(pot)
-            fft_freq = np.fft.fftfreq(
-                len(pot),
-                time_series_dict[label]["time"][1] - time_series_dict[label]["time"][0],
-            )
-            max_freq = sci.get_frequency(
-                time_series_dict[label]["time"], time_series_dict[label]["current"]
-            )
-            zero_harm_idx = np.where(
-                (fft_freq > -(0.5 * max_freq)) & (fft_freq < (0.5 * max_freq))
-            )
-            dc_pot = np.zeros(len(fft_pot), dtype="complex")
-            dc_pot[zero_harm_idx] = fft_pot[zero_harm_idx]
-            time_series_dict[label]["xaxis"] = np.real(np.fft.ifft(dc_pot))
+            time_series_dict[label]["xaxis"] =sci.get_DC_component(time_series_dict[label]["time"],time_series_dict[label]["potential"], time_series_dict[label]["current"])
         else:
             time_series_dict[label]["xaxis"] = time_series_dict[label][kwargs["xaxis"]]
         if "harmonics" not in kwargs:

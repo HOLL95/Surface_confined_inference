@@ -1,4 +1,4 @@
-from .._plot._harmonics_plotting import (
+from ._harmonics_plotting import (
     generate_harmonics,
     plot_harmonics,
     inv_objective_fun,

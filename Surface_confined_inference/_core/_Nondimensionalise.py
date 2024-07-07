@@ -46,8 +46,8 @@ class NDParams:
             elif key == "v":
                 function_dict[key] = self.v_nondim
             else:
-                function_dict[key] = self.empty
-        function_dict["cap_phase"] = self.empty
+                function_dict[key] = lambda x:x
+        function_dict["cap_phase"] = lambda x:x
         self.function_dict = function_dict
 
     def e_nondim(self, value):
@@ -74,5 +74,4 @@ class NDParams:
     def v_nondim(self, value):
         return value * self.c_T0 / self.c_E0
 
-    def empty(self, value):
-        return value
+    

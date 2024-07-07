@@ -1,6 +1,7 @@
 import SurfaceODESolver as sos
 from dataclasses import dataclass
 import Surface_confined_inference as sci
+from Surface_confined_inference._utils import RMSE
 import collections.abc
 import numbers
 from warnings import warn
@@ -36,15 +37,16 @@ class SingleExperiment:
 
         all_experiments = ["FTACV", "PSV", "DCV", "SquareWave"]
         accepted_arguments = {
-            key: ["E_start", "E_reverse", "area", "Temp", "N_elec", "Surface_coverage"]
+            key: [ "area", "Temp", "N_elec", "Surface_coverage"]
             for i in range(0, len(all_experiments))
             for key in all_experiments
         }
         extra_args = {
-            "FTACV": ["v", "omega", "phase", "delta_E"],
-            "PSV": ["omega", "phase", "delta_E", "num_peaks"],
-            "DCV": ["v"],
+            "FTACV": ["E_start", "E_reverse","v", "omega", "phase", "delta_E"],
+            "PSV": ["Edc","omega", "phase", "delta_E", "num_peaks"],
+            "DCV": ["E_start", "E_reverse","v"],
             "SquareWave": [
+                "E_start", "E_reverse",
                 "scan_increment",
                 "sampling_factor",
                 "delta_E",
@@ -439,7 +441,8 @@ class SingleExperiment:
                 abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
             )
         elif self._internal_options.experiment_type == "PSV":
-            inputs["tr"] = -10
+            inputs["E_reverse"]=inputs["Edc"]
+            inputs["tr"] = -1
             inputs["v"] = 0
         return inputs
 
@@ -711,17 +714,6 @@ class SingleExperiment:
             return comp_results
         elif self._internal_options.Fourier_function == "inverse":
             return np.fft.ifft(results)
-    def RMSE(self, simulation, data):
-        """
-        Args:
-            simulation (list): list of simlation points
-            data (list): list of data points to be compared to - needs to be the same length as simulation
-        Returns:
-            float: root mean squared error between the simulation and data
-        """
-        if len(simulation)!=len(data):
-            raise ValueError("Simulation and data needs to be the same length simulation={0}, data={1}".format(len(simulation), len(data)))
-        return np.sqrt(np.mean(np.square(simulation-data)))
     def simulate(self, times, parameters):
         """
         Args:

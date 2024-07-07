@@ -27,6 +27,23 @@ def get_frequency(times, current):
     max_freq = abs(max(frequency[np.where(fft == max(fft))]))
     return max_freq
 
+def get_DC_component(time, potential, current):
+    pot=potential
+    fft_pot = np.fft.fft(pot)
+    fft_freq = np.fft.fftfreq(
+        len(pot),
+        time[1] - time[0],
+    )
+    max_freq = sci.get_frequency(
+        time, current
+    )
+    zero_harm_idx = np.where(
+        (fft_freq > -(0.5 * max_freq)) & (fft_freq < (0.5 * max_freq))
+    )
+    dc_pot = np.zeros(len(fft_pot), dtype="complex")
+    dc_pot[zero_harm_idx] = fft_pot[zero_harm_idx]
+    return np.real(np.fft.ifft(dc_pot))
+
 
 def maximum_availiable_harmonics(times, current):
     fft = abs(np.fft.fft(current))

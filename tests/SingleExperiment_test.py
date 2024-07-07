@@ -4,6 +4,7 @@ import numpy as np
 from scipy.signal import decimate
 from Surface_confined_inference import SingleExperiment, NDParams, Dispersion
 from Surface_confined_inference._core import OptionsDecorator
+from Surface_confined_inference._utils import RMSE
 import os
 class TestSingleExperiment(unittest.TestCase):
 
@@ -125,21 +126,21 @@ class TestSingleExperiment(unittest.TestCase):
     
     def test_simulate(self):
         test_current=np.load(self.data_loc+"/Current.npy")
-        error=self.experiment.RMSE(test_current, self.decimated_current)
+        error=RMSE(test_current, self.decimated_current)
         self.assertTrue(error<1e-4)
     def test_top_hat_filter(self):
         test_FT=np.load(self.data_loc+"/CurrentFT.npy")
         self.experiment.Fourier_filtering=True
         self.experiment.Fourier_function="abs"
         FT=self.experiment.top_hat_filter(decimate(self.times, 8), self.decimated_current)
-        error=self.experiment.RMSE(FT, test_FT)
+        error=RMSE(FT, test_FT)
         self.assertTrue(error<0.3)
     def test_get_voltage(self):
         test_voltage=np.load(self.data_loc+"/Potential.npy")
         times=self.experiment.dim_t(self.times)
         voltage=self.experiment.get_voltage(times, dimensional=True)
         voltage=decimate(voltage, 8)
-        error=self.experiment.RMSE(voltage, test_voltage)
+        error=RMSE(voltage, test_voltage)
         self.assertTrue(error<1e-9)
     def test_dispersion_simulate(self):
         test_current=np.load(self.data_loc+"/DispersedCurrent.npy")
@@ -158,7 +159,7 @@ class TestSingleExperiment(unittest.TestCase):
         times=self.times
         predicted_current=self.experiment.simulate(times, [])
         decimated_current=decimate(predicted_current, 8)
-        error=self.experiment.RMSE(test_current, decimated_current)
+        error=RMSE(test_current, decimated_current)
         self.assertTrue(error<1e-4)
     
 
