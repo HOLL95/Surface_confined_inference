@@ -49,8 +49,12 @@ jobs:
         python -m pip install --upgrade .
     - name: Test with pytest
       run: |
-        python -m pytest tests/SingleExperiment_tests.py
+        python -m pytest --cov=Surface_confined_inference --cov-config=.coveragerc  --cov-report=xml tests/
+        cat coverage.xml
+    
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        files: coverage.xml

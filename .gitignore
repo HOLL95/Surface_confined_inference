@@ -1,6 +1,8 @@
 /env/
 *.egg-info
 *.cmake
+.coverage
+coverage.xml
 C_src/CMakeCache.txt
 C_src/CMakeFiles
 C_src/DartConfiguration.tcl
