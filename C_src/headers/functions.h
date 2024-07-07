@@ -5,14 +5,7 @@
 #include <sundials/sundials_types.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-
 namespace py = pybind11;
-#ifdef SUNDIALS_HAS_SUNREALTYPE
-// newer SUNDIALS versions
-#else
-// older SUNDIALS versions
-typedef realtype sunrealtype;
-#endif
 extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data);
 void updateCdlp(std::unordered_map<std::string, double>& params, double Cdlp);
 extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);

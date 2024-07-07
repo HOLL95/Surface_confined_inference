@@ -21,21 +21,22 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true  
-        
-    - name: Install Sundials
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libsundials-dev
-        
     - name: Install CMake
       run: |
         sudo apt-get install -y cmake
-        
-    - name: Locate SUNDIALS CMake Config
-      id: locate_sundials
+    - name: Download and install Sundials
       run: |
-        CVODE_PATH=$(dpkg -L libsundials-dev | grep 'SUNDIALSConfig.cmake' | xargs dirname)
+        wget https://github.com/LLNL/sundials/releases/download/v7.0.0/sundials-7.0.0.tar.gz
+        tar -xzf sundials-7.0.0.tar.gz
+        cd sundials-7.0.0
+        mkdir builddir
+        cd builddir
+        cmake ..
+        make
+        sudo make install
+        CVODE_PATH=$PWD
         echo "CVODE_PATH=${CVODE_PATH}" >> $GITHUB_ENV
+
     - name: Run cmake
       run: |
         cmake C_src

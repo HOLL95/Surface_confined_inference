@@ -9,12 +9,7 @@
 #include <pybind11/pybind11.h>
 #include "functions.h"
 using namespace std;
-#ifdef SUNDIALS_HAS_SUNREALTYPE
-// newer SUNDIALS versions
-#else
-// older SUNDIALS versions
-typedef realtype sunrealtype;
-#endif
+
 #define Ith(v, i) NV_Ith_S(v, i - 1) /* i-th vector component i=1..NEQ */
 #define IJth(A, i, j) \
   SM_ELEMENT_D(A, i - 1, j - 1) /* (i,j)-th matrix component i,j=1..NEQ */

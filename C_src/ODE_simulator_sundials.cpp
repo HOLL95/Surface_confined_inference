@@ -8,7 +8,6 @@
 #include <sundials/sundials_types.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <sundials/sundials_context.h>
 #include "headers/functions.h"
 namespace py = pybind11;
 using namespace std;
@@ -21,12 +20,7 @@ using namespace std;
 #define ESYM "e"
 #define FSYM "f"
 #endif
-#ifdef SUNDIALS_HAS_SUNREALTYPE
-// newer SUNDIALS versions
-#else
-// older SUNDIALS versions
-typedef realtype sunrealtype;
-#endif
+
 
 
 #define Ith(v, i) NV_Ith_S(v, i - 1) /* i-th vector component i=1..NEQ */
@@ -64,7 +58,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     #define ATOL3 SUN_RCONST(1.0e-5)
     #define ZERO SUN_RCONST(0.0)
 
-    sundials::SUNContext sunctx;
+    SUNContext sunctx;
     sunrealtype t, tout;
     N_Vector y;
     N_Vector abstol;
