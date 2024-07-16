@@ -33,9 +33,10 @@ ftv.optim_list = ["E0_std","k0"]
 nondim_t = ftv.calculate_times(sampling_factor=200, dimensional=False)
 dim_t = ftv.dim_t(nondim_t)
 dec_amount=8
-"""voltage=ftv.get_voltage(dim_t, dimensional=True)
+voltage=ftv.get_voltage(dim_t, dimensional=True)
 
-current = ftv.dim_i(ftv.simulate(nondim_t, [0.03,100]))
+current = ftv.dim_i(ftv.simulate([0.03,100],nondim_t, ))
+"""
 sci.infer.get_input_parameters(dim_t, sci._utils.add_noise(voltage, 0.01*max(voltage)), current, "FTACV", plot_results=True)
 current_fig, current_ax = plt.subplots()
 current_ax.plot(dim_t, current)
@@ -50,6 +51,19 @@ plot_harmonics(
     ylabel="Current (A)"
 )
 plt.show()"""
-FT=ftv.FTsimulate(nondim_t, [0.03, 100])
+
+
+
+results=ftv.Current_optimisation(dim_t, sci._utils.add_noise(current, 0.05*max(current)),paralell=False)
+
+print(results)
+"""
+FT=ftv.FTsimulate([0.03,100],nondim_t,dispersion_bins=[5], Fourier_harmonics=list(range(1, 4)))
+print(ftv.dispersion_bins)
 plt.plot(FT)
 plt.show()
+ftv.normalise_parameters=True
+plt.plot(ftv.Dimensionalsimulate([0.03,100],nondim_t,))
+print(ftv.normalise_parameters)
+plt.show()
+"""

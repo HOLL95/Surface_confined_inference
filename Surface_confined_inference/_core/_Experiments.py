@@ -2,7 +2,6 @@ import SurfaceODESolver as sos
 from dataclasses import dataclass
 import Surface_confined_inference as sci
 from Surface_confined_inference._utils import RMSE
-from functools import wraps
 import pints
 import collections.abc
 import numbers
@@ -220,6 +219,8 @@ class SingleExperiment:
             int: length of the `_optim_list` variable
         """
         return len(self._optim_list)
+    def n_outputs(self,):
+        return 1
 
     def get_voltage(self, times, **kwargs):
         """
@@ -597,7 +598,7 @@ class SingleExperiment:
                 )
         return normed_params
 
-    def dispersion_simulator(self, solver, times, sim_params):
+    def dispersion_simulator(self, solver, sim_params, times):
         """
         Args:
             Solver (function): function that takes time (list) and simualtion_params (dictionary) arguemnts and returns a current
@@ -654,39 +655,24 @@ class SingleExperiment:
             )
             nd_dict["cap_phase"] = self._internal_memory["simulation_dict"]["phase"]
         return nd_dict
-    """def temporary_options(**kwargs):
-        def decorator(func):
-            @wraps(func)
-            def wrapper_temporary_options(self, *args, **kwargs):
-                if "normalise_parameters" not in kwargs:
-                    kwargs["normalise_parameters"]=False
-                kwargs_set=set(kwargs)
-                options_set=set(Options().accepted_arguments.keys())
-                accepted_keys=list(options_set.intersection(kwargs_set))
-                current_options={key:getattr(self, key) for key in accepted_keys}
-                for key in accepted_keys:
-                    self.setattr(key, current_options[key])
-                other_kwargs={key:kwargs[key] for key in kwargs_set-options_set}
-
-                return_arg=func(*args, **other_kwargs)
-                for key in accepted_keys:
-                    self.setattr(key, current_options[key])
-                return return_arg
-            return wrapper_temporary_options
-        return decorator
-    @temporary_options
-    def FTsimulate(self, times, parameters, **kwargs):
+   
+    @sci._utils.temporary_options()
+    def FTsimulate(self,parameters, times, **kwargs):
         Fourier_options=["Fourier_window", "Fourier_function", "top_hat_width", "Fourier_harmonics"]
         for key in Fourier_options:
             if key not in kwargs:
                 kwargs[key]=getattr(self, key)
-        current=self.simulate(times, parameters)
-        return sci.top_hat_filter(times, current, **kwargs)"""
-        
+        self.optim_list=self._optim_list
+        current=self.simulate(parameters, times)
+        return sci.top_hat_filter(times, current, **kwargs)
+    @sci._utils.temporary_options(normalise_parameters=False)
+    def Dimensionalsimulate(self, parameters, times):
+        self.optim_list=self._optim_list
+        return self.simulate(parameters, times)
         
 
 
-    def simulate(self, times, parameters):
+    def simulate(self, parameters, times):
         """
         Args:
             times (list): list of times to pass to the solver
@@ -720,32 +706,62 @@ class SingleExperiment:
         if self._internal_options.experiment_type != "SquareWave":
             solver = sos.ODEsimulate
         if self._internal_options.dispersion == True:
-            current = self.dispersion_simulator(solver, times, sim_params)
+            current = self.dispersion_simulator(solver,  sim_params, times)
         else:
             nd_dict = self.nondimensionalise(sim_params)
             current = np.array(solver(times, nd_dict))[0, :]
 
+
         return current
+    @sci._utils.temporary_options(normalise_parameters=True)
     def Current_optimisation(self, time_data, current_data,**kwargs):
         if "tolerance" not in kwargs:
             kwargs["tolerance"]=1e-6
         if "method" not in kwargs:
-            kwargs["method"]="CMAES"
+            kwargs["method"]=pints.CMAES
         if "unchanged_iterations" not in kwargs:
             kwargs["unchanged_iterations"]=200
-        if "paralell" not in kwargs:
-            kwargs["paralell"]=True
+        if "parallel" not in kwargs:
+            kwargs["parallel"]=True
         if "dimensional" not in kwargs:
             kwargs["dimensional"]=True
         if "Fourier_filter" not in kwargs:
             kwargs["Fourier_filter"]=False
+        if "sigma0" not in kwargs:
+            kwargs["sigma0"]=0.075
+        if "starting_point" not in kwargs:
+            kwargs["starting_point"]="random"
         if kwargs["dimensional"]==True:
             time_data=self.nondim_t(time_data)
-            current_data=self.nondim_t(current_data)
-        #if self._internal_options.Fourier_filtering==True:
+            current_data=self.nondim_i(current_data)
+        problem=pints.SingleOutputProblem(self, time_data, current_data)
+        if kwargs["Fourier_filter"]==True:
+            log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
+            error=1000
+        else:
+            log_Likelihood=pints.GaussianLogLikelihood(problem)
+            error=100
+        boundaries=pints.RectangularBoundaries(
+                                                np.zeros(log_Likelihood.n_parameters()), 
+                                                np.append(
+                                                    np.ones(len(self._optim_list)), 
+                                                    [error for x in range(0, log_Likelihood._no)]
+                                                )
+                                            )
+        if kwargs["starting_point"]=="random":
+            x0=np.random.random(log_Likelihood.n_parameters())
+        else:
+            x0=kwargs["starting_point"]
+        if kwargs["sigma0"] is not list:
 
-        #if self._internal_options
-
+            sigma0=[kwargs["sigma0"] for x in range(0,log_Likelihood.n_parameters())]
+        else:
+            sigma0=kwargs["sigma0"]
+        optimiser=pints.OptimisationController(log_Likelihood, x0, sigma0=sigma0, boundaries=boundaries, method=kwargs["method"])
+        optimiser.set_max_unchanged_iterations(iterations=kwargs["unchanged_iterations"], threshold=kwargs["tolerance"])
+        optimiser.set_parallel(kwargs["parallel"])
+        xbest, fbest=optimiser.run()
+        return list(self.change_normalisation_group(xbest[:-log_Likelihood._no], "un_norm"))+list(xbest[-log_Likelihood._no:])
     def __setattr__(self, name, value):
         """
         Args:

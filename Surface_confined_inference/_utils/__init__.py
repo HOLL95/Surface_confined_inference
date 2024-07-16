@@ -1,1 +1,1 @@
-from .utilities import add_noise, RMSE
+from .utilities import add_noise, RMSE, temporary_options
