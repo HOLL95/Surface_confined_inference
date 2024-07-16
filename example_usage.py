@@ -33,7 +33,7 @@ ftv.optim_list = ["E0_std","k0"]
 nondim_t = ftv.calculate_times(sampling_factor=200, dimensional=False)
 dim_t = ftv.dim_t(nondim_t)
 dec_amount=8
-voltage=ftv.get_voltage(dim_t, dimensional=True)
+"""voltage=ftv.get_voltage(dim_t, dimensional=True)
 
 current = ftv.dim_i(ftv.simulate(nondim_t, [0.03,100]))
 sci.infer.get_input_parameters(dim_t, sci._utils.add_noise(voltage, 0.01*max(voltage)), current, "FTACV", plot_results=True)
@@ -49,4 +49,7 @@ plot_harmonics(
     xlabel="Time (s)",
     ylabel="Current (A)"
 )
+plt.show()"""
+FT=ftv.FTsimulate(nondim_t, [0.03, 100])
+plt.plot(FT)
 plt.show()
