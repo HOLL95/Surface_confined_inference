@@ -2,6 +2,7 @@ import SurfaceODESolver as sos
 from dataclasses import dataclass
 import Surface_confined_inference as sci
 from Surface_confined_inference._utils import RMSE
+import pints
 import collections.abc
 import numbers
 from warnings import warn
@@ -653,67 +654,6 @@ class SingleExperiment:
             nd_dict["cap_phase"] = self._internal_memory["simulation_dict"]["phase"]
         return nd_dict
 
-    def top_hat_filter(self, times, time_series, dimensional=False):
-        """
-        Args:
-            times (list): list of timepoints with constant dt
-            time_series (list): list of current values at times
-            dimensional (optional, bool): If the time points are in dimensional or non-dimensional format
-        Returns:
-            (list): list of filtered Fourier transform values
-        The function extracts and returns positive harmonics in the form of the Fourier transform. The harmonics selected are dependent on the value
-        of the `_internal_options.Fourier_harmonics` value, which is a list of increasing but not necessarily consecutive values. There are a number
-        of ways in which the Fourier values can be returned, which is controlled by the `_internal_options.Fourier_function` value
-        """
-        L = len(time_series)
-        window = np.hanning(L)
-        if self._internal_options.Fourier_window == "hanning":
-            time_series = np.multiply(time_series, window)
-        frequencies = np.fft.fftfreq(len(time_series), times[1] - times[0])
-        Y = np.fft.fft(time_series)
-
-        if dimensional == False:
-            true_harm = (
-                self._internal_memory["simulation_dict"]["omega"] * self._NDclass.c_T0
-            )
-        elif dimensional == True:
-            true_harm = self._internal_memory["simulation_dict"]["omega"]
-        top_hat = copy.deepcopy(Y)
-        filter_val = self._internal_options.top_hat_width
-        harmonic_range = self._internal_options.Fourier_harmonics
-        if sum(np.diff(harmonic_range)) != len(harmonic_range) - 1:
-            results = np.zeros(len(top_hat), dtype=complex)
-            for i in range(0, len(harmonic_range)):
-
-                true_harm_n = true_harm * harmonic_range[i]
-                index = tuple(
-                    np.where(
-                        (frequencies < (true_harm_n + (true_harm * filter_val)))
-                        & (frequencies > true_harm_n - (true_harm * filter_val))
-                    )
-                )
-                filter_bit = top_hat[index]
-                results[index] = filter_bit
-        else:
-            first_harm = (harmonic_range[0] * true_harm) - (true_harm * filter_val)
-            last_harm = (harmonic_range[-1] * true_harm) + (true_harm * filter_val)
-            freq_idx_1 = tuple(
-                np.where((frequencies > first_harm) & (frequencies < last_harm))
-            )
-            likelihood_1 = top_hat[freq_idx_1]
-            results = np.zeros(len(top_hat), dtype=complex)
-            results[freq_idx_1] = likelihood_1
-        if self._internal_options.Fourier_function == "abs":
-            return abs(results)
-        elif self._internal_options.Fourier_function == "imag":
-            return np.imag(results)
-        elif self._internal_options.Fourier_function == "real":
-            return np.real(results)
-        elif self._internal_options.Fourier_function == "composite":
-            comp_results = np.append(np.real(results), np.imag(results))
-            return comp_results
-        elif self._internal_options.Fourier_function == "inverse":
-            return np.fft.ifft(results)
     def simulate(self, times, parameters):
         """
         Args:
@@ -754,6 +694,21 @@ class SingleExperiment:
             current = np.array(solver(times, nd_dict))[0, :]
 
         return current
+    def CMAES_fit(self, time_data, current_data,**kwargs):
+        if "tolerance" not in kwargs:
+            kwargs["tolerance"]=1e-6
+        if "unchanged_iterations" not in kwargs:
+            kwargs["unchanged_iterations"]=200
+        if "paralell" not in kwargs:
+            kwargs["paralell"]=True
+        if "dimensional" not in kwargs:
+            kwargs["dimensional"]=True
+        if kwargs["dimensional"]==True:
+            time_data=self.nondim_t(time_data)
+            current_data=self.nondim_t(current_data)
+        #if self._internal_options.Fourier_filtering==True:
+
+        #if self._internal_options
 
     def __setattr__(self, name, value):
         """
@@ -796,11 +751,10 @@ class Options:
             },
             "dispersion": {"type": bool, "default": False},
             "dispersion_bins": {"type": collections.abc.Sequence, "default": []},
-            "transient_removal": {"type": [bool, numbers.Number], "default": False},
             "Fourier_filtering": {"type": bool, "default": False},
             "Fourier_function": {
                 "args": ["composite", "abs", "real", "imaginary", "inverse"],
-                "default": "composite",
+                "default": "abs",
             },
             "Fourier_harmonics": {
                 "type": collections.abc.Sequence,
@@ -895,3 +849,11 @@ class OptionsDecorator:
             self.options.options_dict[name] = value
         else:
             raise AttributeError(f"Options has no attribute '{name}'")
+
+
+"""class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
+    def __init__(self, problem, **kwargs):
+
+        super().__init__(problem)
+        
+    def __call__(x)"""

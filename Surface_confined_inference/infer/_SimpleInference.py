@@ -40,7 +40,8 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         kwargs["plot_results"]=False
     if "optimise" not in kwargs:
         kwargs["optimise"]=True
-    
+    if "optimsation_iterations" not in kwargs:
+        kwargs["optimisation_iterations"]=300
     if experiment_type in ["DCV", "FTACV"]:
         if experiment_type=="FTACV":
             DC_voltage=sci.get_DC_component(time, voltage, current)
@@ -135,7 +136,7 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             boundaries=boundaries,
             method=pints.CMAES,
             )
-        opt.set_max_iterations(200)
+        opt.set_max_iterations(kwargs["optimisation_iterations"])
         found_parameters, found_value =opt.run()
         inferred_params=dict(zip(simulator.param_dict[experiment_type], found_parameters))
     estimated_simulated=simulator.simulate([estimated_parameters[key] for key in simulator.param_dict[experiment_type]], time)

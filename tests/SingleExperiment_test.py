@@ -2,9 +2,10 @@ import unittest
 from unittest.mock import patch
 import numpy as np
 from scipy.signal import decimate
-from Surface_confined_inference import SingleExperiment, NDParams, Dispersion
+from Surface_confined_inference import SingleExperiment, NDParams, Dispersion, top_hat_filter
 from Surface_confined_inference._core import OptionsDecorator
 from Surface_confined_inference._utils import RMSE
+
 import os
 class TestSingleExperiment(unittest.TestCase):
 
@@ -130,9 +131,7 @@ class TestSingleExperiment(unittest.TestCase):
         self.assertTrue(error<1e-4)
     def test_top_hat_filter(self):
         test_FT=np.load(self.data_loc+"/CurrentFT.npy")
-        self.experiment.Fourier_filtering=True
-        self.experiment.Fourier_function="abs"
-        FT=self.experiment.top_hat_filter(decimate(self.times, 8), self.decimated_current)
+        FT=top_hat_filter(decimate(self.times, 8), self.decimated_current, return_type="abs", harmonic_range=list(range(0, 10)), window="hanning")
         error=RMSE(FT, test_FT)
         self.assertTrue(error<0.3)
     def test_get_voltage(self):
