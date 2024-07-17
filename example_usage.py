@@ -55,6 +55,10 @@ plt.show()"""
 
 
 ftv.save_class("json_test")
+load=sci.LoadSingleExperiment("json_test.json")
+plt.plot(current)
+plt.plot(load.dim_i(load.simulate([0.03, 100], nondim_t)))
+plt.show()
 """
 FT=ftv.FTsimulate([0.03,100],nondim_t,dispersion_bins=[5], Fourier_harmonics=list(range(1, 4)))
 print(ftv.dispersion_bins)

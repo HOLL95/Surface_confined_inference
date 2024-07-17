@@ -1,6 +1,7 @@
 import SurfaceODESolver as sos
 import Surface_confined_inference as sci
 from Surface_confined_inference._utils import RMSE
+from pathlib import Path
 import pints
 import collections.abc
 import numbers
@@ -228,7 +229,7 @@ class SingleExperiment:
             input_parameters (dict, optional): dictionary of input parameters
             dimensional (bool, optional): whether or not the times are in dimensional format or not
         Returns:
-            list: list of potential values at the provided time points
+            list: list of potential values at the provided time points. By default, these values will be in dimensional format (V)
         """
         if "input_parameters" not in kwargs:
             input_parameters=None
@@ -672,11 +673,12 @@ class SingleExperiment:
     def save_class(self,path):
 
         dict_class=vars(self)
-        save_dict={}
+        save_dict={"Options":{}}
         option_keys=Options().accepted_arguments.keys()
         for key in dict_class:
-            if key in option_keys:
-                save_dict[key]=dict_class[key]
+            if key in option_keys and key!="experiment_type":
+                save_dict["Options"][key]=dict_class[key]
+        save_dict["experiment_type"]=dict_class["experiment_type"]
         save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
         save_dict["optim_list"]=self._optim_list
         save_dict["fixed_parameters"]=self._internal_memory["fixed_parameters"]
@@ -732,6 +734,8 @@ class SingleExperiment:
             kwargs["tolerance"]=1e-6
         if "method" not in kwargs:
             kwargs["method"]=pints.CMAES
+        if "runs" not in kwargs:
+            kwargs["runs"]=1
         if "unchanged_iterations" not in kwargs:
             kwargs["unchanged_iterations"]=200
         if "parallel" not in kwargs:
@@ -744,6 +748,16 @@ class SingleExperiment:
             kwargs["sigma0"]=0.075
         if "starting_point" not in kwargs:
             kwargs["starting_point"]="random"
+        if "save_to_directory" not in kwargs:
+            kwargs["save"]=False
+        elif kwargs["save_to_directory"]==False:
+            if "save_csv" in kwargs:
+                print("Warning - not saving run")
+        elif isinstance(kwargs["save_to_directory"], str) is False:
+            raise TypeError("If you want to save a run you need to provide a string name for the directory")
+        else:
+            if "save_csv" not in kwargs:
+                kwargs["save_csv"]=False
         if kwargs["dimensional"]==True:
             time_data=self.nondim_t(time_data)
             current_data=self.nondim_i(current_data)
@@ -769,11 +783,54 @@ class SingleExperiment:
             sigma0=[kwargs["sigma0"] for x in range(0,log_Likelihood.n_parameters())]
         else:
             sigma0=kwargs["sigma0"]
-        optimiser=pints.OptimisationController(log_Likelihood, x0, sigma0=sigma0, boundaries=boundaries, method=kwargs["method"])
-        optimiser.set_max_unchanged_iterations(iterations=kwargs["unchanged_iterations"], threshold=kwargs["tolerance"])
-        optimiser.set_parallel(kwargs["parallel"])
-        xbest, fbest=optimiser.run()
-        return list(self.change_normalisation_group(xbest[:-log_Likelihood._no], "un_norm"))+list(xbest[-log_Likelihood._no:])
+        best_score=-1e20
+        scores=np.zeros(kwargs["runs"])
+        parameters=np.zeros((kwargs["runs"], log_Likelihood.n_parameters()))
+        noises=np.zeros(kwargs["runs"])
+        currents=np.zeros((kwargs["runs"], len(time_data)))
+        for i in range(0, kwargs["runs"]):
+            optimiser=pints.OptimisationController(log_Likelihood, x0, sigma0=sigma0, boundaries=boundaries, method=kwargs["method"])
+            optimiser.set_max_unchanged_iterations(iterations=kwargs["unchanged_iterations"], threshold=kwargs["tolerance"])
+            optimiser.set_parallel(kwargs["parallel"])
+            xbest, fbest=optimiser.run()
+            scores[i]=fbest
+            dim_params=list(self.change_normalisation_group(xbest[:-log_Likelihood._no], "un_norm"))
+            parameters[i,:-log_Likelihood._no]=dim_params
+            parameters[i, -log_Likelihood._no:]=xbest[-log_Likelihood._no:]
+            if kwargs["save_to_directory"] is not False:
+                currents[i,:]=self.dim_i(self.simulate(xbest[:-log_Likelihood._no], time_data))
+                if i==0:
+                    save_times=self.dim_t(time_data)
+                    Path(kwargs["save_to_directory"]).mkdir(parents=True, exist_ok=True)
+                    voltage=self.get_voltage(save_times, dimensional=True)
+        sorted_idx=np.flip(np.argsort(scores))
+        sorted_params=[list(parameters[x,:]) for x in sorted_idx]
+        if kwargs["save_to_directory"] is not False:
+            if kwargs["runs"]==1:
+                currents=np.array([currents])
+                parameters=np.array([parameters])
+            else:
+                parameters=np.array(parameters)
+            sci.plot.save_results(save_times, 
+                                    voltage, 
+                                    self.dim_i(current_data), 
+                                    currents, 
+                                    kwargs["save_to_directory"], 
+                                    self._internal_options.experiment_type, 
+                                    save_csv=kwargs["save_csv"],
+                                    table=True,
+                                    optim_list=self._optim_list, 
+                                    fixed_parameters=self.fixed_parameters,
+                                    score=scores, 
+                                    parameters=parameters
+                                    )
+        
+                
+        if kwargs["runs"]==1:
+            return dim_params+list(xbest[-log_Likelihood._no:])
+        else:
+            return list(sorted_params)
+
     def __setattr__(self, name, value):
         """
         Args:

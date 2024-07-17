@@ -19,27 +19,32 @@ ftv = sci.SingleExperiment(
         "v": 25e-3,
     },
 )
-ftv.boundaries = {"k0": [1e-3, 200], "E0": [-0.1, 0.06]}
+ftv.boundaries = {"k0": [1e-3, 200], 
+                    "E0": [-0.1, 0.06],
+                    "Cdl": [1e-5, 1e-3],
+                    "gamma": [1e-11, 1e-9],
+                    "Ru": [1, 1e3],}
 ftv.fixed_parameters = {
-    
-    "Cdl": 1e-4,
-    "gamma": 1e-10,
-    "alpha": 0.5,
-    "Ru": 100,
+    "alpha":0.5,
 }
-ftv.dispersion_bins=[2]
+
 ftv.GH_quadrature=True
-ftv.optim_list = ["E0","k0"]
+ftv.optim_list = ["E0","k0", "Cdl", "gamma",  "Ru"]
+
 nondim_t = ftv.calculate_times(sampling_factor=200, dimensional=False)
 dim_t = ftv.dim_t(nondim_t)
-dec_amount=8
 voltage=ftv.get_voltage(dim_t, dimensional=True)
-
-current = ftv.dim_i(ftv.simulate([0.03,100],nondim_t, ))
+current = ftv.dim_i(ftv.simulate([0.03,100, 1e-4, 1e-10, 100],nondim_t, ))
 
 noisy_current=sci._utils.add_noise(current, 0.05*max(current))
-ftv.Fourier_harmonics=list(range(3, 10))
-ftv.Fourier_window="hanning"
-results=ftv.Current_optimisation(dim_t, noisy_current,parallel=False,Fourier_filter=True)
 
-print(results)
+results=ftv.Current_optimisation(dim_t, noisy_current,
+                                parallel=True,
+                                Fourier_filter=False, 
+                                runs=3, 
+                                save_to_directory="Results", 
+                                threshold=1e-3, 
+                                unchanged_iterations=50,
+                                save_csv=True)
+
+
