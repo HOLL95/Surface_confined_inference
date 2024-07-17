@@ -34,7 +34,7 @@ class TestSingleExperiment(unittest.TestCase):
                                         }
         self.experiment.optim_list=[]
         self.times=self.experiment.calculate_times()
-        predicted_current=self.experiment.simulate(self.times, [])
+        predicted_current=self.experiment.simulate([],self.times)
         self.decimated_current=decimate(predicted_current, 8)
         cwd=os.getcwd()
         if "Surface_confined_inference/tests" in cwd:
@@ -156,7 +156,7 @@ class TestSingleExperiment(unittest.TestCase):
                                         }
         self.experiment.optim_list=[]
         times=self.times
-        predicted_current=self.experiment.simulate(times, [])
+        predicted_current=self.experiment.simulate([], times)
         decimated_current=decimate(predicted_current, 8)
         error=RMSE(test_current, decimated_current)
         self.assertTrue(error<1e-4)

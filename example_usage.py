@@ -54,9 +54,7 @@ plt.show()"""
 
 
 
-results=ftv.Current_optimisation(dim_t, sci._utils.add_noise(current, 0.05*max(current)),paralell=False)
-
-print(results)
+ftv.save_class("json_test")
 """
 FT=ftv.FTsimulate([0.03,100],nondim_t,dispersion_bins=[5], Fourier_harmonics=list(range(1, 4)))
 print(ftv.dispersion_bins)

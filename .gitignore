@@ -13,3 +13,4 @@ Testing/
 /build/
 *__pycache__
 localtests/
+*.json

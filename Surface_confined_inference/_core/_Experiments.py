@@ -1,5 +1,4 @@
 import SurfaceODESolver as sos
-from dataclasses import dataclass
 import Surface_confined_inference as sci
 from Surface_confined_inference._utils import RMSE
 import pints
@@ -13,7 +12,7 @@ import re
 import time
 import math
 import matplotlib.pyplot as plt
-
+import json
 
 class SingleExperiment:
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
@@ -670,8 +669,22 @@ class SingleExperiment:
         self.optim_list=self._optim_list
         return self.simulate(parameters, times)
         
+    def save_class(self,path):
 
-
+        dict_class=vars(self)
+        save_dict={}
+        option_keys=Options().accepted_arguments.keys()
+        for key in dict_class:
+            if key in option_keys:
+                save_dict[key]=dict_class[key]
+        save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
+        save_dict["optim_list"]=self._optim_list
+        save_dict["fixed_parameters"]=self._internal_memory["fixed_parameters"]
+        save_dict["boundaries"]=self._internal_memory["boundaries"]
+        if path[-5:]!=".json":
+            path+=".json"
+        with open(path, "w") as f:
+            json.dump(save_dict, f)
     def simulate(self, parameters, times):
         """
         Args:
@@ -753,7 +766,6 @@ class SingleExperiment:
         else:
             x0=kwargs["starting_point"]
         if kwargs["sigma0"] is not list:
-
             sigma0=[kwargs["sigma0"] for x in range(0,log_Likelihood.n_parameters())]
         else:
             sigma0=kwargs["sigma0"]
