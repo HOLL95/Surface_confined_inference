@@ -200,7 +200,7 @@ def plot_harmonics(**kwargs):
     if "ylabel" not in kwargs:
         kwargs["ylabel"] = ""
     if "legend" not in kwargs:
-        kwargs["legend"] = {"loc": "center"}
+        kwargs["legend"] = {"loc": "center", "facecolor":"white", "framealpha":0.5}
     if "h_num" not in kwargs:
         kwargs["h_num"] = True
     if "colour" not in kwargs:

@@ -806,11 +806,7 @@ class SingleExperiment:
         sorted_idx=np.flip(np.argsort(scores))
         sorted_params=[list(parameters[x,:]) for x in sorted_idx]
         if kwargs["save_to_directory"] is not False:
-            if kwargs["runs"]==1:
-                currents=np.array([currents])
-                parameters=np.array([parameters])
-            else:
-                parameters=np.array(parameters)
+            parameters=np.array(sorted_params)
             sci.plot.save_results(save_times, 
                                     voltage, 
                                     self.dim_i(current_data), 
@@ -821,7 +817,7 @@ class SingleExperiment:
                                     table=True,
                                     optim_list=self._optim_list, 
                                     fixed_parameters=self.fixed_parameters,
-                                    score=scores, 
+                                    score=np.flip(sorted(scores)), 
                                     parameters=parameters
                                     )
         
@@ -863,7 +859,7 @@ class Options:
         """
         self.accepted_arguments = {
             "experiment_type": {"type": str, "default": None},
-            "GH_quadrature": {"type": bool, "default": False},
+            "GH_quadrature": {"type": bool, "default": True},
             "phase_only": {"type": bool, "default": True},
             "normalise_parameters": {"type": bool, "default": False},
             "kinetics": {

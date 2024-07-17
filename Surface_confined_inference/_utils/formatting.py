@@ -70,7 +70,7 @@ fancy_names={
         "kcat":"$k_{cat}$",
         "sampling_freq":"Sampling rate",
         "":"Experiment",
-        "noise":"$\sigma$",
+        "noise":"$\\sigma$",
         "error":"RMSE",
         "sep":"Seperation",
         "cpe_alpha_faradaic" :"$\\psi$ $(\\Gamma)$",

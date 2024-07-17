@@ -15,20 +15,24 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
         if necessary_args.issubset(kwarg_keys) is False:
             raise ValueError("Need {0} for a table".format(kwarg_keys-necessary_args))
         else:
-            table_titles=["Rank"]+kwargs["optim_list"]+list(kwargs["fixed_parameters"].keys())+["Dimensionless Score"]
-            fancy_titles=sci._utils.get_titles(table_titles, units=True)
-            max_len= [len(x) for x in fancy_titles]
-            str_values=[]
-            for i in range(0, len(simulations)):
-                full_list={**dict(zip(kwargs["optim_list"], kwargs["parameters"][i,:])), **kwargs["fixed_parameters"], **{"Dimensionless Score":kwargs["score"][i], "Rank":i+1}}
-                formatted_values=[sci._utils.format_values(full_list[key], dp=2) for key in table_titles]
-                str_values.append(formatted_values)
-                for j in range(0, len(max_len)):
-                    max_len[j]=max(len(formatted_values[j]), max_len[j])
-            with open(directory+"/Param_table.txt", "w") as f:
-                table_writer(fancy_titles, max_len, f)
-                for values in str_values:
-                    table_writer(values, max_len, f)
+            labels=["Rounded_table.txt", "Full_table.txt"]
+            dp=[2, 10]
+            for m in range(0, 2):
+                table_titles=["Rank"]+kwargs["optim_list"]+list(kwargs["fixed_parameters"].keys())+["Dimensionless Score"]
+                fancy_titles=sci._utils.get_titles(table_titles, units=True)
+                max_len= [len(x) for x in fancy_titles]
+                str_values=[]
+                
+                for i in range(0, len(simulations)):
+                    full_list={**dict(zip(kwargs["optim_list"], kwargs["parameters"][i,:])), **kwargs["fixed_parameters"], **{"Dimensionless Score":kwargs["score"][i], "Rank":i+1}}
+                    formatted_values=[sci._utils.format_values(full_list[key], dp=dp[m]) for key in table_titles]
+                    str_values.append(formatted_values)
+                    for j in range(0, len(max_len)):
+                        max_len[j]=max(len(formatted_values[j]), max_len[j])
+                with open(directory+"/{0}".format(labels[m]), "w") as f:
+                    table_writer(fancy_titles, max_len, f)
+                    for values in str_values:
+                        table_writer(values, max_len, f)
                 
                 
             
@@ -138,7 +142,7 @@ def table_writer(write_list, max_len, file):
 
     for i in range(0, len(write_list)):
         num_space=max_len[i]-len(write_list[i])
-        title_list[i]=write_list[i]+" "*num_space
+        title_list[i]=write_list[i]+","+" "*num_space
     write_string=" ".join(title_list)+"\n"
     file.write(write_string)
     

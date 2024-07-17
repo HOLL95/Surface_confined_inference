@@ -28,7 +28,6 @@ ftv.fixed_parameters = {
     "alpha":0.5,
 }
 
-ftv.GH_quadrature=True
 ftv.optim_list = ["E0","k0", "Cdl", "gamma",  "Ru"]
 
 nondim_t = ftv.calculate_times(sampling_factor=200, dimensional=False)
@@ -43,8 +42,8 @@ results=ftv.Current_optimisation(dim_t, noisy_current,
                                 Fourier_filter=False, 
                                 runs=3, 
                                 save_to_directory="Results", 
-                                threshold=1e-3, 
-                                unchanged_iterations=50,
+                                threshold=1, 
+                                unchanged_iterations=1,
                                 save_csv=True)
 
 
