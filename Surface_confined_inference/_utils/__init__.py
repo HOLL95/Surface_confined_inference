@@ -7,6 +7,7 @@ from .formatting import (
         get_titles,
         format_values,
         numbered_title,
-        nounits
+        nounits,
+        det_subplots
 
 )

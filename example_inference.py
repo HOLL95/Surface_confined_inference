@@ -40,9 +40,9 @@ noisy_current=sci._utils.add_noise(current, 0.05*max(current))
 results=ftv.Current_optimisation(dim_t, noisy_current,
                                 parallel=True,
                                 Fourier_filter=False, 
-                                runs=3, 
+                                runs=6, 
                                 save_to_directory="Results", 
-                                threshold=1, 
+                                threshold=1e3, 
                                 unchanged_iterations=1,
                                 save_csv=True)
 

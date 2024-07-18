@@ -2,40 +2,61 @@ import matplotlib.pyplot as plt
 import numpy as np
 import Surface_confined_inference as sci
 from pandas import DataFrame
-def save_results(time, voltage, experiment, simulations, directory, experiment_type, **kwargs):
+def save_results(time, voltage, experiment, simulations, directory, experiment_type,boundaries, **kwargs):
     if "save_csv" not in kwargs:
         kwargs["save_csv"]=False
     if "harmonics" not in kwargs:
         kwargs["harmonics"]=sci.maximum_availiable_harmonics(time, experiment)
-    if "table" not in kwargs:
-        kwargs["table"]=False
     if "DC_voltage" not in kwargs:
         kwargs["DC_voltage"]=None
-    if kwargs["table"]!=False:
-        necessary_args=set(["optim_list", "fixed_parameters", "score", "parameters"])
-        kwarg_keys=set(kwargs.keys())
-        if necessary_args.issubset(kwarg_keys) is False:
-            raise ValueError("Need {0} for a table".format(kwarg_keys-necessary_args))
-        else:
-            labels=["Rounded_table.txt", "Full_table.txt"]
-            dp=[2, 10]
-            for m in range(0, 2):
-                table_titles=["Rank"]+kwargs["optim_list"]+list(kwargs["fixed_parameters"].keys())+["Dimensionless Score"]
-                fancy_titles=sci._utils.get_titles(table_titles, units=True)
-                max_len= [len(x) for x in fancy_titles]
-                str_values=[]
-                
-                for i in range(0, len(simulations)):
-                    full_list={**dict(zip(kwargs["optim_list"], kwargs["parameters"][i,:])), **kwargs["fixed_parameters"], **{"Dimensionless Score":kwargs["score"][i], "Rank":i+1}}
-                    formatted_values=[sci._utils.format_values(full_list[key], dp=dp[m]) for key in table_titles]
-                    str_values.append(formatted_values)
-                    for j in range(0, len(max_len)):
-                        max_len[j]=max(len(formatted_values[j]), max_len[j])
-                with open(directory+"/{0}".format(labels[m]), "w") as f:
-                    table_writer(fancy_titles, max_len, f)
-                    for values in str_values:
-                        table_writer(values, max_len, f)
-                
+
+    necessary_args=set(["optim_list", "fixed_parameters", "score", "parameters"])
+    kwarg_keys=set(kwargs.keys())
+    if necessary_args.issubset(kwarg_keys) is False:
+        raise ValueError("Need {0} for a table".format(kwarg_keys-necessary_args))
+    else:
+        labels=["Rounded_table.txt", "Full_table.txt"]
+        dp=[2, 10]
+        
+        for m in range(0, 2):
+            table_titles=["Rank"]+kwargs["optim_list"]+list(kwargs["fixed_parameters"].keys())+["Dimensionless Score"]
+            fancy_titles=sci._utils.get_titles(table_titles, units=True)
+            max_len= [len(x) for x in fancy_titles]
+            str_values=[]
+            
+            for i in range(0, len(simulations)):
+                full_list={**dict(zip(kwargs["optim_list"], kwargs["parameters"][i,:])), **kwargs["fixed_parameters"], **{"Dimensionless Score":kwargs["score"][i], "Rank":i+1}}
+                formatted_values=[sci._utils.format_values(full_list[key], dp=dp[m]) for key in table_titles]
+                str_values.append(formatted_values)
+                if m==0:
+                    if i==0:
+                        bar_list={key:[full_list[key]] for key in full_list if key != "Rank" }
+                    else:
+                        for key in full_list.keys():
+                            if key != "Rank":
+                                bar_list[key].append(full_list[key])
+                for j in range(0, len(max_len)):
+                    max_len[j]=max(len(formatted_values[j]), max_len[j])
+            with open(directory+"/{0}".format(labels[m]), "w") as f:
+                table_writer(fancy_titles, max_len, f)
+                for values in str_values:
+                    table_writer(values, max_len, f)
+        param_keys=table_titles[1:]
+        dimensions=sci._utils.det_subplots(len(param_keys))
+        bar_fig, bar_ax=plt.subplots(*dimensions)
+        for i in range(0, len(param_keys)):
+            axis=bar_ax[i//dimensions[1], i%dimensions[1]]
+            axis.scatter(range(1, len(simulations)+1), bar_list[param_keys[i]])
+            axis.set_xlabel("Rank")
+            ylabel=fancy_titles[i+1]
+            if param_keys[i] in kwargs["fixed_parameters"].keys():
+                ylabel+=" (pinned)"
+            elif param_keys[i] != "Dimensionless Score":
+                axis.set_ylim([boundaries[param_keys[i]][0], boundaries[param_keys[i]][1]])
+            axis.set_ylabel(ylabel)
+        adjust_and_save(bar_fig, directory, "Parameter scatter plot.png", size=(8, 5), hspace=0.3, wspace=0.7)
+
+               
                 
             
     if len(np.array(simulations).shape)==1:
@@ -131,14 +152,15 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
             adjust_and_save(pooled_h_fig, directory, "Pooled harmonic current.png")
 
 
-def adjust_and_save(figure, directory, name):
+def adjust_and_save(figure, directory, name, size=(8,8), hspace=0, wspace=0.2):
     adjusted_plots=dict(top=0.969,
                         bottom=0.081,
                         left=0.146,
                         right=0.977,
-                        hspace=0.0,
-                        wspace=0.2)
-    figure.set_size_inches(8, 8)
+                        hspace=hspace,
+                        wspace=wspace)
+    
+    figure.set_size_inches(size[0], size[1])
     figure.subplots_adjust(**adjusted_plots)
     figure.savefig(directory+"/"+name, dpi=500)
     figure.clf()

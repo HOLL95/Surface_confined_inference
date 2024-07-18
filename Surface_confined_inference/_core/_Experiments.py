@@ -792,6 +792,7 @@ class SingleExperiment:
             optimiser=pints.OptimisationController(log_Likelihood, x0, sigma0=sigma0, boundaries=boundaries, method=kwargs["method"])
             optimiser.set_max_unchanged_iterations(iterations=kwargs["unchanged_iterations"], threshold=kwargs["tolerance"])
             optimiser.set_parallel(kwargs["parallel"])
+            
             xbest, fbest=optimiser.run()
             scores[i]=fbest
             dim_params=list(self.change_normalisation_group(xbest[:-log_Likelihood._no], "un_norm"))
@@ -819,8 +820,8 @@ class SingleExperiment:
                                     currents, 
                                     kwargs["save_to_directory"], 
                                     self._internal_options.experiment_type, 
+                                    self._internal_memory["boundaries"],
                                     save_csv=kwargs["save_csv"],
-                                    table=True,
                                     optim_list=self._optim_list, 
                                     fixed_parameters=self.fixed_parameters,
                                     score=np.flip(sorted(scores)), 
@@ -875,6 +876,7 @@ class Options:
             },
             "dispersion": {"type": bool, "default": False},
             "dispersion_bins": {"type": collections.abc.Sequence, "default": []},
+            "Fourier_fitting":{"type":bool, "default":False},
             "Fourier_function": {
                 "args": ["composite", "abs", "real", "imaginary", "inverse"],
                 "default": "abs",
