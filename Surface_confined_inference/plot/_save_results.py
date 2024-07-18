@@ -9,6 +9,8 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
         kwargs["harmonics"]=sci.maximum_availiable_harmonics(time, experiment)
     if "table" not in kwargs:
         kwargs["table"]=False
+    if "DC_voltage" not in kwargs:
+        kwargs["DC_voltage"]=None
     if kwargs["table"]!=False:
         necessary_args=set(["optim_list", "fixed_parameters", "score", "parameters"])
         kwarg_keys=set(kwargs.keys())
@@ -83,6 +85,9 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
         ax.plot(xaxis, simulations[i,:], label="Simulation")
         if kwargs["save_csv"]==True:
             save_dict={"Time (s)":time, "Potential (V)":voltage, "Current (A)":simulations[i,:]}
+            if kwargs["DC_voltage"] is not None:
+                if experiment_type=="FTACV":
+                    save_dict["DC Potential (V)"]=kwargs["DC_voltage"]
         ax.set_xlabel(label_dict[xlabel])
         ax.set_ylabel("Current (A)")
         ax.legend()

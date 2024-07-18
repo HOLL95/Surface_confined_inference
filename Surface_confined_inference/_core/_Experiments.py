@@ -803,6 +803,12 @@ class SingleExperiment:
                     save_times=self.dim_t(time_data)
                     Path(kwargs["save_to_directory"]).mkdir(parents=True, exist_ok=True)
                     voltage=self.get_voltage(save_times, dimensional=True)
+                    if self._internal_options.experiment_type=="FTACV":
+                        DC_params=copy.deepcopy(self._internal_memory["input_parameters"])
+                        DC_params["delta_E"]=0
+                        DC_voltage=self.get_voltage(save_times, dimensional=True, input_parameters=DC_params)
+                    else:
+                        DC_voltage=None
         sorted_idx=np.flip(np.argsort(scores))
         sorted_params=[list(parameters[x,:]) for x in sorted_idx]
         if kwargs["save_to_directory"] is not False:
@@ -818,7 +824,8 @@ class SingleExperiment:
                                     optim_list=self._optim_list, 
                                     fixed_parameters=self.fixed_parameters,
                                     score=np.flip(sorted(scores)), 
-                                    parameters=parameters
+                                    parameters=parameters,
+                                    DC_voltage=DC_voltage
                                     )
         
                 
