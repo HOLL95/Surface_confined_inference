@@ -11,7 +11,7 @@ parser.add_argument("--unchanged_iterations",  help="Inference will terminated a
 
 
 args = parser.parse_args()
-print(args)
+
 datafile=np.loadtxt(args.datafile)
 time=datafile[:,0]
 potential=datafile[:,2]
@@ -19,13 +19,15 @@ current=datafile[:,1]
 simclass=sci.LoadSingleExperiment(args.simulator)
 results=simclass.Current_optimisation(time, current,
                                 parallel=True,
-                                Fourier_filter=simclass._internal_options.Fourier_filter, 
+                                Fourier_filter=simclass._internal_options.Fourier_fitting, 
                                 runs=1, 
                                 threshold=args.threshold, 
                                 unchanged_iterations=args.unchanged_iterations,
-                                save_csv=True)
+                                starting_point="random",
+                                sigma0=0.075,
+                                dimensional=True)
 job_id=os.environ.get('SLURM_JOB_ID')
-np.save("Results_run_{0}.npy".format(job_id))
+np.save("Results_run_{0}.npy".format(job_id), results)
 
 
 

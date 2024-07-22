@@ -749,7 +749,7 @@ class SingleExperiment:
         if "starting_point" not in kwargs:
             kwargs["starting_point"]="random"
         if "save_to_directory" not in kwargs:
-            kwargs["save"]=False
+            kwargs["save_to_directory"]=False
         elif kwargs["save_to_directory"]==False:
             if "save_csv" in kwargs:
                 print("Warning - not saving run")

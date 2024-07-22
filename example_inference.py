@@ -36,7 +36,8 @@ voltage=ftv.get_voltage(dim_t, dimensional=True)
 current = ftv.dim_i(ftv.simulate([0.03,100, 1e-4, 1e-10, 100],nondim_t, ))
 
 noisy_current=sci._utils.add_noise(current, 0.05*max(current))
-
+with open("test_inference.txt", "w") as f:
+    np.savetxt(f, np.column_stack((dim_t, noisy_current, voltage)))
 results=ftv.Current_optimisation(dim_t, noisy_current,
                                 parallel=True,
                                 Fourier_filter=False, 

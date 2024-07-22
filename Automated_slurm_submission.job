@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=FTACV_inference_henryll_72ec939eba004804a08e171c20aebe47
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=9
+#SBATCH --mem=8G
+#SBATCH --time=0-00:10:00
+#SBATCH --account=chem-electro-2024
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=henryll@york.ac.uk
+#SBATCH --output=%x-%j.log
+#SBATCH --error=%x-%j.err
+#SBATCH --array=1-5
+set -e 
+python /home/henryll/Documents/Surface_confined_inference/Surface_confined_inference/_HPCInterface/Slurm_submitter.py /home/henryll/Documents/Surface_confined_inference/test_inference.txt /home/henryll/Documents/Surface_confined_inference/Slurm_Json.json --threshold=1000.0 --unchanged_iterations=1
