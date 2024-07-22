@@ -71,8 +71,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("set -e \n")
             f.write('SLURM_LOG_DIR=\"slurm_logs\"\n')
             f.write("mkdir -p $SLURM_LOG_DIR\n")
-            f.write("rm -f Results/job_ids.txt\n")
-            f.write('echo \"${SLURM_ARRAY_JOB_ID}${SLURM_ARRAY_TASK_ID}\" >> Results/job_ids.txt\n')
+            f.write('echo \"${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}\" >> Results/job_ids.txt\n')
 
             python_command=["python",
                             submitter_loc,
@@ -115,8 +114,10 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write(" ".join(python_command))
         with open("Submission/Controller.sh", "w") as f:
             f.write("#!/usr/bin/env bash\n")
+            f.write("rm -f Results/job_ids.txt\n")
             f.write("array_job_id=$(sbatch Submission/Automated_slurm_submission.job | awk '{print $4}')\n")
-            f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job\n" )
+            f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job && rm -f Results/*.npy" )
+
         if kwargs["run"]==True:
             import subprocess
             subprocess.call(["bash", "Submission/Controller.sh"])

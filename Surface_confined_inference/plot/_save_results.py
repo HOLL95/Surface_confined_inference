@@ -19,13 +19,13 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
         dp=[2, 10]
         
         for m in range(0, 2):
-            table_titles=["Rank"]+kwargs["optim_list"]+list(kwargs["fixed_parameters"].keys())+["Dimensionless Score"]
+            table_titles=["Rank"]+kwargs["optim_list"]+list(kwargs["fixed_parameters"].keys())+["Dimensionless noise"]
             fancy_titles=sci._utils.get_titles(table_titles, units=True)
             max_len= [len(x) for x in fancy_titles]
             str_values=[]
             
             for i in range(0, len(simulations)):
-                full_list={**dict(zip(kwargs["optim_list"], kwargs["parameters"][i,:])), **kwargs["fixed_parameters"], **{"Dimensionless Score":kwargs["score"][i], "Rank":i+1}}
+                full_list={**dict(zip(kwargs["optim_list"], kwargs["parameters"][i,:])), **kwargs["fixed_parameters"], **{"Dimensionless noise":kwargs["score"][i], "Rank":i+1}}
                 formatted_values=[sci._utils.format_values(full_list[key], dp=dp[m]) for key in table_titles]
                 str_values.append(formatted_values)
                 if m==0:
@@ -51,7 +51,7 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
             ylabel=fancy_titles[i+1]
             if param_keys[i] in kwargs["fixed_parameters"].keys():
                 ylabel+=" (pinned)"
-            elif param_keys[i] != "Dimensionless Score":
+            elif param_keys[i] != "Dimensionless noise":
                 axis.set_ylim([boundaries[param_keys[i]][0], boundaries[param_keys[i]][1]])
             axis.set_ylabel(ylabel)
         adjust_and_save(bar_fig, directory, "Parameter scatter plot.png", size=(8, 5), hspace=0.3, wspace=0.7)

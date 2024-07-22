@@ -1,5 +1,6 @@
 import numpy as np
 import Surface_confined_inference as sci
+from pathlib import Path
 import argparse
 import copy
 import datetime
@@ -22,33 +23,37 @@ param_array=[]
 for i in range(0, len(ids)):
     parameter_file=loc+"/Results_run_{0}.npy".format(ids[i].strip())
     parameters=np.load(parameter_file)
+    print(parameters)
     param_array.append(parameters)
 param_array=np.array(param_array)
 scores=param_array[:,-1]
 sorted_idx=np.flip(np.argsort(scores))
-sorted_params=[list(param_array[x,:]) for x in sorted_idx]
+sorted_params=np.array([list(param_array[x,:]) for x in sorted_idx])
 sim_currents=np.zeros((len(sorted_params), len(current)))
+print(scores)
 for i in range(0, len(sorted_params)):
     sim_currents[i, :]=simulator.dim_i(simulator.Dimensionalsimulate(sorted_params[i,:-1], time))
 sim_voltage=simulator.get_voltage(time, dimensional=True)
 if simulator._internal_options.experiment_type=="FTACV":
     DC_params=copy.deepcopy(simulator._internal_memory["input_parameters"])
     DC_params["delta_E"]=0
-    DC_voltage=simulator.get_voltage(save_times, dimensional=True, input_parameters=DC_params)
+    DC_voltage=simulator.get_voltage(time, dimensional=True, input_parameters=DC_params)
 else:
     DC_voltage=None
-Path(loc+"/PooledResults").mkdir(parents=True, exist_ok=True)
-sci.plot.save_results(times, 
+date=datetime.datetime.today().strftime('%Y-%m-%d')
+savepath=loc+"/PooledResults_{0}".format(date)
+Path(savepath).mkdir(parents=True, exist_ok=True)
+sci.plot.save_results(time, 
                     sim_voltage, 
                     current, 
                     sim_currents, 
-                    loc+"/PooledResults", 
+                    savepath, 
                     simulator._internal_options.experiment_type, 
                     simulator._internal_memory["boundaries"],
                     save_csv=True,
                     optim_list=simulator._optim_list, 
                     fixed_parameters=simulator.fixed_parameters,
-                    score=np.flip(sorted(scores)), 
+                    score=np.flip(sorted(scores))
                     parameters=param_array,
                     DC_voltage=DC_voltage
                     )

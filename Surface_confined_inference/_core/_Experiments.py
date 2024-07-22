@@ -810,7 +810,7 @@ class SingleExperiment:
                         DC_voltage=self.get_voltage(save_times, dimensional=True, input_parameters=DC_params)
                     else:
                         DC_voltage=None
-        sorted_idx=np.flip(np.argsort(scores))
+        sorted_idx=np.flip(np.argsort(parameters[:,-1]))
         sorted_params=[list(parameters[x,:]) for x in sorted_idx]
         if kwargs["save_to_directory"] is not False:
             parameters=np.array(sorted_params)
@@ -824,7 +824,7 @@ class SingleExperiment:
                                     save_csv=kwargs["save_csv"],
                                     optim_list=self._optim_list, 
                                     fixed_parameters=self.fixed_parameters,
-                                    score=np.flip(sorted(scores)), 
+                                    score=np.flip(sorted(parameters[:,-1])),
                                     parameters=parameters,
                                     DC_voltage=DC_voltage
                                     )

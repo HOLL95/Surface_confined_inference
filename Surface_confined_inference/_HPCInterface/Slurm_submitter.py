@@ -26,9 +26,10 @@ results=simclass.Current_optimisation(time, current,
                                 starting_point="random",
                                 sigma0=0.075,
                                 dimensional=True)
+print(results)
 job_id=os.environ.get('SLURM_JOB_ID')
-
-np.save("Results/Results_run_{0}.npy".format(job_id), results)
+task_id=os.environ.get('SLURM_ARRAY_TASK_ID')
+np.save("Results/Results_run_{0}_{1}.npy".format(job_id,task_id), results)
 
 
 
