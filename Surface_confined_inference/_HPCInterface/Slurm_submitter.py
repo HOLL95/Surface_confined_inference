@@ -1,8 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import Surface_confined_inference as sci
 import argparse
 import os
+from datetime import datetime
 parser = argparse.ArgumentParser("Slurm submitter")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
@@ -27,7 +27,8 @@ results=simclass.Current_optimisation(time, current,
                                 sigma0=0.075,
                                 dimensional=True)
 job_id=os.environ.get('SLURM_JOB_ID')
-np.save("Results_run_{0}.npy".format(job_id), results)
+
+np.save("Results/Results_run_{0}.npy".format(job_id), results)
 
 
 

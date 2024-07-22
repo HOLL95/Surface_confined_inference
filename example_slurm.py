@@ -32,7 +32,6 @@ slurm_class.fixed_parameters = {
 slurm_class.optim_list = ["E0","k0", "Cdl", "gamma",  "Ru"]
 slurm_class.setup(
     datafile="test_inference.txt",
-    path_to_repo=os.getcwd(),
     cpu_ram="8G",
     time="0-00:10:00",
     runs=5, 
