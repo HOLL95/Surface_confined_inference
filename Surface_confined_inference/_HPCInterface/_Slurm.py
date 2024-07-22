@@ -116,7 +116,9 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("#!/usr/bin/env bash\n")
             f.write("rm -f Results/job_ids.txt\n")
             f.write("array_job_id=$(sbatch Submission/Automated_slurm_submission.job | awk '{print $4}')\n")
-            f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job && rm -f Results/*.npy" )
+            f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job\n" )
+            f.write("rm -f Results/*.npy")
+
 
         if kwargs["run"]==True:
             import subprocess

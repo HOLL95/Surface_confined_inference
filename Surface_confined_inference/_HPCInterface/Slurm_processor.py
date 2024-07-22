@@ -53,7 +53,7 @@ sci.plot.save_results(time,
                     save_csv=True,
                     optim_list=simulator._optim_list, 
                     fixed_parameters=simulator.fixed_parameters,
-                    score=np.flip(sorted(scores))
+                    score=np.flip(sorted(scores)),
                     parameters=param_array,
                     DC_voltage=DC_voltage
                     )
