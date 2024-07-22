@@ -3,6 +3,7 @@ import Surface_confined_inference as sci
 import argparse
 import copy
 import datetime
+parser=argparse.ArgumentParser("Slurm processor")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
 parser.add_argument("JobIds", help="JobID file location", type=str)
@@ -15,11 +16,12 @@ potential=datafile[:,2]
 current=datafile[:,1]
 with open(args.JobIds, "r") as f:
     ids=f.readlines()
-simulator=sci.LoadSingleExperiment(args.Simulator)
+simulator=sci.LoadSingleExperiment(args.simulator)
 loc=args.resultsLoc
 param_array=[]
 for i in range(0, len(ids)):
-    parameters=loc+"/Results_run_{0}.npy".format(ids[i])
+    parameter_file=loc+"/Results_run_{0}.npy".format(ids[i].strip())
+    parameters=np.load(parameter_file)
     param_array.append(parameters)
 param_array=np.array(param_array)
 scores=param_array[:,-1]

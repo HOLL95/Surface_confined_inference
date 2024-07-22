@@ -71,7 +71,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("set -e \n")
             f.write('SLURM_LOG_DIR=\"slurm_logs\"\n')
             f.write("mkdir -p $SLURM_LOG_DIR\n")
-            f.write('echo \"${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}\" >> Results/job_ids.txt\n')
+            f.write("rm -f Results/job_ids.txt\n")
+            f.write('echo \"${SLURM_ARRAY_JOB_ID}${SLURM_ARRAY_TASK_ID}\" >> Results/job_ids.txt\n')
 
             python_command=["python",
                             submitter_loc,
