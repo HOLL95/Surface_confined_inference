@@ -36,7 +36,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
         if "run" not in kwargs:
             kwargs["run"]=False
         Path("Submission").mkdir(parents=True, exist_ok=True)
-        Path("Results").mkdir(parents=True, exist_ok=True)
+        Path("Results/Individual_runs").mkdir(parents=True, exist_ok=True)
         cwd=os.getcwd()
         loc=cwd+"/Submission"
         num_cpu=4 + int(3 * np.log(self.n_parameters()+self.n_outputs()))            
@@ -71,7 +71,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("set -e \n")
             f.write('SLURM_LOG_DIR=\"slurm_logs\"\n')
             f.write("mkdir -p $SLURM_LOG_DIR\n")
-            f.write('echo \"${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}\" >> Results/job_ids.txt\n')
+            f.write('echo \"${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}\" >> Results/Individual_runs/job_ids.txt\n')
 
             python_command=["python",
                             submitter_loc,
@@ -107,17 +107,17 @@ class SingleSlurmSetup(sci.SingleExperiment):
                             processor_loc,
                             fileloc,
                             cwd+"/Submission/Slurm_Json.json",
-                            cwd+"/Results/job_ids.txt",
-                            cwd+"/Results"
+                            cwd+"/Results/Individual_runs/job_ids.txt",
+                            cwd+"/Results/Individual_runs"
 
             ]
             f.write(" ".join(python_command))
         with open("Submission/Controller.sh", "w") as f:
             f.write("#!/usr/bin/env bash\n")
-            f.write("rm -f Results/job_ids.txt\n")
+            f.write("rm -f Results/Individual_runs/job_ids.txt\n")
             f.write("array_job_id=$(sbatch Submission/Automated_slurm_submission.job | awk '{print $4}')\n")
             f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job\n" )
-            f.write("rm -f Results/*.npy")
+            f.write("rm -f Results/Individual_runs/*.npy")
 
 
         if kwargs["run"]==True:
