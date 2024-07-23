@@ -117,10 +117,15 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("rm -f Results/Individual_runs/job_ids.txt\n")
             f.write("array_job_id=$(sbatch Submission/Automated_slurm_submission.job | awk '{print $4}')\n")
             f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job\n" )
-            f.write("rm -f Results/Individual_runs/*.npy")
+            
 
 
         if kwargs["run"]==True:
+            date=datetime.datetime.today().strftime('%Y-%m-%d')
+            saveloc="{0}/Results/PooledResults_{1}".format(os.getcwd(), date)
+            print("Results will be written to {0}".format(saveloc))
+            print("To copy this to your personal filestore, I think you should run:\n scp -r {0} scp.york.ac.uk:/shared/storage/home/usefs/{1}/{2}".format(saveloc, user[0], user))
             import subprocess
             subprocess.call(["bash", "Submission/Controller.sh"])
+
         

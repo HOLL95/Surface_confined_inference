@@ -23,14 +23,13 @@ param_array=[]
 for i in range(0, len(ids)):
     parameter_file=loc+"/Results_run_{0}.npy".format(ids[i].strip())
     parameters=np.load(parameter_file)
-    print(parameters)
     param_array.append(parameters)
 param_array=np.array(param_array)
 scores=param_array[:,-1]
 sorted_idx=np.flip(np.argsort(scores))
 sorted_params=np.array([list(param_array[x,:]) for x in sorted_idx])
 sim_currents=np.zeros((len(sorted_params), len(current)))
-print(scores)
+
 for i in range(0, len(sorted_params)):
     sim_currents[i, :]=simulator.dim_i(simulator.Dimensionalsimulate(sorted_params[i,:-1], time))
 sim_voltage=simulator.get_voltage(time, dimensional=True)
