@@ -35,6 +35,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
             kwargs["unchanged_iterations"]=200
         if "run" not in kwargs:
             kwargs["run"]=False
+        if "check_experiments" not in kwargs:
+            kwargs["check_experiments"]={}
         Path("Submission").mkdir(parents=True, exist_ok=True)
         Path("Results/Individual_runs").mkdir(parents=True, exist_ok=True)
         cwd=os.getcwd()
@@ -83,7 +85,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write(" ".join(python_command))
        
         
-        process_time=kwargs["runs"]*2
+        process_time=kwargs["runs"]*3
         str_process_time=str(datetime.timedelta(minutes=process_time))
         cleanup_dict={
              
@@ -111,6 +113,16 @@ class SingleSlurmSetup(sci.SingleExperiment):
                             cwd+"/Results/Individual_runs"
 
             ]
+            check_keys=kwargs["check_experiments"].keys()
+            if len(check_keys)>0:
+                
+                checkfiles=["--checkfiles"]
+                checkfile_types=["--checkfile_types"]
+                for key in check_keys:
+                    os.path.isfile(kwargs["check_experiments"][key])
+                    checkfiles.append(kwargs["check_experiments"][key])
+                    checkfile_types.append(key)
+                python_command+=[" ".join(checkfiles)]+[" ".join(checkfile_types)]
             f.write(" ".join(python_command))
         with open("Submission/Controller.sh", "w") as f:
             f.write("#!/usr/bin/env bash\n")

@@ -31,6 +31,52 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         updated_params=self.add_dummy_params(param_dict)
         simulated_voltage=super().get_voltage(times, dimensional=True, input_parameters=updated_params)
         return np.array(simulated_voltage)
+class CheckOtherExperiment(sci.ChangeTechnique):
+    def __init__(self, experiment_type, simulator,**kwargs):
+
+        if "input_parameters" in kwargs:
+            super().__init__(simulator, experiment_type, kwargs["input_parameters"])
+            if "datafile" in kwargs:
+                print("Warning: ignoring input data in place of desired parameters")
+                datafile=np.loadtxt(kwargs["datafile"])
+                self.time=datafile[:,0]
+                self.potential=datafile[:,2]
+                self.current=datafile[:,1]
+        else:
+            if "datafile" not in kwargs:
+                raise Exception("Need either a datafile or a set of input parameters to change technique")
+            datafile=np.loadtxt(kwargs["datafile"])
+            self.time=datafile[:,0]
+            self.potential=datafile[:,2]
+            self.current=datafile[:,1]
+            estimated, optimised=sci.get_input_parameters(time, potential, current, optimise=True)
+            super().__init__(simulator, experiment_type, estimated)
+        if "datafile" not in kwargs:
+            self.save_results_possible=False
+        else:
+            self.save_results_possible=True
+       
+    def save_results(self,save_loc, parameter_array,**kwargs):
+        if self.save_results_possible==False:
+            raise Exception("Need a datafile to save inference results")
+        sim_voltage=self.get_voltage(self.time, dimensional=True)
+        sim_dict=self.parameter_array_simulate(parameter_array, self.time, contains_noise=True)                
+        sci.plot.save_results(self.time, 
+                sim_voltage, 
+                self.current, 
+                sim_dict["Current_array"], 
+                save_loc, 
+                self._internal_options.experiment_type, 
+                self._internal_memory["boundaries"],
+                save_csv=kwargs["save_csv"],
+                optim_list=self._optim_list, 
+                fixed_parameters=self.fixed_parameters,
+                score=parameter_array[:,-1],
+                parameters=parameter_array,
+                DC_voltage=sim_dict["Current_array"]
+                )
+
+
 def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
     time=np.array(time)
     voltage=np.array(voltage)

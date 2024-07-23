@@ -668,7 +668,7 @@ class SingleExperiment:
     @sci._utils.temporary_options(normalise_parameters=False)
     def Dimensionalsimulate(self, parameters, times):
         self.optim_list=self._optim_list
-        return self.simulate(parameters, times)
+        return self.simulate(parameters, self.nondim_t(times))
         
     def save_class(self,path):
 
@@ -728,6 +728,23 @@ class SingleExperiment:
 
 
         return current
+    
+    def parameter_array_simulate(self, sorted_dimensional_parameter_array, times, contains_noise=True):
+        sdpa=np.array(sorted_dimensional_parameter_array)
+        currents=np.zeros((len(sdpa), len(current)))
+        for i in range(0, len(sdpa)):
+            if contains_noise==True:
+                params=sdpa[i,:-1]
+            else:
+                params=sdpa[i,:]
+            current[i,:]=self.Dimensionalsimulate(params, times)
+        if self._internal_options.experiment_type=="FTACV":
+            DC_params=copy.deepcopy(self._internal_memory["input_parameters"])
+            DC_params["delta_E"]=0
+            DC_voltage=self.get_voltage(save_times, dimensional=True, input_parameters=DC_params)
+        else:
+            DC_voltage=None
+        return {"Current_array":currents, "DC_voltage":DC_voltage}
     @sci._utils.temporary_options(normalise_parameters=True)
     def Current_optimisation(self, time_data, current_data,**kwargs):
         if "tolerance" not in kwargs:
@@ -787,37 +804,29 @@ class SingleExperiment:
         scores=np.zeros(kwargs["runs"])
         parameters=np.zeros((kwargs["runs"], log_Likelihood.n_parameters()))
         noises=np.zeros(kwargs["runs"])
-        currents=np.zeros((kwargs["runs"], len(time_data)))
         for i in range(0, kwargs["runs"]):
             optimiser=pints.OptimisationController(log_Likelihood, x0, sigma0=sigma0, boundaries=boundaries, method=kwargs["method"])
             optimiser.set_max_unchanged_iterations(iterations=kwargs["unchanged_iterations"], threshold=kwargs["tolerance"])
             optimiser.set_parallel(kwargs["parallel"])
-            
             xbest, fbest=optimiser.run()
             scores[i]=fbest
             dim_params=list(self.change_normalisation_group(xbest[:-log_Likelihood._no], "un_norm"))
             parameters[i,:-log_Likelihood._no]=dim_params
             parameters[i, -log_Likelihood._no:]=xbest[-log_Likelihood._no:]
             if kwargs["save_to_directory"] is not False:
-                currents[i,:]=self.dim_i(self.simulate(xbest[:-log_Likelihood._no], time_data))
                 if i==0:
                     save_times=self.dim_t(time_data)
                     Path(kwargs["save_to_directory"]).mkdir(parents=True, exist_ok=True)
                     voltage=self.get_voltage(save_times, dimensional=True)
-                    if self._internal_options.experiment_type=="FTACV":
-                        DC_params=copy.deepcopy(self._internal_memory["input_parameters"])
-                        DC_params["delta_E"]=0
-                        DC_voltage=self.get_voltage(save_times, dimensional=True, input_parameters=DC_params)
-                    else:
-                        DC_voltage=None
         sorted_idx=np.flip(np.argsort(parameters[:,-1]))
         sorted_params=[list(parameters[x,:]) for x in sorted_idx]
         if kwargs["save_to_directory"] is not False:
             parameters=np.array(sorted_params)
+            sim_dict=self.parameter_array_simulate(parameters,save_times, contains_noise=True)
             sci.plot.save_results(save_times, 
                                     voltage, 
                                     self.dim_i(current_data), 
-                                    currents, 
+                                    sim_dict["Current_array"],
                                     kwargs["save_to_directory"], 
                                     self._internal_options.experiment_type, 
                                     self._internal_memory["boundaries"],
@@ -826,7 +835,7 @@ class SingleExperiment:
                                     fixed_parameters=self.fixed_parameters,
                                     score=np.flip(sorted(parameters[:,-1])),
                                     parameters=parameters,
-                                    DC_voltage=DC_voltage
+                                    DC_voltage=sim_dict["DC_voltage"]
                                     )
         
                 
