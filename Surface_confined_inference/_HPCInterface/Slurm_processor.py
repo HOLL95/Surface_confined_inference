@@ -56,7 +56,7 @@ sci.plot.save_results(time,
                     )
 if "none" not in args.checkfiles:
 
-    for i in range(0, len(args.checkfiles))
+    for i in range(0, len(args.checkfiles)):
         checkloc=savepath+"/"+args.checkfile_types[i]+"_check"
         new_technique=sci.CheckOtherExperiment(args.checkfile_types[i], 
                                 args.simulator, 

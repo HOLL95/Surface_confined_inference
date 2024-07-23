@@ -439,6 +439,7 @@ class SingleExperiment:
             )
             inputs["omega"] = 0
             inputs["delta_E"] = 0
+            inputs["phase"]= 0
         elif self._internal_options.experiment_type == "FTACV":
             inputs["tr"] =  self.nondim_t(
                 abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
@@ -731,17 +732,17 @@ class SingleExperiment:
     
     def parameter_array_simulate(self, sorted_dimensional_parameter_array, times, contains_noise=True):
         sdpa=np.array(sorted_dimensional_parameter_array)
-        currents=np.zeros((len(sdpa), len(current)))
+        currents=np.zeros((len(sdpa), len(times)))
         for i in range(0, len(sdpa)):
             if contains_noise==True:
                 params=sdpa[i,:-1]
             else:
                 params=sdpa[i,:]
-            current[i,:]=self.Dimensionalsimulate(params, times)
+            currents[i,:]=self.Dimensionalsimulate(params, times)
         if self._internal_options.experiment_type=="FTACV":
             DC_params=copy.deepcopy(self._internal_memory["input_parameters"])
             DC_params["delta_E"]=0
-            DC_voltage=self.get_voltage(save_times, dimensional=True, input_parameters=DC_params)
+            DC_voltage=self.get_voltage(times, dimensional=True, input_parameters=DC_params)
         else:
             DC_voltage=None
         return {"Current_array":currents, "DC_voltage":DC_voltage}
