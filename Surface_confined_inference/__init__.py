@@ -13,3 +13,4 @@ from .infer._SimpleInference import CheckOtherExperiment
 from ._core._Nondimensionalise import NDParams
 from ._core._Dispersion import Dispersion
 from . import (infer, plot, _utils)
+from ._utils.utilities import experimental_input_params

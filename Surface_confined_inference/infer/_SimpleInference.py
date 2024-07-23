@@ -4,18 +4,17 @@ import matplotlib.pyplot as plt
 import pints
 import scipy as sp
 import tabulate
+
 class DummyVoltageSimulator(sci.SingleExperiment):
     def __init__(self, experiment_type, input_parameters):
         
+
         
-        param_dict={"FTACV":["E_start", "E_reverse", "omega" ,"phase", "delta_E", "v"],
-                        "DCV":["E_start", "E_reverse",  "v"],
-                        "PSV":["Edc", "omega", "phase", "delta_E"]}
         initialisation_parameters={x:input_parameters[x] for x in param_dict[experiment_type]}
         initialisation_parameters=self.add_dummy_params(initialisation_parameters)
         super().__init__(experiment_type, initialisation_parameters)
         self.experiment_type=experiment_type
-        self.param_dict=param_dict
+        self.param_dict=sci.experiment_input_params
     def add_dummy_params(self, param_dict):
         param_dict["Temp"]=298
         param_dict["area"]=0.07
@@ -49,8 +48,8 @@ class CheckOtherExperiment(sci.ChangeTechnique):
             self.time=datafile[:,0]
             self.potential=datafile[:,2]
             self.current=datafile[:,1]
-            estimated, optimised=sci.infer.get_input_parameters(self.time, self.potential, self.current,experiment_type, optimise=True)
-            super().__init__(simulator, experiment_type, optimised)
+            estimated, optimised=sci.get_input_parameters(time, potential, current, optimise=True)
+            super().__init__(simulator, experiment_type, estimated)
         if "datafile" not in kwargs:
             self.save_results_possible=False
         else:
@@ -217,10 +216,7 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             axes.set_xlabel("Time (s)")
             axes.legend()
         plt.show()
-    estimated_return={key:estimated_parameters[key] for key in simulator.param_dict[experiment_type]}
-
     if kwargs["optimise"]==False:
-        return estimated_return
+        return estimated_parameters
     else:
-        optimised_return={key:inferred_params[key] for key in simulator.param_dict[experiment_type]}
-        return estimated_return, optimised_return
+        return estimated_parameters, inferred_params

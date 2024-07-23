@@ -18,7 +18,8 @@ class ChangeTechnique(sci.SingleExperiment):
             initilialisation_dict=json.load(f)
         for key in initilialisation_dict["Experiment_parameters"]:
             if key not in input_parameters:
-                input_parameters[key]=initilialisation_dict["Experiment_parameters"][key]
+                if key in sci.experimental_input_params[new_experiment]:
+                    input_parameters[key]=initilialisation_dict["Experiment_parameters"][key]
         if initilialisation_dict["experiment_type"]==new_experiment:
             raise ValueError("New experiment is the same as the old experiment - raising error")
         super().__init__(new_experiment, 
