@@ -41,7 +41,8 @@ if simulator._internal_options.experiment_type=="FTACV":
 else:
     DC_voltage=None
 date=datetime.datetime.today().strftime('%Y-%m-%d')
-savepath=loc+"/PooledResults_{0}".format(date)
+savepath=loc.split("/")
+savepath="/".join(savepath[:-1])+"/PooledResults_{0}".format(date)
 Path(savepath).mkdir(parents=True, exist_ok=True)
 sci.plot.save_results(time, 
                     sim_voltage, 
