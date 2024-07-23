@@ -1,4 +1,6 @@
 # Viking (University of York)
+## Housekeeping
+Please regularly delete (```rm -rf <directory>```) experimental data and results folders from viking once they are copied to your personal accounts. It's a remarkable (and free!) resource and we should be responsible users.
 ## Installation
 * Register for a login using [this form](https://docs.google.com/forms/d/e/1FAIpQLSfXkL10ypU6EQCBB2jS5oDwTpRMo77ppl7dvdbLnXm5zrKR7Q/viewform).
 * Login to viking using ssh
