@@ -20,6 +20,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
         hpc_loc="/".join(path_to_submitter)
         submitter_loc=hpc_loc+"/_HPCInterface/Slurm_submitter.py"
         processor_loc=hpc_loc+"/_HPCInterface/Slurm_processor.py"
+        RDS_loc=hpc_loc+"/_HPCInterface/RDS.sh"
         os.path.isfile(submitter_loc)
         if "email" not in kwargs:
             kwargs["email"]=user+"@york.ac.uk"
@@ -129,14 +130,24 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("rm -f Results/Individual_runs/job_ids.txt\n")
             f.write("array_job_id=$(sbatch Submission/Automated_slurm_submission.job | awk '{print $4}')\n")
             f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job\n" )
-            
+        with open("Submission/RemoteDesktopSetup.sh", "w") as f:
+            with open(RDS_loc , "r") as readfile:
+             for line in readfile:
+              f.write(line)
 
 
         if kwargs["run"]==True:
             date=datetime.datetime.today().strftime('%Y-%m-%d')
             saveloc="{0}/Results/PooledResults_{1}".format(os.getcwd(), date)
+            print("")
             print("Results will be written to {0}".format(saveloc))
-            print("To copy this to your personal filestore (when the run is complete), I think you should run:\n scp -r {0} scp.york.ac.uk:/home/userfs/{1}/{2}".format(saveloc, user[0], user))
+            print("To copy this to your personal filestore (when the run is complete), I think you should run:\n\n scp -r {0} scp.york.ac.uk:/home/userfs/{1}/{2}".format(saveloc, user[0], user))
+            print("")
+            print("To start the remote desktop service and view the results, run")
+            print("")
+            print("source {0}/Submission/RemoteDesktopSetup.sh".format(os.getcwd()))
+            print("")
+            print("And follow the instructions there")
             import subprocess
             subprocess.call(["bash", "Submission/Controller.sh"])
 
