@@ -49,7 +49,7 @@ class CheckOtherExperiment(sci.ChangeTechnique):
             self.potential=datafile[:,2]
             self.current=datafile[:,1]
             estimated, optimised=sci.infer.get_input_parameters(self.time, self.potential, self.current,experiment_type, optimise=True)
-            super().__init__(simulator, experiment_type, estimated)
+            super().__init__(simulator, experiment_type, optimised)
         if "datafile" not in kwargs:
             self.save_results_possible=False
         else:

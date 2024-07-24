@@ -733,7 +733,7 @@ class SingleExperiment:
         return current
     
     def parameter_array_simulate(self, sorted_dimensional_parameter_array, dimensional_times, **kwargs):
-        times=self.nondim_t(dimensional_times)
+        times=dimensional_times
         if "contains_noise" not in kwargs:
             kwargs["contains_noise"]=True
         if "return_dimensional" not in kwargs:

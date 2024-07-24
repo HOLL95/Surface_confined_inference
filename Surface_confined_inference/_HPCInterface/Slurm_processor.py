@@ -4,6 +4,7 @@ from pathlib import Path
 import argparse
 import copy
 import datetime
+
 parser=argparse.ArgumentParser("Slurm processor")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
@@ -33,13 +34,17 @@ scores=param_array[:,-1]
 sorted_idx=np.flip(np.argsort(scores))
 sorted_params=np.array([list(param_array[x,:]) for x in sorted_idx])
 sim_voltage=simulator.get_voltage(time, dimensional=True)
-sim_dict=simulator.parameter_array_simulate(sorted_params, time)
-sim_currents=sim_dict["Current_array"]
-DC_voltage=sim_dict["DC_voltage"]
 date=datetime.datetime.today().strftime('%Y-%m-%d')
 savepath=loc.split("/")
 savepath="/".join(savepath[:-1])+"/PooledResults_{0}".format(date)
 Path(savepath).mkdir(parents=True, exist_ok=True)
+
+sim_dict=simulator.parameter_array_simulate(sorted_params, time)
+sim_currents=sim_dict["Current_array"]
+DC_voltage=sim_dict["DC_voltage"]
+
+
+
 sci.plot.save_results(time, 
                     sim_voltage, 
                     current, 
@@ -54,6 +59,7 @@ sci.plot.save_results(time,
                     parameters=param_array,
                     DC_voltage=DC_voltage
                     )
+
 if "none" not in args.checkfiles:
 
     for i in range(0, len(args.checkfiles)):
