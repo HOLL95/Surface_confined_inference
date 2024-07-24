@@ -25,7 +25,7 @@ echo
 echo "On Linux"
 echo "remmina vnc://${USER}:${password}@localhost:${extracted_port}"
 echo
-echo "IMPORTANT: when you are done, run"
+echo "IMPORTANT: when you are done on a REMOTE (i.e. in Viking) machine, run"
 echo  "flight desktop kill ${identity}"
 
 
