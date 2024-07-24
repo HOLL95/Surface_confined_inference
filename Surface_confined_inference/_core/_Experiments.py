@@ -730,15 +730,23 @@ class SingleExperiment:
 
         return current
     
-    def parameter_array_simulate(self, sorted_dimensional_parameter_array, times, contains_noise=True):
+    def parameter_array_simulate(self, sorted_dimensional_parameter_array, times, **kwargs):
+        if contains_noise not in kwargs:
+            kwargs["contains_noise"]=True
+        if "return_dimensional" not in kwargs:
+            kwargs["return_dimensional"]=True
+        if kwargs["return_dimensional"]==True:
+            func=self.dim_i
+        else:
+            func=lambda x:x
         sdpa=np.array(sorted_dimensional_parameter_array)
         currents=np.zeros((len(sdpa), len(times)))
         for i in range(0, len(sdpa)):
-            if contains_noise==True:
+            if kwargs["contains_noise"]==True:
                 params=sdpa[i,:-1]
             else:
                 params=sdpa[i,:]
-            currents[i,:]=self.Dimensionalsimulate(params, times)
+            currents[i,:]=func(self.Dimensionalsimulate(params, times))
         if self._internal_options.experiment_type=="FTACV":
             DC_params=copy.deepcopy(self._internal_memory["input_parameters"])
             DC_params["delta_E"]=0
