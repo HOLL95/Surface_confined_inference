@@ -9,12 +9,12 @@ class DummyVoltageSimulator(sci.SingleExperiment):
     def __init__(self, experiment_type, input_parameters):
         
 
-        
+        param_dict=sci.experimental_input_params
         initialisation_parameters={x:input_parameters[x] for x in param_dict[experiment_type]}
         initialisation_parameters=self.add_dummy_params(initialisation_parameters)
         super().__init__(experiment_type, initialisation_parameters)
         self.experiment_type=experiment_type
-        self.param_dict=sci.experiment_input_params
+        self.param_dict=sci.experimental_input_params
     def add_dummy_params(self, param_dict):
         param_dict["Temp"]=298
         param_dict["area"]=0.07
@@ -48,7 +48,7 @@ class CheckOtherExperiment(sci.ChangeTechnique):
             self.time=datafile[:,0]
             self.potential=datafile[:,2]
             self.current=datafile[:,1]
-            estimated, optimised=sci.get_input_parameters(time, potential, current, optimise=True)
+            estimated, optimised=sci.infer.get_input_parameters(self.time, self.potential, self.current,experiment_type, optimise=True)
             super().__init__(simulator, experiment_type, estimated)
         if "datafile" not in kwargs:
             self.save_results_possible=False

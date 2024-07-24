@@ -1,6 +1,6 @@
 import numpy as np
 from functools import wraps
-experiment_input_params={"FTACV":["E_start", "E_reverse", "omega" ,"phase", "delta_E", "v"],
+experimental_input_params={"FTACV":["E_start", "E_reverse", "omega" ,"phase", "delta_E", "v"],
                 "DCV":["E_start", "E_reverse",  "v"],
                 "PSV":["Edc", "omega", "phase", "delta_E"]}
 def add_noise(series, sd, **kwargs):

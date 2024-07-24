@@ -495,6 +495,8 @@ class SingleExperiment:
                         continue
                 if "CdlE" in key:
                     simulation_dict[key] = 0
+                elif self._internal_options.experiment_type in ["DCV", "SquareWave"] and "phase" in key:
+                    simulation_dict[key]=0
                 else:
                     missing_parameters.append(key)
         if len(missing_parameters) > 0:
