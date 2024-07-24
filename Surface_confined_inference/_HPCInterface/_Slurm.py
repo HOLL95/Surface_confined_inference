@@ -136,7 +136,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             date=datetime.datetime.today().strftime('%Y-%m-%d')
             saveloc="{0}/Results/PooledResults_{1}".format(os.getcwd(), date)
             print("Results will be written to {0}".format(saveloc))
-            print("To copy this to your personal filestore (when the run is complete), I think you should run:\n scp -r {0} scp.york.ac.uk:/shared/storage/home/userfs/{1}/{2}".format(saveloc, user[0], user))
+            print("To copy this to your personal filestore (when the run is complete), I think you should run:\n scp -r {0} scp.york.ac.uk:/home/userfs/{1}/{2}".format(saveloc, user[0], user))
             import subprocess
             subprocess.call(["bash", "Submission/Controller.sh"])
 
