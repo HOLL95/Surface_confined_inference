@@ -31,7 +31,7 @@ for i in range(0, len(ids)):
     param_array.append(parameters)
 param_array=np.array(param_array)
 scores=param_array[:,-1]
-sorted_idx=np.flip(np.argsort(scores))
+sorted_idx=np.argsort(scores)
 sorted_params=np.array([list(param_array[x,:]) for x in sorted_idx])
 sim_voltage=simulator.get_voltage(time, dimensional=True)
 date=datetime.datetime.today().strftime('%Y-%m-%d')
@@ -55,7 +55,7 @@ sci.plot.save_results(time,
                     save_csv=True,
                     optim_list=simulator._optim_list, 
                     fixed_parameters=simulator.fixed_parameters,
-                    score=np.flip(sorted(scores)),
+                    score=sorted(scores),
                     parameters=param_array,
                     DC_voltage=DC_voltage
                     )
@@ -83,7 +83,7 @@ if "none" not in args.checkfiles:
                     save_csv=True,
                     optim_list=new_technique._optim_list, 
                     fixed_parameters=new_technique.fixed_parameters,
-                    score=np.flip(sorted(scores)),
+                    score=sorted(scores),
                     parameters=param_array,
                     DC_voltage=DC_voltage,
                     table=False

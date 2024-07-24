@@ -337,6 +337,8 @@ class SingleExperiment:
                 else:
                     dispersion_distributions.append(best_guess)
             orig_GH_value = self._internal_options.GH_quadrature
+            if len(dispersion_distributions)!=len(self._internal_options.dispersion_bins):
+                raise ValueError("Need one bin for each of {0}, currently only have {1}".format(dispersion_distributions, self._internal_options.dispersion_bins))
             if "normal" not in dispersion_distributions:
                 self._internal_options.GH_quadrature = False
             if self._internal_options.GH_quadrature == True:
@@ -830,7 +832,7 @@ class SingleExperiment:
                     save_times=self.dim_t(time_data)
                     Path(kwargs["save_to_directory"]).mkdir(parents=True, exist_ok=True)
                     voltage=self.get_voltage(save_times, dimensional=True)
-        sorted_idx=np.flip(np.argsort(parameters[:,-1]))
+        sorted_idx=np.argsort(parameters[:,-1])
         sorted_params=[list(parameters[x,:]) for x in sorted_idx]
         if kwargs["save_to_directory"] is not False:
             parameters=np.array(sorted_params)
@@ -845,7 +847,7 @@ class SingleExperiment:
                                     save_csv=kwargs["save_csv"],
                                     optim_list=self._optim_list, 
                                     fixed_parameters=self.fixed_parameters,
-                                    score=np.flip(sorted(parameters[:,-1])),
+                                    score=sorted(parameters[:,-1]),
                                     parameters=parameters,
                                     DC_voltage=sim_dict["DC_voltage"]
                                     )
