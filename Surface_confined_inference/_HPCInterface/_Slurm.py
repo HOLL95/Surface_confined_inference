@@ -141,7 +141,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             saveloc="{0}/Results/PooledResults_{1}".format(os.getcwd(), date)
             print("")
             print("Results will be written to {0}".format(saveloc))
-            print("To copy this to your personal filestore (when the run is complete), I think you should run:\n\n scp -r {0} scp.york.ac.uk:/home/userfs/{1}/{2}".format(saveloc, user[0], user))
+            print("To copy this to your personal filestore (when the run is complete) from this terminal window, I think you should run:\n\n scp -r {0} scp.york.ac.uk:/home/userfs/{1}/{2}".format(saveloc, user[0], user))
             print("")
             print("To start the remote desktop service and view the results, run")
             print("")

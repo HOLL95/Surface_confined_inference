@@ -17,15 +17,33 @@ extracted_ip=$(echo "$hostip" | awk '{print $3}')
 extracted_port=$(echo "$output" |  awk '/Port/ && !/WebSocket/ {print $2; exit}')
 sshscript="ssh -L ${extracted_port}:${extracted_ip}:${extracted_port} ${USER}@${extracted_ip}"
 echo
-echo "Open a new terminal on your LOCAL machine, and run"
+echo "Open a new terminal/powershell on your LOCAL machine, and run"
 echo $sshscript
 echo
-echo "Open a second new terminal on your LOCAL machine and run (depending on OS)"
+echo "If this command just hangs indefintiely, you may need to be on the York VPN"
 echo
-echo "On Linux"
+echo
+echo "On your local Linux machine, enter in a new terminal:"
+echo
 echo "remmina vnc://${USER}:${password}@localhost:${extracted_port}"
 echo
-echo "IMPORTANT: when you are done on a REMOTE (i.e. in Viking) machine, run"
+echo
+echo "On your local Windows machine, you need to download a VNC client (the unversity recommends TightVNC). Open the program and enter:"
+echo
+echo "localhost:${extracted_port}"
+echo
+echo "and give the password: ${password}"
+echo
+echo
+echo "Mac has not been tested, but you can try (under Finder -> Go -> Connect to server)"
+echo
+echo "vnc://localhost:${extracted_port}"
+echo
+echo "and use the password ${password}"
+echo
+echo
+echo "IMPORTANT: when you are done on a REMOTE (i.e. in Viking) machine, run:"
+echo
 echo  "flight desktop kill ${identity}"
 
 
