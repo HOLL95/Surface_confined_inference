@@ -741,8 +741,8 @@ class SingleExperiment:
         else:
             nd_dict = self.nondimensionalise(sim_params)
             current = np.array(solver(times, nd_dict))[0, :]
-        
 
+        
         return current
     
     def parameter_array_simulate(self, sorted_dimensional_parameter_array, dimensional_times, **kwargs):
@@ -820,7 +820,16 @@ class SingleExperiment:
         if kwargs["starting_point"]=="random":
             x0=np.random.random(log_Likelihood.n_parameters())
         else:
-            x0=kwargs["starting_point"]
+            between_0_and_1=[(x>0 and x<1) for x in kwargs["starting_point"]]
+            if all(between_0_and_1)==True:
+
+                x0=kwargs["starting_point"]
+            else:
+                x0=self.change_normalisation_group(kwargs["starting_point"], "norm")
+            diff=log_Likelihood.n_parameters()-len(x0)
+            if diff>0:
+                x0+=[error/5]*diff
+                
         if kwargs["sigma0"] is not list:
             sigma0=[kwargs["sigma0"] for x in range(0,log_Likelihood.n_parameters())]
         else:

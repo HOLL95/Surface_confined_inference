@@ -182,6 +182,24 @@ class TestSingleExperiment(unittest.TestCase):
         decimated_current=decimate(predicted_current, 8)
         error=RMSE(test_current, decimated_current)
         self.assertTrue(error<1e-4)
+    def test_current_optimisation(self):
+        init_params=[0.05, 80]
+        true_params=[0.1, 100]
+        found_params=self.experiment.Current_optimisation(self.times, self.predicted_current, 
+                                                            save_to_directory="Results_test",  
+                                                            runs=1, 
+                                                            starting_point=init_params,
+                                                            Fourier_filter=True,
+                                                            unchanged_iterations=50, 
+                                                            tolerance=1, 
+                                                            sigma=0.01,
+                                                            dimensional=False,
+                                                            parallel=True)
+        
+        
+        self.assertTrue(RMSE(np.array(true_params), found_params[:-1])<0.1)
+
+
     
 
 
