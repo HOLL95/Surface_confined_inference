@@ -166,6 +166,7 @@ def adjust_and_save(figure, directory, name, size=(8,8), hspace=0, wspace=0.2):
     figure.subplots_adjust(**adjusted_plots)
     figure.savefig(directory+"/"+name, dpi=500)
     figure.clf()
+    plt.close(figure)
 def table_writer(write_list, max_len, file):
     title_list=["" for x in range(0,len(write_list))]
 

@@ -626,6 +626,7 @@ class SingleExperiment:
         )
         time_series = np.zeros(len(times))
         self._disp_test = []
+        voltage=self.get_voltage(times)
         for i in range(0, len(self._weights)):
             for j in range(0, len(disp_params)):
                 self._internal_memory["simulation_dict"][disp_params[j]] = self._values[i][j]
@@ -730,7 +731,7 @@ class SingleExperiment:
         else:
             nd_dict = self.nondimensionalise(sim_params)
             current = np.array(solver(times, nd_dict))[0, :]
-
+        
 
         return current
     

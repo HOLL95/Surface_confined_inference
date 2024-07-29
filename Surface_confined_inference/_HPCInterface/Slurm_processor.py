@@ -39,11 +39,10 @@ savepath=loc.split("/")
 savepath="/".join(savepath[:-1])+"/PooledResults_{0}".format(date)
 Path(savepath).mkdir(parents=True, exist_ok=True)
 
+
 sim_dict=simulator.parameter_array_simulate(sorted_params, time)
 sim_currents=sim_dict["Current_array"]
 DC_voltage=sim_dict["DC_voltage"]
-
-
 
 sci.plot.save_results(time, 
                     sim_voltage, 
@@ -55,8 +54,8 @@ sci.plot.save_results(time,
                     save_csv=True,
                     optim_list=simulator._optim_list, 
                     fixed_parameters=simulator.fixed_parameters,
-                    score=sorted(scores),
-                    parameters=param_array,
+                    score=sorted_params[:,-1],
+                    parameters=sorted_params,
                     DC_voltage=DC_voltage
                     )
 
@@ -83,8 +82,8 @@ if "none" not in args.checkfiles:
                     save_csv=True,
                     optim_list=new_technique._optim_list, 
                     fixed_parameters=new_technique.fixed_parameters,
-                    score=sorted(scores),
-                    parameters=param_array,
+                    score=sorted_params[:,-1],
+                    parameters=sorted_params,
                     DC_voltage=DC_voltage,
                     table=False
                     )
