@@ -23,7 +23,18 @@ class SingleExperiment:
         Args:
             experiment_type (str): Type of experiment (FTACV, PSV, DCV, SquareWave).
             experiment_parameters (dict): Dictionary of experiment input parameters.
-            **kwargs: Additional keyword arguments for options to be passed to Options class. Each of these options will also be set as an attribute of this class for convenience
+            GH_quadrature (bool): Whether or not to implement Gauss-Hermite quadrature for approximating normal distributions in dispersion. Defaults to True
+            phase_only (bool): Whether or not to fit the phase of the capacitance currentas the same value as that of the phase of the Faradaic current. Defaults to True
+            normalise_parameters (bool): In CMAES, it is convenient to normalise the parameters to between 0 and 1 when searching in parameter space. 
+                                        This option is to allow the `simulate` function to handle those normalised values. Defaults to True.
+            kinetiss (str): Type of electrochemical kinetics to use, of the options "Nernst", "ButlerVolmer" and "Marcus". Defaults to BulterVolmer" TODO: implement Marcus and Nernst rate equations
+            dispersion_bins (list): Number of bins used to approximate each dispersion distribution
+            Fourier_fitting: (bool): Used (in combination with the appropriate likelihood function) to fit Fourier spectrum data. Defaults to False.
+            Fourier function (str): Defines how to represent Fourier filtered current data. Defaults to "abs"
+            Fourier harmonics (list): Defines the harmonics to be included in the filtered Fourier spectrum
+            Fourier window (str): Defines whether or not to use a windowing function when applying Fourier filtration methods. Defaults to "hanning"
+            top_hat_window (float): Defines the width of the top hat window (as a percentage of the input frequency) around which to extract the individual harmonics. Defaults to 0.5
+            dispersion_test (bool): Defines whether to save the unweighted indivual simualtions of a dispersed simulation to self._disp_test.
 
         Initialises:
             class: NDClass, responsible for non-dimensionalising parameters in a manner distinct to each technique

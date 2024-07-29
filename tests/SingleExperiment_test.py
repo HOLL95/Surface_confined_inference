@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 import numpy as np
 from scipy.signal import decimate
-from Surface_confined_inference import SingleExperiment, NDParams, Dispersion, top_hat_filter
+from Surface_confined_inference import SingleExperiment, NDParams, Dispersion, top_hat_filter, LoadSingleExperiment
 from Surface_confined_inference._core import OptionsDecorator
 from Surface_confined_inference._utils import RMSE
 
@@ -25,22 +25,23 @@ class TestSingleExperiment(unittest.TestCase):
         }
         self.experiment = SingleExperiment(self.experiment_type, self.experiment_parameters)
         self.experiment.fixed_parameters={
-                                        "E0":0.1,
-                                        "k0":100,
                                         "Cdl": 1e-4,
                                         "gamma": 1e-10,
                                         "alpha": 0.5,
                                         "Ru": 100,
                                         }
-        self.experiment.optim_list=[]
+        self.experiment.boundaries={"E0":[0,0.2], "k0":[1e-3, 1000]}
+        self.experiment.optim_list=["E0", "k0"]
         self.times=self.experiment.calculate_times()
-        predicted_current=self.experiment.simulate([],self.times)
-        self.decimated_current=decimate(predicted_current, 8)
+        self.predicted_current=self.experiment.simulate([0.1, 100],self.times)
+        self.decimated_current=decimate(self.predicted_current, 8)
         cwd=os.getcwd()
+        
         if "Surface_confined_inference/tests" in cwd:
             self.data_loc=cwd+"/testdata"
         else:
             self.data_loc=cwd+"/tests/testdata"
+        self.test_current=np.load(self.data_loc+"/Current.npy")
 
     def test_init(self):
         self.assertEqual(self.experiment._internal_options.experiment_type, "FTACV")
@@ -126,9 +127,30 @@ class TestSingleExperiment(unittest.TestCase):
             self.assertAlmostEqual(elem[0], elem[1])
     
     def test_simulate(self):
-        test_current=np.load(self.data_loc+"/Current.npy")
-        error=RMSE(test_current, self.decimated_current)
+        
+        error=RMSE(self.test_current, self.decimated_current)
         self.assertTrue(error<1e-4)
+    def test_dimensional_simulate(self):
+        dim_current=self.experiment.Dimensionalsimulate([0.1, 100], self.experiment.dim_t(self.times))
+        error=RMSE(dim_current, self.predicted_current)
+        self.assertTrue(error<1e-4)
+    def test_FT_simulate(self):
+        FT_sim_test=self.experiment.FTsimulate([0.1, 100], self.times, 
+                                            Fourier_function="abs", 
+                                            Fourier_harmonics=list(range(0, 10)), 
+                                            Fourier_window="hanning", 
+                                            top_hat_width=0.5)
+        FT=top_hat_filter(self.times, self.predicted_current, Fourier_function="abs", Fourier_harmonics=list(range(0, 10)), Fourier_window="hanning", top_hat_width=0.5)
+        error=RMSE(FT, FT_sim_test)
+        self.assertTrue(error<1e-4)
+    def test_save_class(self):
+        self.experiment.save_class("Test_json.json")
+        save_class=LoadSingleExperiment("Test_json.json")
+        self.assertIsInstance(save_class,SingleExperiment)
+        old_options=vars(self.experiment._internal_options.options)
+        saved_options=vars(save_class._internal_options.options)
+        for key in old_options.keys():
+            self.assertEqual(old_options[key], saved_options[key])
     def test_top_hat_filter(self):
         test_FT=np.load(self.data_loc+"/CurrentFT.npy")
         FT=top_hat_filter(decimate(self.times, 8), self.decimated_current, Fourier_function="abs", Fourier_harmonics=list(range(0, 10)), Fourier_window="hanning", top_hat_width=0.5)
