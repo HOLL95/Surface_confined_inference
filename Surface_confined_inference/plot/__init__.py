@@ -5,3 +5,4 @@ from ._harmonics_plotting import (
     single_oscillation_plot,
 )
 from ._save_results import save_results
+from ._multiplotter import multiplot

@@ -203,16 +203,14 @@ def plot_harmonics(**kwargs):
         kwargs["legend"] = {"loc": "center", "facecolor":"white", "framealpha":0.5}
     if "h_num" not in kwargs:
         kwargs["h_num"] = True
-    if "colour" not in kwargs:
-        kwargs["colour"] = None
-    if "lw" not in kwargs:
-        kwargs["lw"] = 1
-    if "alpha" not in kwargs:
-        kwargs["alpha"] = 1
     if "one_sided" not in kwargs:
         kwargs["one_sided"] = True
     if "filter_val" not in kwargs:
         kwargs["filter_val"] = 0.5
+    if "remove_xaxis" not in kwargs:
+        kwargs["remove_xaxis"]=False
+    if "ylabelpad" not in kwargs:
+        kwargs["ylabelpad"]=4
 
     label_counter = 0
     for key in kwargs:
@@ -228,19 +226,31 @@ def plot_harmonics(**kwargs):
         Exception("No _data arguments passed to function")
     max_harm = 0
     all_harmonics = []
+    colours=plt.rcParams['axes.prop_cycle'].by_key()['color']
+    c_counter=0
     for label in label_list:
-
+        if "colour" not in time_series_dict[label]:
+            time_series_dict[label]["colour"]=colours[c_counter]
+            c_counter+=1
+        if "lw" not in time_series_dict[label]:
+            time_series_dict[label]["lw"]=1
+        if "alpha" not in time_series_dict[label]:
+            time_series_dict[label]["alpha"]=1
         if kwargs["xaxis"] == "DC_potential":
             time_series_dict[label]["xaxis"] =sci.get_DC_component(time_series_dict[label]["time"],time_series_dict[label]["potential"], time_series_dict[label]["current"])
         else:
             time_series_dict[label]["xaxis"] = time_series_dict[label][kwargs["xaxis"]]
-        if "harmonics" not in kwargs:
+       
+        if "harmonics" not in time_series_dict[label]:
             time_series_dict[label]["harmonics"] = sci.maximum_availiable_harmonics(
                 time_series_dict[label]["time"], time_series_dict[label]["current"]
             )
-        elif "harmonics" not in time_series_dict[label]:
-            time_series_dict[label]["harmonics"] = kwargs["harmonics"]
+            #plt.plot(time_series_dict[label]["time"],time_series_dict[label]["potential"])
+            print(label, time_series_dict[label]["harmonics"])
+            #plt.show()
+
         max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
+      
         harm_dict[label] = sci.plot.generate_harmonics(
             time_series_dict[label]["time"],
             time_series_dict[label]["current"],
@@ -252,23 +262,43 @@ def plot_harmonics(**kwargs):
         )
         all_harmonics += time_series_dict[label]["harmonics"]
     all_harmonics = list(set(sorted(all_harmonics)))
-    num_harmonics = max_harm
+    num_harmonics = len(all_harmonics)
+    altering_harmonics=False
     if "axes_list" not in kwargs:
         fig, kwargs["axes_list"] = plt.subplots(num_harmonics, 1)
+    elif calculated_harmonics==False:
+        if len(kwargs["axes_list"]) != num_harmonics:
+            raise ValueError(
+                "Wrong number of axes for harmonics (calculated number of harmonics is {0}, provided axes is of length {1})".format(
+                    num_harmonics, len(kwargs["axes_list"])
+                )
+            )
     elif len(kwargs["axes_list"]) != num_harmonics:
-        raise ValueError(
-            "Wrong number of axes for harmonics (calculated number of harmonics is {0}, provided axes is of length {1})".format(
+        print(
+            "Warning: Wrong number of axes for harmonics (calculated number of harmonics is {0}, provided axes is of length {1})".format(
                 num_harmonics, len(kwargs["axes_list"])
             )
         )
-    if kwargs["h_num"] != False:
-        for i in range(0, len(all_harmonics)):
-            ax = kwargs["axes_list"][i]
-            ax2 = ax.twinx()
-            ax2.set_yticks([])
-            ax2.set_ylabel(all_harmonics[i], rotation=0)
+        
+        print("Reducing length of harmonic range to match number of provided axes")
+        all_harmonics=all_harmonics[:len(kwargs["axes_list"])]
+        for plot_name in label_list:
+            time_series_dict[plot_name]["harmonics"]=time_series_dict[plot_name]["harmonics"][:len(kwargs["axes_list"])]
+        num_harmonics = len(all_harmonics)
+    counter=0
     for plot_name in label_list:
+        counter+=1
+        if kwargs["h_num"] != False:
+            if counter==1:
+                for z in range(0, len(all_harmonics)):
+                    ax = kwargs["axes_list"][z]
+                    ax2 = ax.twinx()
+                    ax2.set_yticks([])
+                    ax2.set_ylabel(all_harmonics[z], rotation=0)
+        
+
         harmonics = time_series_dict[plot_name]["harmonics"]
+
         for i in range(0, len(harmonics)):
             ax = kwargs["axes_list"][i]
             xaxis = time_series_dict[plot_name]["xaxis"]
@@ -280,28 +310,36 @@ def plot_harmonics(**kwargs):
                         pf = kwargs["plot_func"]
                 else:
                     pf = kwargs["plot_func"]
-
+               
                 ax.plot(
                     xaxis,
                     pf(harm_dict[plot_name][i, :]),
                     label=plot_name,
-                    alpha=kwargs["alpha"],
-                    color=kwargs["colour"],
-                    lw=kwargs["lw"],
+                    alpha=time_series_dict[plot_name]["alpha"],
+                    color=time_series_dict[plot_name]["colour"],
+                    lw=time_series_dict[plot_name]["lw"],
                 )
             else:
+                
                 ax.plot(
                     xaxis,
                     kwargs["plot_func"](harm_dict[plot_name][i, :]),
-                    alpha=kwargs["alpha"],
-                    color=kwargs["colour"],
-                    lw=kwargs["lw"],
+                    alpha=time_series_dict[plot_name]["alpha"],
+                    color=time_series_dict[plot_name]["colour"],
+                    lw=time_series_dict[plot_name]["lw"],
                 )
+
             if i == ((num_harmonics) // 2):
-                ax.set_ylabel(kwargs["ylabel"])
+                ax.set_ylabel(kwargs["ylabel"], labelpad=kwargs["ylabelpad"])
             if i == num_harmonics - 1:
                 ax.set_xlabel(kwargs["xlabel"])
+            else:
+                if kwargs["remove_xaxis"]==True:
+                    ax.set_xticks([])
             if i == 0:
                 if kwargs["legend"] is not None:
 
                     ax.legend(**kwargs["legend"])
+    plt.legend()
+    plt.show()
+    return kwargs["axes_list"]

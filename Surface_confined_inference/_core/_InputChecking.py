@@ -46,31 +46,32 @@ def get_DC_component(time, potential, current):
 
 
 def maximum_availiable_harmonics(times, current):
+    import matplotlib.pyplot as plt
     fft = abs(np.fft.fft(current))
     frequencies = np.fft.fftfreq(len(current), times[1] - times[0])
     input_freq = sci.get_frequency(times, current)
     in_noise = False
     max_found = 1
+    #fig, ax=plt.subplots()
     while in_noise == False:
         index = max_found * input_freq
-        noise_level = np.mean(
-            fft[
-                np.where(
+        noise_idx= np.where(
                     (frequencies > (index - 0.5 * input_freq))
                     & (frequencies < (index - 0.4 * input_freq))
                 )
-            ]
-        )
-        peak_level = max(
-            fft[
-                np.where(
-                    (frequencies > (index - 0.1 * input_freq))
-                    & (frequencies < (index + 0.1 * input_freq))
+        peak_idx=np.where(
+                    (frequencies > (index - 0.2 * input_freq))
+                    & (frequencies < (index + 0.2 * input_freq))
                 )
-            ]
-        )
-        if peak_level > (3 * noise_level):
+        noise_level = np.mean(fft[noise_idx])
+        peak_level = max(fft[peak_idx])
+        #ax.semilogy(frequencies[noise_idx], fft[noise_idx])
+        #ax.semilogy(frequencies[peak_idx], fft[peak_idx], label=max_found)
+        
+        if peak_level > (2.5 * noise_level):
             max_found += 1
         else:
             in_noise = True
-    return list(range(0, max_found))
+    #ax.legend()
+    #plt.show()
+    return list(range(0, max_found+2))
