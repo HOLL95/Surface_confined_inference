@@ -8,6 +8,7 @@ from .formatting import (
         format_values,
         numbered_title,
         nounits,
-        det_subplots
+        det_subplots,
+        colours
 
 )

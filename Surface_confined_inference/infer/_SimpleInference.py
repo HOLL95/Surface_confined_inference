@@ -87,13 +87,18 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         kwargs["optimise"]=True
     if "optimsation_iterations" not in kwargs:
         kwargs["optimisation_iterations"]=300
+    if "return_sim_values" not in kwargs:
+        kwargs["return_sim_values"]=False
     if experiment_type in ["DCV", "FTACV"]:
         if experiment_type=="FTACV":
             DC_voltage=sci.get_DC_component(time, voltage, current)
         else:
             DC_voltage=voltage
+        
         if DC_voltage[len_ts//2]>DC_voltage[-1]:
             reversed=False
+        else:
+            reversed=True
         if "E_reverse" not in kwargs:
             if reversed==False:
                 kwargs["E_reverse"]=max(DC_voltage)
@@ -110,9 +115,7 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             x1=time[0]
             x2=time[(len_ts//2)-10]
             kwargs["v"]=(y2-y1)/(x2-x1)
-    elif experiment_type=="PSV":
-        if "Edc" not in kwargs:
-            kwargs["Edc"]=np.mean(voltage)
+
     if experiment_type in ["PSV", "FTACV"]:
         sneak_freq=sci.get_frequency(time, current)
         if "phase" not in kwargs:
@@ -129,6 +132,12 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             closest_bin=pos_freq[np.where(subbed_freq==min(subbed_freq))]
             peak_amplitude=abs(pot_fft[np.where(fft_freq==closest_bin)][0])
             kwargs["delta_E"]=2*peak_amplitude/(sum(window))
+        if experiment_type=="PSV":
+            if "Edc" not in kwargs:
+                kwargs["Edc"]=np.mean(voltage)
+            if "num_peaks" not in kwargs:
+                kwargs["num_peaks"]=time[-1]*sneak_freq
+                
     simulator=DummyVoltageSimulator(experiment_type, kwargs)
     estimated_parameters={x:kwargs[x] for x in simulator.param_dict[experiment_type]}
     if kwargs["optimise"]==True:
@@ -160,7 +169,9 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
                     "delta_E":[1e-3, 0.5],
                     "omega":[0.1, 1e4],
                     "v":[1e-4, 100],
-                    "phase":[0,2*np.pi]}
+                    "phase":[0,2*np.pi],
+                    "Edc":[-2,2],
+                    "num_peaks":[2, 1000]}
         
         
         for key in estimated_parameters:
@@ -217,6 +228,13 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             axes.legend()
         plt.show()
     if kwargs["optimise"]==False:
-        return estimated_parameters
+        if kwargs["return_sim_values"]==False:
+            return estimated_parameters
+        else:
+            return estimated_parameters, estimated_simulated
     else:
-        return estimated_parameters, inferred_params
+        if kwargs["return_sim_values"]==False:
+            return estimated_parameters, inferred_params
+        else:
+            return estimated_parameters, inferred_params, estimated_simulated,inferred_simulated
+       

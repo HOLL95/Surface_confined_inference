@@ -1,6 +1,8 @@
 import numpy as np
 import Surface_confined_inference as sci
 import re
+import matplotlib.pyplot as plt
+colours=plt.rcParams['axes.prop_cycle'].by_key()['color']
 unit_dict={
         "E0": "V",
         'E_start': "V", #(starting dc voltage - V)
