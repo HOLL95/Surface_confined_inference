@@ -247,8 +247,10 @@ def plot_harmonics(**kwargs):
             )
             #plt.plot(time_series_dict[label]["time"],time_series_dict[label]["potential"])
             print(label, time_series_dict[label]["harmonics"])
+            calculated_harmonics=True
             #plt.show()
-
+        else:
+            calculated_harmonics=False
         max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
       
         harm_dict[label] = sci.plot.generate_harmonics(
