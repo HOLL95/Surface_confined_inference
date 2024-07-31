@@ -340,6 +340,4 @@ def plot_harmonics(**kwargs):
                 if kwargs["legend"] is not None:
 
                     ax.legend(**kwargs["legend"])
-    plt.legend()
-    plt.show()
     return kwargs["axes_list"]

@@ -93,11 +93,11 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
         if harmonic==True:
             pooled_h_fig, pooled_h_ax=plt.subplots(len(kwargs["harmonics"]), 1)
             pooled_plot_dict=dict(
-                Experimental_data={"time": time, "current": experiment, "voltage":voltage},
+                Experimental_data={"time": time, "current": experiment, "voltage":voltage, "harmonics":kwargs["harmonics"],},
                 xaxis=xlabel,
                 hanning=hanning,
                 plot_func=harm_func,
-                harmonics=kwargs["harmonics"],
+                
                 xlabel=label_dict[xlabel],
                 ylabel="Current (A)",
                 axes_list=pooled_h_ax
