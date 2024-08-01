@@ -103,48 +103,54 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
                 axes_list=pooled_h_ax
                 )
     for i in range(0, len(simulations)):
-        fig, ax=plt.subplots()
-        ax.plot(xaxis, experiment, label="Data")
-        ax.plot(xaxis, simulations[i,:], label="Simulation")
-        if kwargs["save_csv"]==True:
-            save_dict={"Time (s)":time, "Potential (V)":voltage, "Current (A)":simulations[i,:]}
-            if kwargs["DC_voltage"] is not None:
-                if experiment_type=="FTACV":
-                    save_dict["DC Potential (V)"]=kwargs["DC_voltage"]
-        ax.set_xlabel(label_dict[xlabel])
-        ax.set_ylabel("Current (A)")
-        ax.legend()
-        adjust_and_save(fig, directory, "Rank {0} current.png".format(i+1))
-        if pooled_figure==True:
-            pool_ax.plot(xaxis, simulations[i,:], label="Rank {0}".format(i+1), alpha=0.5)
-        if harmonic==True:
-            h_fig, h_ax=plt.subplots(len(kwargs["harmonics"]), 1)
-            plot_dict=dict(
-                Experimental_data={"time": time, "current": experiment, "voltage":voltage},
-                xaxis=xlabel,
-                hanning=hanning,
-                plot_func=harm_func,
-                harmonics=kwargs["harmonics"],
-                xlabel=label_dict[xlabel],
-                ylabel="Current (A)",
-                axes_list=h_ax
-                )
-            plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage}
-            sci.plot.plot_harmonics(**plot_dict)   
-            if pooled_figure==True:
-                pooled_plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage}
-            adjust_and_save(h_fig, directory,"Rank {0} harmonics.png".format(i+1))
+        try:
+            fig, ax=plt.subplots()
+            ax.plot(xaxis, experiment, label="Data")
+            ax.plot(xaxis, simulations[i,:], label="Simulation")
             if kwargs["save_csv"]==True:
-                generated_harmonics=sci.plot.generate_harmonics(time, 
-                                                        simulations[i,:],
-                                                        hanning=hanning,
-                                                        plot_func=harm_func,
-                                                        harmonics=kwargs["harmonics"],
-                                                        )
-                for j in range(0, len(kwargs["harmonics"])):
-                    save_dict["Harmonic {0}".format(kwargs["harmonics"][j])]=harm_func(generated_harmonics[j,:])
-        if kwargs["save_csv"]==True:
-            DataFrame(save_dict).to_csv(directory+"/"+"Rank {0}.csv".format(i+1))
+                save_dict={"Time (s)":time, "Potential (V)":voltage, "Current (A)":simulations[i,:]}
+                if kwargs["DC_voltage"] is not None:
+                    if experiment_type=="FTACV":
+                        save_dict["DC Potential (V)"]=kwargs["DC_voltage"]
+            ax.set_xlabel(label_dict[xlabel])
+            ax.set_ylabel("Current (A)")
+            ax.legend()
+            adjust_and_save(fig, directory, "Rank {0} current.png".format(i+1))
+            if pooled_figure==True:
+                pool_ax.plot(xaxis, simulations[i,:], label="Rank {0}".format(i+1), alpha=0.5)
+            if harmonic==True:
+                h_fig, h_ax=plt.subplots(len(kwargs["harmonics"]), 1)
+                plot_dict=dict(
+                    Experimental_data={"time": time, "current": experiment, "voltage":voltage},
+                    xaxis=xlabel,
+                    hanning=hanning,
+                    plot_func=harm_func,
+                    harmonics=kwargs["harmonics"],
+                    xlabel=label_dict[xlabel],
+                    ylabel="Current (A)",
+                    axes_list=h_ax
+                    )
+                plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage}
+                sci.plot.plot_harmonics(**plot_dict)   
+                if pooled_figure==True:
+                    pooled_plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage}
+                adjust_and_save(h_fig, directory,"Rank {0} harmonics.png".format(i+1))
+                if kwargs["save_csv"]==True:
+                    generated_harmonics=sci.plot.generate_harmonics(time, 
+                                                            simulations[i,:],
+                                                            hanning=hanning,
+                                                            plot_func=harm_func,
+                                                            harmonics=kwargs["harmonics"],
+                                                            )
+                    for j in range(0, len(kwargs["harmonics"])):
+                        save_dict["Harmonic {0}".format(kwargs["harmonics"][j])]=harm_func(generated_harmonics[j,:])
+            if kwargs["save_csv"]==True:
+                DataFrame(save_dict).to_csv(directory+"/"+"Rank {0}.csv".format(i+1))
+        except:
+            with open(directory+"/"+"failed_runs.txt", "a") as f:
+                f.write("{1} Run {0} failed\n".format(i+1, experiment_type))
+
+            continue
     if pooled_figure==True:
         pool_ax.legend()
         adjust_and_save(pool_fig, directory, "Pooled current.png")
