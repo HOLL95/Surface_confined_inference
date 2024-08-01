@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <iostream> 
 #include <cvode/cvode.h>            /* prototypes for CVODE fcts., consts.  */
@@ -22,20 +21,11 @@ extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_dat
   double theta = Ith(y, 2);
   double kox, kred, dIdt, Cdlp;
   //cout<<(*params)["phase"]<<"\n";
-  double Er, dE, cap+Er, cap_dE;
-  if ((*params)["input_flag"]==1){
-    double Er=mono_E(*params, t, [](const auto& p, double t) { return p.at("phase"); })-I*(*params)["Ru"];
-    double cap_Er=mono_E(*params, t, [](const auto& p, double t) { return p.at("cap_phase"); })-I*(*params)["Ru"];
-    double cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
-  }
-  else if ((*params)["input_flag"]==2){
-    
-    double Er=mono_E(*params, t, [](const auto& p, double t) { return p.at("phase")+p.at("phase_delta_E")*std::sin(p.at("phase_omega") * t + p.at("phase_phase")) })-I*(*params)["Ru"];
-    double cap_Er=mono_E(*params, t, [](const auto& p, double t) { return p.at("cap_phase")+p.at("cap_phase_delta_E")*std::sin(p.at("cap_phase_omega") * t + p.at("cap_phase_phase")); })-I*(*params)["Ru"];
-    double cap_dE=mono_dE_sine_phase(*params, t);
-  }
-
+  double E=mono_E(*params, t, (*params)["phase"]);
   
+  double cap_Er=mono_E(*params, t, (*params)["cap_phase"])-I*(*params)["Ru"];
+  double Er=E-I*(*params)["Ru"];
+  double cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
   if ((*params)["Marcus_flag"]==1){
     kred=Marcus_kinetics_reduction(*params, Er);
     kox=Marcus_kinetics_oxidation(*params, Er);
@@ -75,16 +65,11 @@ extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,
   return (0);
 }
 
-template<typename PhaseFunc>
-
-
-double mono_E(const std::unordered_map<std::string, double>& params, double t, PhaseFunc phase_func){
-  double phase = phase_func(params, t);
-
+double mono_E(const std::unordered_map<std::string, double>& params, double t, double phase){
 	double E_dc;
 	double E_t;
 	if (t<params.at("tr")){
-		E_dc=params.at("E_start")+(params.at("v")*t); 
+		E_dc=params.at("E_start")+(params.at("v")*t);
 	}else {
 		E_dc=params.at("E_reverse")-(params.at("v")*(t-params.at("tr")));
 	}
@@ -92,22 +77,8 @@ double mono_E(const std::unordered_map<std::string, double>& params, double t, P
 	return E_dc+(params.at("delta_E")*(std::sin((params.at("omega")*t)+phase)));
 }
 
-
-/*
-double E1 = mono_E(*params, t, [](const auto& p, double t) { return p.at("phase"); });
-
-double E2 = mono_E(*params, t, [](const auto& p, double t) { 
-    return std::sin(p.at("phase_omega") * t + p.at("phase_offset")); 
-
-})
-  A1(A2ω2cos(ω2x+b)+ω1)cos(A2sin(ω2x+b)+ω1x+c)
-;*/
-
 double mono_dE(const std::unordered_map<std::string, double>& params, double t, double phase){ //
 	double E_dc;
-
-
-
 	if (t < params.at("tr")){
 		 E_dc=params.at("v");
 	}else {
@@ -142,3 +113,5 @@ double BV_reduction(std::unordered_map<std::string, double>& params, double Er){
   params["kred"]=kred;
   return kred;
 }
+
+
