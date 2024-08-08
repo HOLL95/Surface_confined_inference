@@ -739,7 +739,13 @@ class SingleExperiment:
         self.optim_list=self._optim_list
         return self.simulate(parameters, self.nondim_t(times))
         
-    def save_class(self,path):
+    def save_class(self,path,**kwargs):
+        if "switch_type" not in kwargs:
+            kwargs["switch_type"]=None
+        elif "experiment" not in kwargs["switch_type"].keys():
+            raise KeyError("Switch experiment types requires a new experiment")
+        elif "parameters" not in kwrags["switch_type"].keys():
+            raise KeyError("Switch experiment types requires parameters ")
 
         dict_class=vars(self)
         save_dict={"Options":{}}
@@ -747,8 +753,14 @@ class SingleExperiment:
         for key in dict_class:
             if key in option_keys and key!="experiment_type":
                 save_dict["Options"][key]=dict_class[key]
-        save_dict["experiment_type"]=dict_class["experiment_type"]
-        save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
+        if kwargs["switch_type"] is not None:
+            save_dict["experiment_type"]=dict_class["experiment_type"]
+        else:
+            save_dict["experiment_type"]=kwargs["switch_type"]["experiment"]
+        if kwargs["switch_type"] is not None:
+            save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
+        else:
+            save_dict["Experiment_parameters"]=kwargs["switch_type"]["parameters"]
         save_dict["optim_list"]=self._optim_list
         save_dict["fixed_parameters"]=self._internal_memory["fixed_parameters"]
         save_dict["boundaries"]=self._internal_memory["boundaries"]

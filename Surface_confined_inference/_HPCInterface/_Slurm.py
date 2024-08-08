@@ -128,11 +128,9 @@ class SingleSlurmSetup(sci.SingleExperiment):
                     checkfile_types.append(key)
                     if "parameters" in kwargs["check_experiments"][key]:
                         check_technique=sci.SingleExperiment(key, kwargs["check_experiments"][key]["parameters"])
-                        check_technique.fixed_parameters=self._internal_memory["fixed_parameters"]
-                        check_technique.boundaries=self._internal_memory["boundaries"]
-                        check_technique.optim_list=self._optim_list
+                        
                         check_json_path= cwd+"/Submission/"+"Check_{0}.json".format(key)
-                        check_technique.save_class(check_json_path)
+                        self.save_class(check_json_path, "switch_type":{"experiment":key, "parameters":kwargs["check_experiments"][key]["parameters"]})
                         json_addresses.append(check_json_path)
                     else:
                          json_addresses.append("none")
