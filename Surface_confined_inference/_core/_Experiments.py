@@ -88,6 +88,8 @@ class SingleExperiment:
             setattr(self, key, getattr(self._internal_options, key))
             for key in Options().accepted_arguments
         ]
+        if all(param in experiment_parameters for param in ["phase_phase", "phase_delta_E", "phase_omega"]):
+           self._internal_options.phase_function="sinusoidal" 
         if self._internal_options.phase_function=="sinusoidal":
             optional_arguments=["phase_phase", "phase_delta_E", "phase_omega"]
         else:

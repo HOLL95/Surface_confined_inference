@@ -38,8 +38,10 @@ class SingleSlurmSetup(sci.SingleExperiment):
             kwargs["run"]=False
         if "check_experiments" not in kwargs:
             kwargs["check_experiments"]={}
+        if "results_directory" not in kwargs:
+            kwargs["results_directory"]="Results"
         Path("Submission").mkdir(parents=True, exist_ok=True)
-        Path("Results/Individual_runs").mkdir(parents=True, exist_ok=True)
+        Path("{0}/Individual_runs".format(kwargs["results_directory"])).mkdir(parents=True, exist_ok=True)
         cwd=os.getcwd()
         loc=cwd+"/Submission"
         num_cpu=4 + int(3 * np.log(self.n_parameters()+self.n_outputs()))            
@@ -74,7 +76,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("set -e \n")
             f.write('SLURM_LOG_DIR=\"slurm_logs\"\n')
             f.write("mkdir -p $SLURM_LOG_DIR\n")
-            f.write('echo \"${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}\" >> Results/Individual_runs/job_ids.txt\n')
+            f.write('echo \"${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}\" >> {0}/Individual_runs/job_ids.txt\n'.format(kwargs["results_directory"]))
 
             python_command=["python",
                             submitter_loc,
@@ -110,8 +112,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
                             processor_loc,
                             fileloc,
                             cwd+"/Submission/Slurm_Json.json",
-                            cwd+"/Results/Individual_runs/job_ids.txt",
-                            cwd+"/Results/Individual_runs"
+                            cwd+"/{0}/Individual_runs/job_ids.txt".format(kwargs["results_directory"]),
+                            cwd+"/{0}/Individual_runs".format(kwargs["results_directory"])
 
             ]
             check_keys=kwargs["check_experiments"].keys()
@@ -138,7 +140,6 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write(" ".join(python_command))
         with open("Submission/Controller.sh", "w") as f:
             f.write("#!/usr/bin/env bash\n")
-            f.write("rm -f Results/Individual_runs/job_ids.txt\n")
             f.write("array_job_id=$(sbatch Submission/Automated_slurm_submission.job | awk '{print $4}')\n")
             f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job\n" )
         with open("Submission/RemoteDesktopSetup.sh", "w") as f:
@@ -149,7 +150,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
 
         if kwargs["run"]==True:
             date=datetime.datetime.today().strftime('%Y-%m-%d')
-            saveloc="{0}/Results/PooledResults_{1}".format(os.getcwd(), date)
+            saveloc="{0}/{2}/PooledResults_{1}".format(os.getcwd(), date, kwargs["results_directory"])
             print("")
             print("Results will be written to {0}".format(saveloc))
             print("To copy this to your personal filestore (when the run is complete) from this terminal window, I think you should run:\n\n scp -r {0} scp.york.ac.uk:/home/userfs/{1}/{2}".format(saveloc, user[0], user))
