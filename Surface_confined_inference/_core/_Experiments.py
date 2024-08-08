@@ -413,8 +413,11 @@ class SingleExperiment:
                 "Need to define boundaries for:\n %s" % ", ".join(missing_parameters)
             )
         self.dispersion_checking(parameters)
-        if "cap_phase" not in parameters:
+        if "cap_phase" not in parameters and ("cap_phase" not in self._internal_memory["fixed_parameters"].keys()):
             self._internal_options.phase_only = True
+        else:
+            self._internal_options.phase_only = False
+        print(self._internal_options.phase_only, self._internal_memory["fixed_parameters"])
         self.simulation_dict_construction(parameters)
         self._optim_list = parameters
         """if self.simulation_options["method"]=="square_wave":
@@ -542,7 +545,7 @@ class SingleExperiment:
                     "options":{"values":{"constant":0, "sinusoidal":1}, "flag":"phase_flag"}},
             "kinetics":{"option_value":self._internal_options.kinetics,
                         "actions":["simulation_options"],
-                        "options":{"values":{"Marcus":0, "ButlerVolmer":1}, "flag":"Marcus_flag"}}
+                        "options":{"values":{"Marcus":1, "ButlerVolmer":0}, "flag":"Marcus_flag"}}
         }
         for key in options_and_requirements.keys():
             sub_dict=options_and_requirements[key]

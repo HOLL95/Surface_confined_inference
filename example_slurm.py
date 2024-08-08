@@ -37,5 +37,14 @@ slurm_class.setup(
     runs=5, 
     threshold=1e3, 
     unchanged_iterations=1,
-    check_experiments={"PSV":"test_inference.txt"}
+    check_experiments={"PSV":{"file":"test_inference.txt", "parameters":{
+                                                                        "Edc": -0.4,
+                                                                        "omega": 10,
+                                                                        "delta_E": 0.15,
+                                                                        "area": 0.07,
+                                                                        "Temp": 298,
+                                                                        "N_elec": 1,
+                                                                        "phase": 0,
+                                                                        "Surface_coverage": 1e-10,
+                                                                    }}}
 )

@@ -116,9 +116,9 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         kwargs["plot_results"]=False
     if "optimise" not in kwargs:
         kwargs["optimise"]=True
-    if "optimisation_iterations" not in kwargs:
-        kwargs["optimisation_iterations"]=300
-   
+    if "runs" not in kwargs:
+        kwargs["runs"]=5
+    
     if "return_sim_values" not in kwargs:
         kwargs["return_sim_values"]=False
     if "sinusoidal_phase" not in kwargs:
@@ -242,7 +242,7 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         #x0=[0.5 for x in simulator.param_dict[experiment_type]]
         best=1e12
         
-        for i in range(0, 5):
+        for i in range(0, kwargs["runs"]):
             x0=np.random.rand(len(simulator.param_dict[experiment_type]))
             opt= pints.OptimisationController(
                 error,
@@ -303,5 +303,6 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         if kwargs["return_sim_values"]==False:
             return estimated_parameters, table_inferred
         else:
+            
             return estimated_parameters, table_inferred, estimated_simulated,inferred_simulated
        

@@ -12,6 +12,7 @@ parser.add_argument("JobIds", help="JobID file location", type=str)
 parser.add_argument("resultsLoc", help="path to results files", type=str)
 parser.add_argument("--checkfiles", help="path to files to check against inference results", default=["none"], nargs="+")
 parser.add_argument("--checkfile_types", help="types of experiment_files", default=["none"],  nargs="+")
+parser.add_argument("----check_parameters", help="types of experiment_files", default=["none"],  nargs="+")
 
 args = parser.parse_args()
 datafile=np.loadtxt(args.datafile)
@@ -60,13 +61,16 @@ sci.plot.save_results(time,
                     )
 
 if "none" not in args.checkfiles:
-
+    check_jsons=args.check_parameters
     for i in range(0, len(args.checkfiles)):
         checkloc=savepath+"/"+args.checkfile_types[i]+"_check"
-        new_technique=sci.CheckOtherExperiment(args.checkfile_types[i], 
-                                args.simulator, 
-                                datafile=args.checkfiles[i]
-                                )
+        if check_jsons[i]=="none":
+            new_technique=sci.CheckOtherExperiment(args.checkfile_types[i], 
+                                    args.simulator, 
+                                    datafile=args.checkfiles[i]
+                                    )
+        else:
+            new_techinque=sci.LoadSingleExperiment(check_jsons[i])
         Path(checkloc).mkdir(parents=True, exist_ok=True)
         sim_dict=new_technique.parameter_array_simulate(sorted_params, new_technique.time)
         sim_currents=sim_dict["Current_array"]

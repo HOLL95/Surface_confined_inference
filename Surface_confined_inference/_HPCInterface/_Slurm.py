@@ -119,11 +119,22 @@ class SingleSlurmSetup(sci.SingleExperiment):
                 
                 checkfiles=["--checkfiles"]
                 checkfile_types=["--checkfile_types"]
+                json_addresses=["--check_parameters"]
                 for key in check_keys:
-                    os.path.isfile(kwargs["check_experiments"][key])
-                    checkfiles.append(kwargs["check_experiments"][key])
+                    os.path.isfile(kwargs["check_experiments"][key]["file"])
+                    checkfiles.append(kwargs["check_experiments"][key]["file"])
                     checkfile_types.append(key)
-                python_command+=[" ".join(checkfiles)]+[" ".join(checkfile_types)]
+                    if "parameters" in kwargs["check_experiments"][key]:
+                        check_technique=sci.SingleExperiment(key, kwargs["check_experiments"][key]["parameters"])
+                        check_technique.fixed_parameters=self._internal_memory["fixed_parameters"]
+                        check_technique.boundaries=self._internal_memory["boundaries"]
+                        check_technique.optim_list=self._optim_list
+                        check_json_path= cwd+"/Submission/"+"Check_{0}.json".format(key)
+                        check_technique.save_class(check_json_path)
+                        json_addresses.append(check_json_path)
+                    else:
+                         json_addresses.append("none")
+                python_command+=[" ".join(checkfiles)]+[" ".join(checkfile_types)]+[" ".join(json_addresses)]
             f.write(" ".join(python_command))
         with open("Submission/Controller.sh", "w") as f:
             f.write("#!/usr/bin/env bash\n")
