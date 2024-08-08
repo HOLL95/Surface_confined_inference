@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <iostream> 
 #include <cvode/cvode.h>            /* prototypes for CVODE fcts., consts.  */
@@ -12,6 +13,10 @@ using namespace std;
 #define Ith(v, i) NV_Ith_S(v, i - 1) /* i-th vector component i=1..NEQ */
 #define IJth(A, i, j) \
   SM_ELEMENT_D(A, i - 1, j - 1) /* (i,j)-th matrix component i,j=1..NEQ */
+
+
+//TODO rewrite as lambdas 
+
 extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data)
 {
 
@@ -21,11 +26,20 @@ extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_dat
   double theta = Ith(y, 2);
   double kox, kred, dIdt, Cdlp;
   //cout<<(*params)["phase"]<<"\n";
-  double E=mono_E(*params, t, (*params)["phase"]);
+  double Er, dE, cap_Er, cap_dE;
+  if ((*params)["phase_flag"]==0){
+    double Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t){return p.at("phase");})-I*(*params)["Ru"];
+    double cap_Er=mono_E(*params, t,[](const std::unordered_map<std::string, double>& p, double t){return p.at("cap_phase");})-I*(*params)["Ru"];
+    double cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
+  }
+  else if ((*params)["phase_flag"]==1){
+    
+    double Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t) { return p.at("phase")+p.at("phase_delta_E")*std::sin(p.at("phase_omega") * t + p.at("phase_phase")); })-I*(*params)["Ru"];
+    double cap_Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>&p, double t) { return p.at("cap_phase")+p.at("cap_phase_delta_E")*std::sin(p.at("cap_phase_omega") * t + p.at("cap_phase_phase")); })-I*(*params)["Ru"];
+    double cap_dE=mono_dE_sine_phase(*params, t);
+  }
+
   
-  double cap_Er=mono_E(*params, t, (*params)["cap_phase"])-I*(*params)["Ru"];
-  double Er=E-I*(*params)["Ru"];
-  double cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
   if ((*params)["Marcus_flag"]==1){
     kred=Marcus_kinetics_reduction(*params, Er);
     kox=Marcus_kinetics_oxidation(*params, Er);
@@ -65,18 +79,32 @@ extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,
   return (0);
 }
 
-double mono_E(const std::unordered_map<std::string, double>& params, double t, double phase){
+/*
+double E1 = mono_E(*params, t, [](const auto& p, double t) { return p.at("phase"); });
+
+double E2 = mono_E(*params, t, [](const auto& p, double t) { 
+    return std::sin(p.at("phase_omega") * t + p.at("phase_offset")); 
+
+})
+  
+;*/
+
+double mono_dE_sine_phase(const std::unordered_map<std::string, double>& params, double t){ //
 	double E_dc;
-	double E_t;
-	if (t<params.at("tr")){
-		E_dc=params.at("E_start")+(params.at("v")*t);
+  double E_ac;
+
+
+	if (t < params.at("tr")){
+		 E_dc=params.at("v");
 	}else {
-		E_dc=params.at("E_reverse")-(params.at("v")*(t-params.at("tr")));
+		 E_dc=-params.at("v");
 	}
+  E_ac=params.at("delta_E")*(params.at("cap_phase_delta_E")*params.at("cap_phase_omega")*
+              std::cos(params.at("cap_phase_omega")*t+params.at("cap_phase_phase"))+params.at("omega"))*
+              std::cos(params.at("cap_phase_delta_E")*std::sin(params.at("cap_phase_omega")*t+params.at("cap_phase_phase"))+params.at("omega")+params.at("cap_phase"));
 
-	return E_dc+(params.at("delta_E")*(std::sin((params.at("omega")*t)+phase)));
+	return E_dc+E_ac;
 }
-
 double mono_dE(const std::unordered_map<std::string, double>& params, double t, double phase){ //
 	double E_dc;
 	if (t < params.at("tr")){
@@ -84,17 +112,25 @@ double mono_dE(const std::unordered_map<std::string, double>& params, double t, 
 	}else {
 		 E_dc=-params.at("v");
 	}
-
-
 	return E_dc+(params.at("delta_E")*params.at("omega")*std::cos(params.at("omega")*t+phase));
 }
-std::vector<double> potential(std::vector<double> times,const std::unordered_map<std::string, double>& params){
+std::vector<double> potential(const std::vector<double>& times,const std::unordered_map<std::string, double>& params){
   vector<double> potential_values;
   int num_times=times.size();
   potential_values.resize(num_times);
-  for (int i=0;i<num_times; i++){
-    potential_values[i]=mono_E(params, times[i], params.at("phase"));
+  int captured_val=params.at("phase_flag");
+  
+  auto lambda = [captured_val](const std::unordered_map<std::string, double>& p, double t)-> double {
+        if (captured_val==0) {
+            return p.at("phase"); 
+        } else if (captured_val==1){
+            return p.at("phase")+p.at("phase_delta_E")*std::sin(p.at("phase_omega") * t + p.at("phase_phase"));
+        }
+    };
+  for(int i=0; i<num_times; i++){
+    potential_values[i]=mono_E(params, times[i], lambda);
   }
+
 return potential_values;
 }
 double Marcus_kinetics_oxidation(const std::unordered_map<std::string, double>& params, double Er){
@@ -113,5 +149,3 @@ double BV_reduction(std::unordered_map<std::string, double>& params, double Er){
   params["kred"]=kred;
   return kred;
 }
-
-

@@ -4,17 +4,31 @@ import matplotlib.pyplot as plt
 import pints
 import scipy as sp
 import tabulate
+import copy
 
 class DummyVoltageSimulator(sci.SingleExperiment):
-    def __init__(self, experiment_type, input_parameters):
+    def __init__(self, experiment_type, input_parameters, **kwargs):
         
 
-        param_dict=sci.experimental_input_params
+        param_dict=copy.deepcopy(sci.experimental_input_params)
+        if "sinusoidal_phase" not in kwargs:
+            kwargs["sinusoidal_phase"]=False
+            
+        if kwargs["sinusoidal_phase"]==True:
+            phase_func="sinusoidal"
+            sinusoidal_phase_params=["phase_delta_E", "phase_omega", "phase_phase"]
+            param_dict[experiment_type]+=sinusoidal_phase_params
+            for key in sinusoidal_phase_params:
+                input_parameters[key]=1
+            
+        else:
+            phase_func="constant"
+        
         initialisation_parameters={x:input_parameters[x] for x in param_dict[experiment_type]}
         initialisation_parameters=self.add_dummy_params(initialisation_parameters)
-        super().__init__(experiment_type, initialisation_parameters)
+        super().__init__(experiment_type, initialisation_parameters, phase_function=phase_func)
         self.experiment_type=experiment_type
-        self.param_dict=sci.experimental_input_params
+        self.param_dict=param_dict
     def add_dummy_params(self, param_dict):
         param_dict["Temp"]=298
         param_dict["area"]=0.07
@@ -25,10 +39,27 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         return 1
     def n_parameters(self):
         return len(self.param_dict[self.experiment_type])
+    def dummy_normalise(self, params):
+        names=list(self.param_dict[self.experiment_type])
+        return_dict={}
+        for i in range(0, len(names)):
+            name=names[i]
+            return_dict[name]=self.normalise(params[i], self._internal_memory["param_boundaries"][name])
+        return return_dict
+    def dummy_un_normalise(self, params):
+        
+        names=list(self.param_dict[self.experiment_type])
+        return_dict={}
+        for i in range(0, len(names)):
+            name=names[i]
+            return_dict[name]=self.un_normalise(params[i], self._internal_memory["param_boundaries"][name])
+        return return_dict
     def simulate(self,parameters, times):
-        param_dict=dict(zip(self.param_dict[self.experiment_type], parameters))
+        param_dict=self.dummy_un_normalise(parameters)
         updated_params=self.add_dummy_params(param_dict)
         simulated_voltage=super().get_voltage(times, dimensional=True, input_parameters=updated_params)
+
+
         return np.array(simulated_voltage)
 class CheckOtherExperiment(sci.ChangeTechnique):
     def __init__(self, experiment_type, simulator,**kwargs):
@@ -85,10 +116,15 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         kwargs["plot_results"]=False
     if "optimise" not in kwargs:
         kwargs["optimise"]=True
-    if "optimsation_iterations" not in kwargs:
+    if "optimisation_iterations" not in kwargs:
         kwargs["optimisation_iterations"]=300
+   
     if "return_sim_values" not in kwargs:
         kwargs["return_sim_values"]=False
+    if "sinusoidal_phase" not in kwargs:
+        kwargs["sinusoidal_phase"]=False
+    if "sigma" not in kwargs:
+        kwargs["sigma"]=0.01
     if experiment_type in ["DCV", "FTACV"]:
         if experiment_type=="FTACV":
             DC_voltage=sci.get_DC_component(time, voltage, current)
@@ -118,27 +154,43 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
 
     if experiment_type in ["PSV", "FTACV"]:
         sneak_freq=sci.get_frequency(time, current)
+        window=sp.signal.windows.flattop(len_ts)
+        pot_fft=np.fft.fft(window*voltage)
+        fft_freq=np.fft.fftfreq(len_ts, time[1]-time[0])
+        pos_freq=fft_freq[np.where(fft_freq>0)]
+        subbed_freq=abs(pos_freq-sneak_freq)
+        closest_bin=pos_freq[np.where(subbed_freq==min(subbed_freq))]
+        peak_amplitude=abs(pot_fft[np.where(fft_freq==closest_bin)][0])
+        sneak_amp=2*peak_amplitude/(sum(window))
         if "phase" not in kwargs:
             kwargs["phase"]=0
         if "omega" not in kwargs:
             kwargs["omega"]=sneak_freq
         
         if "delta_E" not in kwargs:
-            window=sp.signal.windows.flattop(len_ts)
-            pot_fft=np.fft.fft(window*voltage)
-            fft_freq=np.fft.fftfreq(len_ts, time[1]-time[0])
-            pos_freq=fft_freq[np.where(fft_freq>0)]
-            subbed_freq=abs(pos_freq-sneak_freq)
-            closest_bin=pos_freq[np.where(subbed_freq==min(subbed_freq))]
-            peak_amplitude=abs(pot_fft[np.where(fft_freq==closest_bin)][0])
-            kwargs["delta_E"]=2*peak_amplitude/(sum(window))
+            
+            kwargs["delta_E"]=sneak_amp
         if experiment_type=="PSV":
             if "Edc" not in kwargs:
                 kwargs["Edc"]=np.mean(voltage)
             if "num_peaks" not in kwargs:
                 kwargs["num_peaks"]=time[-1]*sneak_freq
                 
-    simulator=DummyVoltageSimulator(experiment_type, kwargs)
+    simulator=DummyVoltageSimulator(experiment_type, kwargs, sinusoidal_phase=kwargs["sinusoidal_phase"])
+    
+    boundaries={"E_start":[-2, 2],
+                    "E_reverse":[-2, 2],
+                    "E_dc":[-2, 2],
+                    "delta_E":[0.8*sneak_amp, 1.2*sneak_amp],
+                    "omega":[0.95*sneak_freq, 1.05*sneak_freq],
+                    "v":[1e-4, 100],
+                    "phase":[0,2*np.pi],
+                    "Edc":[-2,2],
+                    "phase_phase":[0, 2*np.pi],
+                    "phase_delta_E":[-1.5, 1.5],
+                    "phase_omega":[0.1, 400]
+                    }
+    simulator._internal_memory["param_boundaries"]=boundaries
     estimated_parameters={x:kwargs[x] for x in simulator.param_dict[experiment_type]}
     if kwargs["optimise"]==True:
         if "aliasing" not in kwargs:
@@ -163,16 +215,15 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             raise TypeError("Aliasing keyword needs to be of type int")
         aliased_time=time[::kwargs["aliasing"]]
         aliased_voltage=voltage[::kwargs["aliasing"]]
-        boundaries={"E_start":[-2, 2],
-                    "E_reverse":[-2, 2],
-                    "E_dc":[-2, 2],
-                    "delta_E":[1e-3, 0.5],
-                    "omega":[0.1, 1e4],
-                    "v":[1e-4, 100],
-                    "phase":[0,2*np.pi],
-                    "Edc":[-2,2],
-                    "num_peaks":[2, 1000]}
         
+        if "fixed_parameters" not in kwargs:
+            kwargs["fixed_parameters"]=[]
+        for param in kwargs["fixed_parameters"]:
+            bounds=[kwargs[param]*0.95, 1.05*kwargs[param]]
+            boundaries[param]=[min(bounds), max(bounds)]
+        
+            
+
         
         for key in estimated_parameters:
             if estimated_parameters[key]>boundaries[key][1]:
@@ -183,20 +234,36 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         problem = pints.SingleOutputProblem(simulator, aliased_time, aliased_voltage)
         error = pints.SumOfSquaresError(problem)
         bounds=np.array([boundaries[key] for key in simulator.param_dict[experiment_type]])
-        boundaries=pints.RectangularBoundaries(bounds[:,0], bounds[:,1])
-        x0=[estimated_parameters[x] for x in simulator.param_dict[experiment_type]]
-        opt= pints.OptimisationController(
-            error,
-            x0,
-            sigma0=[0.01 for x in simulator.param_dict[experiment_type]],
-            boundaries=boundaries,
-            method=pints.CMAES,
-            )
-        opt.set_max_iterations(kwargs["optimisation_iterations"])
-        found_parameters, found_value =opt.run()
+        boundaries=pints.RectangularBoundaries(np.zeros(len(simulator.param_dict[experiment_type])), 
+                                                np.ones(len(simulator.param_dict[experiment_type])))
+        print([estimated_parameters[x] for x in simulator.param_dict[experiment_type]])
+        x0=simulator.dummy_normalise([estimated_parameters[x] for x in simulator.param_dict[experiment_type]])
+        
+        #x0=[0.5 for x in simulator.param_dict[experiment_type]]
+        best=1e12
+        
+        for i in range(0, 5):
+            x0=np.random.rand(len(simulator.param_dict[experiment_type]))
+            opt= pints.OptimisationController(
+                error,
+                x0,
+                sigma0=[kwargs["sigma"] for x in simulator.param_dict[experiment_type]],
+                boundaries=boundaries,
+                method=pints.CMAES,
+                )
+            #opt.set_max_iterations(kwargs["optimisation_iterations"])
+            found_parameters, found_value =opt.run()
+            if found_value<best:
+                best=found_value
+                best_parameters=found_parameters
+        found_parameters=best_parameters
         inferred_params=dict(zip(simulator.param_dict[experiment_type], found_parameters))
-    estimated_simulated=simulator.simulate([estimated_parameters[key] for key in simulator.param_dict[experiment_type]], time)
+        table_inferred=simulator.dummy_un_normalise(found_parameters)
+    normed_estimated=simulator.dummy_normalise([estimated_parameters[key] for key in simulator.param_dict[experiment_type]])
+    normed_estimated_list=[normed_estimated[key] for key in simulator.param_dict[experiment_type]]
+    estimated_simulated=simulator.simulate(normed_estimated_list, time)
     estimated_error=sci._utils.RMSE(estimated_simulated, voltage)*100
+    
     if kwargs["optimise"]==False:
         tabulate_list=[[key, estimated_parameters[key]] for key in simulator.param_dict[experiment_type]]
         headers=["Parameter", "Estimated (Mean Error=%.1e mV)"% estimated_error ]
@@ -204,7 +271,7 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
     else:
         inferred_simulated=simulator.simulate([inferred_params[key] for key in simulator.param_dict[experiment_type]], time)
         inferred_error=sci._utils.RMSE(inferred_simulated, voltage)*100
-        tabulate_list=[[key, estimated_parameters[key], inferred_params[key]] for key in simulator.param_dict[experiment_type]]
+        tabulate_list=[[key, estimated_parameters[key], table_inferred[key]] for key in simulator.param_dict[experiment_type]]
         headers=["Parameter", 
                 "Estimated (Mean Error=%.1e mV)"% estimated_error, 
                 "Inferred (Mean Error=%.1e mV)"% inferred_error,]
@@ -234,7 +301,7 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             return estimated_parameters, estimated_simulated
     else:
         if kwargs["return_sim_values"]==False:
-            return estimated_parameters, inferred_params
+            return estimated_parameters, table_inferred
         else:
-            return estimated_parameters, inferred_params, estimated_simulated,inferred_simulated
+            return estimated_parameters, table_inferred, estimated_simulated,inferred_simulated
        

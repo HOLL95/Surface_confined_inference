@@ -35,6 +35,7 @@ class SingleExperiment:
             Fourier window (str): Defines whether or not to use a windowing function when applying Fourier filtration methods. Defaults to "hanning"
             top_hat_window (float): Defines the width of the top hat window (as a percentage of the input frequency) around which to extract the individual harmonics. Defaults to 0.5
             dispersion_test (bool): Defines whether to save the unweighted indivual simualtions of a dispersed simulation to self._disp_test.
+            phase_function (str): Defines what phase function to use in the input potential. Default is constant
 
         Initialises:
             class: NDClass, responsible for non-dimensionalising parameters in a manner distinct to each technique
@@ -55,7 +56,7 @@ class SingleExperiment:
         }
         extra_args = {
             "FTACV": ["E_start", "E_reverse","v", "omega", "phase", "delta_E"],
-            "PSV": ["Edc","omega", "phase", "delta_E", "num_peaks"],
+            "PSV": ["Edc","omega", "phase", "delta_E"],
             "DCV": ["E_start", "E_reverse","v"],
             "SquareWave": [
                 "E_start", "E_reverse",
@@ -81,15 +82,20 @@ class SingleExperiment:
             "fixed_parameters": {},
         }
         kwargs["experiment_type"] = experiment_type
+        
         self._internal_options = OptionsDecorator(**kwargs)
         [
             setattr(self, key, getattr(self._internal_options, key))
             for key in Options().accepted_arguments
         ]
-
+        if self._internal_options.phase_function=="sinusoidal":
+            optional_arguments=["phase_phase", "phase_delta_E", "phase_omega"]
+        else:
+            optional_arguments=[]
         sci.check_input_dict(
             experiment_parameters,
             accepted_arguments[self._internal_options.experiment_type],
+            optional_arguments=optional_arguments
         )
         self._NDclass = sci.NDParams(
             self._internal_options.experiment_type, experiment_parameters
@@ -106,7 +112,8 @@ class SingleExperiment:
             "Ru",
             "phase",
         ]
-        self._optim_list = None
+        
+        self._optim_list = []
 
     def calculate_times(self, **kwargs):
         """
@@ -139,7 +146,9 @@ class SingleExperiment:
         ):
             end_time = 2 * abs(params["E_start"] - params["E_reverse"]) / params["v"]
         elif self._internal_options.experiment_type == "PSV":
-            end_time = params["num_peaks"] / params["omega"]
+            if "PSV_num_peaks" not in kwargs:
+                kwargs["PSV_num_peaks"]=50
+            end_time = kwargs["PSV_num_peaks"]/ params["omega"]
         elif self._internal_options.experiment_type == "SquareWave":
             raise NotImplementedError()
         if self._internal_options.experiment_type == "DCV":
@@ -153,7 +162,7 @@ class SingleExperiment:
             raise NotImplementedError()
 
         times = np.arange(0, end_time, dt)
-
+        
         if dimensional == False:
             times = self.nondim_t(times)
 
@@ -250,10 +259,18 @@ class SingleExperiment:
             kwargs["dimensional"]=False
         if input_parameters == None:
             input_parameters = self._internal_memory["input_parameters"]
+        
+        if self._internal_options.phase_function=="sinusoidal":
+            optional_arguments=["phase_phase", "phase_delta_E", "phase_omega"]
+            input_parameters["phase_flag"]=1
         else:
-            sci.check_input_dict(
-                input_parameters, list(self._internal_memory["input_parameters"].keys())
-            )
+            optional_arguments=[]
+            input_parameters["phase_flag"]=0
+        checking_dict=copy.deepcopy(self._internal_memory["input_parameters"])
+        checking_dict["phase_flag"]=input_parameters["phase_flag"]
+        sci.check_input_dict(
+            input_parameters, checking_dict, optional_arguments=optional_arguments
+        )
         input_parameters=copy.deepcopy(input_parameters)
         input_parameters = self.validate_input_parameters(input_parameters)
         if "tr" in input_parameters:
@@ -468,7 +485,7 @@ class SingleExperiment:
         Args:
             parameters (list): passed when we set _optim_list, a list of str objects referring to parameter name
         Initialises/modifies:
-            _internal_memory["simualtion_dict"]
+            _internal_memory["simulation_dict"]
         Raises:
             Exception: If parameters set in `essential_parameters` are not found in either `_optim_list` or `fixed_parameters`
         1) All parameters in `_optim_list` are set to `None`, as they will be changed on each simulation step
@@ -518,9 +535,36 @@ class SingleExperiment:
                     ", ".join(missing_parameters)
                 )
             )
+        options_and_requirements={
+            "phase_function":{"option_value":self._internal_options.phase_function, 
+                    "actions":["param_check", "simulation_options"], 
+                    "params":{"sinusoidal":["phase_delta_E", "phase_omega", "phase_phase"], "constant":["phase"]}, 
+                    "options":{"values":{"constant":0, "sinusoidal":1}, "flag":"phase_flag"}},
+            "kinetics":{"option_value":self._internal_options.kinetics,
+                        "actions":["simulation_options"],
+                        "options":{"values":{"Marcus":0, "ButlerVolmer":1}, "flag":"Marcus_flag"}}
+        }
+        for key in options_and_requirements.keys():
+            sub_dict=options_and_requirements[key]
+            option_value=sub_dict["option_value"]
+            for action in sub_dict["actions"]:
+                if action=="simulation_options":
+                    sim_dict_key=sub_dict["options"]["flag"]
+                    sim_dict_value=sub_dict["options"]["values"][option_value]
+                    simulation_dict[sim_dict_key]=sim_dict_value
+                elif action =="params":
+                    extra_required_params=sub_dict["params"][option_value]
+                    for param in extra_required_params:
+                        if param not in all_parameters:
+                            raise Exception("Because of option {0} being set to {1}, the following parameters need to be in either optim_list or fixed_parameters: {2}\n. Currently missing {3}".format(key, option_value, extra_required_params, param))
+                        else:
+                            if param in parameters:
+                                simulation_dict[param]=None
+                            else:
+                                simulation_dict[param]=self._internal_memory["fixed_parameters"][param]
+                        
 
-        elif self._internal_options.kinetics != "Marcus":
-            simulation_dict["Marcus_flag"] = 0
+
         simulation_dict = self.validate_input_parameters(simulation_dict)
 
         self._internal_memory["simulation_dict"] = simulation_dict
@@ -670,6 +714,10 @@ class SingleExperiment:
                 self._internal_memory["simulation_dict"]["phase"]
             )
             nd_dict["cap_phase"] = self._internal_memory["simulation_dict"]["phase"]
+            if self._internal_options.phase_function=="sinusoidal":
+                for key in ["phase_delta_E", "phase_omega", "phase_phase"]:
+                     self._internal_memory["simulation_dict"]["cap_"+key]=self._internal_memory["simulation_dict"][key]
+                     nd_dict["cap_"+key] = self._internal_memory["simulation_dict"][key]
         return nd_dict
    
     @sci._utils.temporary_options()
@@ -931,6 +979,7 @@ class Options:
             "Fourier_window": {"args": ["hanning", False], "default": "hanning"},
             "top_hat_width": {"type": numbers.Number, "default": 0.5},
             "dispersion_test": {"type": bool, "default": False},
+            "phase_function":{"args":["constant", "sinusoidal"], "default":"constant"}
         }
         self.other_attributes=["_internal_memory", "_internal_options", "_NDclass", "_essential_parameters", "_optim_list", "boundaries", "fixed_parameters", "optim_list", "_disp_class", "_weights", "_disp_test", "_values"]
         if len(kwargs) == 0:

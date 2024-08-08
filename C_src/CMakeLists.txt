@@ -6,7 +6,7 @@ project(SurfaceODESolver)
 include(CMakePrintHelpers)
 
 # Set C++ compiler flags
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+#set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 

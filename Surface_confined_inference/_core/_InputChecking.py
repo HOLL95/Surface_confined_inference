@@ -2,11 +2,16 @@ import numpy as np
 import Surface_confined_inference as sci
 
 
-def check_input_dict(input_dict, parameters):
+def check_input_dict(input_dict, parameters, **kwargs):
+    if "optional_arguments" not in kwargs:
+        kwargs["optional_arguments"]=set()
+    else:
+        kwargs["optional_arguments"]=set(kwargs["optional_arguments"])
     user_params = set(input_dict.keys())
-    required_params = set(parameters)
-    extra = user_params - required_params
+    required_params = set(parameters).union(kwargs["optional_arguments"])
     missing = required_params - user_params
+    
+    extra = user_params - required_params
     if len(missing) > 0:
         raise ValueError(
             "Simulation requires the following parameters: {0}".format(
