@@ -744,7 +744,7 @@ class SingleExperiment:
             kwargs["switch_type"]=None
         elif "experiment" not in kwargs["switch_type"].keys():
             raise KeyError("Switch experiment types requires a new experiment")
-        elif "parameters" not in kwrags["switch_type"].keys():
+        elif "parameters" not in kwargs["switch_type"].keys():
             raise KeyError("Switch experiment types requires parameters ")
 
         dict_class=vars(self)
@@ -753,11 +753,11 @@ class SingleExperiment:
         for key in dict_class:
             if key in option_keys and key!="experiment_type":
                 save_dict["Options"][key]=dict_class[key]
-        if kwargs["switch_type"] is not None:
+        if kwargs["switch_type"] is None:
             save_dict["experiment_type"]=dict_class["experiment_type"]
         else:
             save_dict["experiment_type"]=kwargs["switch_type"]["experiment"]
-        if kwargs["switch_type"] is not None:
+        if kwargs["switch_type"] is None:
             save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
         else:
             save_dict["Experiment_parameters"]=kwargs["switch_type"]["parameters"]
@@ -868,6 +868,8 @@ class SingleExperiment:
         if kwargs["dimensional"]==True:
             time_data=self.nondim_t(time_data)
             current_data=self.nondim_i(current_data)
+        plt.plot(np.diff(time_data))
+        plt.show()
         problem=pints.SingleOutputProblem(self, time_data, current_data)
         if kwargs["Fourier_filter"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)

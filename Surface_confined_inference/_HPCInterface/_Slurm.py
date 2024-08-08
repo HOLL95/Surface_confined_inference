@@ -130,7 +130,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
                         check_technique=sci.SingleExperiment(key, kwargs["check_experiments"][key]["parameters"])
                         
                         check_json_path= cwd+"/Submission/"+"Check_{0}.json".format(key)
-                        self.save_class(check_json_path, "switch_type":{"experiment":key, "parameters":kwargs["check_experiments"][key]["parameters"]})
+                        self.save_class(check_json_path, switch_type={"experiment":key, "parameters":kwargs["check_experiments"][key]["parameters"]})
                         json_addresses.append(check_json_path)
                     else:
                          json_addresses.append("none")
