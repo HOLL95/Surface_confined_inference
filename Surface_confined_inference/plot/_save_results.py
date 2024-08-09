@@ -6,7 +6,11 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
     if "save_csv" not in kwargs:
         kwargs["save_csv"]=False
     if "harmonics" not in kwargs:
-        kwargs["harmonics"]=sci.maximum_availiable_harmonics(time, experiment)
+        if experiment_type in ["PSV", "FTACV"]:
+         try:
+          kwargs["harmonics"]=sci.maximum_availiable_harmonics(time, experiment)
+         except:
+          return
     if "DC_voltage" not in kwargs:
         kwargs["DC_voltage"]=None
     if "table" not in kwargs:

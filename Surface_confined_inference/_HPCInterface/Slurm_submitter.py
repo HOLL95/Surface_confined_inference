@@ -6,6 +6,7 @@ from datetime import datetime
 parser = argparse.ArgumentParser("Slurm submitter")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
+parser.add_argument("saveloc" , help="Save directory address", type=str)
 parser.add_argument("--threshold", help="Inference will terminated after the score doesn't change by this amount for unchanged iterations", default=1e-6, type=float)
 parser.add_argument("--unchanged_iterations",  help="Inference will terminated after the score doesn't change after this number of unchanged iterations", default=200, type=int)
 
@@ -28,7 +29,7 @@ results=simclass.Current_optimisation(time, current,
                                 dimensional=True)
 job_id=os.environ.get('SLURM_JOB_ID')
 task_id=os.environ.get('SLURM_ARRAY_TASK_ID')
-np.save("Results/Individual_runs/Results_run_{0}_{1}.npy".format(job_id,task_id), results)
+np.save("{2}/Individual_runs/Results_run_{0}_{1}.npy".format(job_id,task_id, args.saveloc), results)
 
 
 

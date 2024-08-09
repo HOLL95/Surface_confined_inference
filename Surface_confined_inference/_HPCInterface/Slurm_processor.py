@@ -12,7 +12,7 @@ parser.add_argument("JobIds", help="JobID file location", type=str)
 parser.add_argument("resultsLoc", help="path to results files", type=str)
 parser.add_argument("--checkfiles", help="path to files to check against inference results", default=["none"], nargs="+")
 parser.add_argument("--checkfile_types", help="types of experiment_files", default=["none"],  nargs="+")
-parser.add_argument("----check_parameters", help="types of experiment_files", default=["none"],  nargs="+")
+parser.add_argument("--check_parameters", help="types of experiment_files", default=["none"],  nargs="+")
 
 args = parser.parse_args()
 datafile=np.loadtxt(args.datafile)
@@ -69,16 +69,21 @@ if "none" not in args.checkfiles:
                                     args.simulator, 
                                     datafile=args.checkfiles[i]
                                     )
+            n_time=new_technique.time
+            n_current=new_technique.current
         else:
-            new_techinque=sci.LoadSingleExperiment(check_jsons[i])
+            new_technique=sci.LoadSingleExperiment(check_jsons[i])
+            data=np.loadtxt(args.checkfiles[i])
+            n_time=data[:,0]
+            n_current=data[:,1]
         Path(checkloc).mkdir(parents=True, exist_ok=True)
-        sim_dict=new_technique.parameter_array_simulate(sorted_params, new_technique.time)
+        sim_dict=new_technique.parameter_array_simulate(sorted_params, n_time)
         sim_currents=sim_dict["Current_array"]
         DC_voltage=sim_dict["DC_voltage"]
-        new_voltage=new_technique.get_voltage(new_technique.time, dimensional=True)
-        sci.plot.save_results(new_technique.time, 
+        new_voltage=new_technique.get_voltage(n_time, dimensional=True)
+        sci.plot.save_results(n_time, 
                     new_voltage, 
-                    new_technique.current, 
+                    n_current, 
                     sim_currents, 
                     checkloc, 
                     new_technique._internal_options.experiment_type, 
