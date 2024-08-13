@@ -156,8 +156,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
             time=datafile[:,0]
             current=datafile[:,1]
             potential=datafile[:,2]
-            debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential)
-            debug_class.run()
+            debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential, dimensional=True, Fourier_fitting=self._internal_options.Fourier_fitting)
+            debug_class.go()
         elif kwargs["run"]==True:
             date=datetime.datetime.today().strftime('%Y-%m-%d')
             saveloc="{0}/{2}/PooledResults_{1}".format(os.getcwd(), date, kwargs["results_directory"])
