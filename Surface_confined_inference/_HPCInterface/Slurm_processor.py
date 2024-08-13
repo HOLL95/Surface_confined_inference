@@ -44,7 +44,6 @@ Path(savepath).mkdir(parents=True, exist_ok=True)
 sim_dict=simulator.parameter_array_simulate(sorted_params, time)
 sim_currents=sim_dict["Current_array"]
 DC_voltage=sim_dict["DC_voltage"]
-
 sci.plot.save_results(time, 
                     sim_voltage, 
                     current, 

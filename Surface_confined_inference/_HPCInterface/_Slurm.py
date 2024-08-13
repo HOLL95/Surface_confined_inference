@@ -163,6 +163,6 @@ class SingleSlurmSetup(sci.SingleExperiment):
             print("")
             print("And follow the instructions there")
             import subprocess
-            subprocess.call(["bash", "Submission/Controller.sh"])
+            subprocess.call(["bash", "Submission/"+controller_file])
 
         

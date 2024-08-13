@@ -57,6 +57,10 @@ def maximum_availiable_harmonics(times, current):
     input_freq = sci.get_frequency(times, current)
     in_noise = False
     max_found = 1
+    #plt.plot(times, current)
+    #plt.show()
+    #plt.plot(frequencies, fft)
+    #plt.show()
     #fig, ax=plt.subplots()
     while in_noise == False:
         index = max_found * input_freq
@@ -68,8 +72,11 @@ def maximum_availiable_harmonics(times, current):
                     (frequencies > (index - 0.2 * input_freq))
                     & (frequencies < (index + 0.2 * input_freq))
                 )
+        #plt.plot(frequencies[peak_idx], fft[peak_idx])
+        #plt.show()
         noise_level = np.mean(fft[noise_idx])
         peak_level = max(fft[peak_idx])
+        
         #ax.semilogy(frequencies[noise_idx], fft[noise_idx])
         #ax.semilogy(frequencies[peak_idx], fft[peak_idx], label=max_found)
         
