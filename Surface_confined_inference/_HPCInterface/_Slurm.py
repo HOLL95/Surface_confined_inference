@@ -67,9 +67,10 @@ class SingleSlurmSetup(sci.SingleExperiment):
             "--array":runs,                  # Array range"
             "--partition":"nodes"
         }
-        
-        self.save_class("Submission/Slurm_Json.json")
-        with open("Submission/Automated_slurm_submission.job", "w") as f:
+        save_json=identifier+"_Slurm_Json.json"
+        self.save_class("Submission/"+save_json)
+        submission_file="{0}_Automated_slurm_submission.job".format(identifier)
+        with open("Submission/"+submission_file, "w") as f:
             f.write("#!/usr/bin/env bash\n")
             for key in master_dict.keys():
                 write_str="#SBATCH {0}={1}\n".format(key, master_dict[key])
@@ -77,13 +78,12 @@ class SingleSlurmSetup(sci.SingleExperiment):
             f.write("set -e \n")
             f.write('SLURM_LOG_DIR=\"slurm_logs\"\n')
             f.write("mkdir -p $SLURM_LOG_DIR\n")
-            f.write("rm -f {0}/Individual_runs/job_ids.txt\n".format(kwargs["results_directory"]))
             f.write('echo \"${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}\" >> '+ kwargs["results_directory"]+ '/Individual_runs/job_ids.txt\n')
 
             python_command=["python",
                             submitter_loc,
                             fileloc,
-                            cwd+"/Submission/Slurm_Json.json",
+                            cwd+"/Submission/"+save_json,
                             kwargs["results_directory"],
                             "--threshold={0}".format(kwargs["threshold"]),
                             "--unchanged_iterations={0}".format(kwargs["unchanged_iterations"])
@@ -105,7 +105,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
             "--mail-user":kwargs["email"],  # Where to send mail
             "--partition":"nodes"
         }
-        with open("Submission/Cleanup.job", "w") as f:
+        cleanup_file=identifier+"_Cleanup.job"
+        with open("Submission/"+cleanup_file, "w") as f:
             f.write("#!/usr/bin/env bash\n")
             for key in cleanup_dict.keys():
                 write_str="#SBATCH {0}={1}\n".format(key, cleanup_dict[key])
@@ -114,7 +115,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             python_command=["python",
                             processor_loc,
                             fileloc,
-                            cwd+"/Submission/Slurm_Json.json",
+                            cwd+"/Submission/"+save_json,
                             cwd+"/{0}/Individual_runs/job_ids.txt".format(kwargs["results_directory"]),
                             cwd+"/{0}/Individual_runs".format(kwargs["results_directory"])
 
@@ -133,17 +134,18 @@ class SingleSlurmSetup(sci.SingleExperiment):
                     if "parameters" in kwargs["check_experiments"][key]:
                         check_technique=sci.SingleExperiment(key, kwargs["check_experiments"][key]["parameters"])
                         
-                        check_json_path= cwd+"/Submission/"+"Check_{0}.json".format(key)
+                        check_json_path= cwd+"/Submission/"+identifier+"_Check_{0}.json".format(key)
                         self.save_class(check_json_path, switch_type={"experiment":key, "parameters":kwargs["check_experiments"][key]["parameters"]})
                         json_addresses.append(check_json_path)
                     else:
                          json_addresses.append("none")
                 python_command+=[" ".join(checkfiles)]+[" ".join(checkfile_types)]+[" ".join(json_addresses)]
             f.write(" ".join(python_command))
-        with open("Submission/Controller.sh", "w") as f:
+        controller_file=identifier+"_Controller.sh"
+        with open("Submission/"+controller_file, "w") as f:
             f.write("#!/usr/bin/env bash\n")
-            f.write("array_job_id=$(sbatch Submission/Automated_slurm_submission.job | awk '{print $4}')\n")
-            f.write("sbatch --dependency=afterok:$array_job_id Submission/Cleanup.job\n" )
+            f.write("array_job_id=$(sbatch Submission/"+submission_file+" | awk '{print $4}')\n")
+            f.write("sbatch --dependency=afterok:$array_job_id Submission/{0}\n".format(cleanup_file) )
         with open("Submission/RemoteDesktopSetup.sh", "w") as f:
             with open(RDS_loc , "r") as readfile:
              for line in readfile:
