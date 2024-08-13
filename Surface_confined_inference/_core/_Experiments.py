@@ -877,9 +877,11 @@ class SingleExperiment:
             dt=time_data[1]-time_data[0]
             if np.mean(np.diff(time_data)-dt)>1e-6:
                 raise ValueError("Non-transient timepoints need to be equispaced")
-            self._internal_memory["simulation_times"]=np.arange(0, time_data[-1], dt)
+            self._internal_memory["simulation_times"]=np.append(np.arange(0, time_data[-1], dt), time_data[-1])
             self._internal_memory["time_idx"]=np.where(self._internal_memory["simulation_times"]>time_data[0])
             if len(self._internal_memory["simulation_times"][self._internal_memory["time_idx"]])!=len(time_data):
+          
+                print(len(self._internal_memory["simulation_times"][self._internal_memory["time_idx"]]), len(time_data))
                 raise ValueError("Length error - len(synthetic time)!=len(time_data)")
 
         if kwargs["dimensional"]==True:
