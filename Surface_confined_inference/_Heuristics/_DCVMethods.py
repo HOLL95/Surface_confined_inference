@@ -248,7 +248,7 @@ class DCV_peak_area():
             
             if "mv" in lower_name:
                
-                match=re.findall("\d+(?:\.\d+)?(?=mv)", lower_name)
+                match=re.findall(r"\d+(?:\.\d+)?(?=mv)", lower_name)
                 if len(match)==1:
                     self.text_box.set_val(match[0])
         hideax= plt.axes([0.85, 0.625, 0.12, 0.15])
