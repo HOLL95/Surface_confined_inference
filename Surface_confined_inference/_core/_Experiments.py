@@ -801,16 +801,14 @@ class SingleExperiment:
             sim_params = dict(zip(self._optim_list, parameters))
         if self._internal_options.experiment_type != "SquareWave":
             solver = sos.ODEsimulate
-        if self._internal_options.transient_removal==True:
-            times=self._internal_memory["simulation_times"]
+
         if self._internal_options.dispersion == True:
             current = self.dispersion_simulator(solver,  sim_params, times)
         else:
             nd_dict = self.nondimensionalise(sim_params)
             current = np.array(solver(times, nd_dict))[0, :]
 
-        if self._internal_options.transient_removal==True:
-            current=current[self._internal_memory["time_idx"]]
+        
     
 
         return current
@@ -872,15 +870,7 @@ class SingleExperiment:
         else:
             if "save_csv" not in kwargs:
                 kwargs["save_csv"]=False
-        if time_data[0]!=0:
-            self.transient_removal=True
-            dt=time_data[1]-time_data[0]
-            if np.mean(np.diff(time_data)-dt)>1e-6:
-                raise ValueError("Non-transient timepoints need to be equispaced")
-            self._internal_memory["simulation_times"]=np.arange(0, time_data[-1], dt)
-            self._internal_memory["time_idx"]=np.where(self._internal_memory["simulation_times"]>time_data[0])
-            if len(self._internal_memory["simulation_times"][self._internal_memory["time_idx"]])!=len(time_data):
-                raise ValueError("Length error - len(synthetic time)!=len(time_data)")
+       
 
         if kwargs["dimensional"]==True:
             time_data=self.nondim_t(time_data)
@@ -890,8 +880,8 @@ class SingleExperiment:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
             error=1000
         else:
-            log_Likelihood=pints.GaussianLogLikelihood(problem)
-            error=100
+            log_Likelihood=sci.GaussianTruncatedLogLikelihood(problem)
+            error=500
         boundaries=pints.RectangularBoundaries(
                                                 np.zeros(log_Likelihood.n_parameters()), 
                                                 np.append(
@@ -1015,7 +1005,7 @@ class Options:
             "top_hat_width": {"type": numbers.Number, "default": 0.5},
             "dispersion_test": {"type": bool, "default": False},
             "phase_function":{"args":["constant", "sinusoidal"], "default":"constant"},
-            "transient_removal":{"type":bool, "default":False}
+            "transient_removal":{"type": numbers.Number, "default":0}
         }
         self.other_attributes=["_internal_memory", "_internal_options", "_NDclass", "_essential_parameters", "_optim_list", "boundaries", "fixed_parameters", "optim_list", "_disp_class", "_weights", "_disp_test", "_values"]
         if len(kwargs) == 0:
