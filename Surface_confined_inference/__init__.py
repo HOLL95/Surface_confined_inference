@@ -15,3 +15,4 @@ from ._core._Nondimensionalise import NDParams
 from ._core._Dispersion import Dispersion
 from . import (infer, plot, _utils)
 from ._utils.utilities import experimental_input_params
+from ._Heuristics._HeuristicMethods import HeuristicMethod
