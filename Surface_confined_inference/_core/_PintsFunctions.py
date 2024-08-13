@@ -14,11 +14,13 @@ class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
             "Fourier_harmonics":problem._model._internal_options.Fourier_harmonics,
         }
        
-        if self.problem._model._internal_options.transient_removal!=0:
-            self.time_idx=np.where(self._times>self.problem._model._internal_options.transient_removal)
+        if problem._model._internal_options.transient_removal!=0:
+            self.time_idx=np.where(self._times>problem._model._internal_options.transient_removal)
             self._FTvalues=sci.top_hat_filter(self._times[self.time_idx], self._values[self.time_idx], **self.filter_kwargs)
+            self.truncate=True
         else:
             self._FTvalues=sci.top_hat_filter(self._times, self._values, **self.filter_kwargs)
+            self.truncate=False
         self._nt = len(self._FTvalues)
         self._no = problem.n_outputs()
         # Add parameters to problem
@@ -32,7 +34,7 @@ class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
         sigma = np.asarray(x[-self._no:])
         if any(sigma <= 0):
             return -np.inf
-        if self.problem._model._internal_options.transient_removal!=0:
+        if self.truncate==True:
             sim_vals=sci.top_hat_filter(self._times[self.time_idx], self._problem.evaluate(x[:-self._no])[self.time_idx], **self.filter_kwargs)
         else:
             sim_vals=sci.top_hat_filter(self._times, self._problem.evaluate(x[:-self._no]), **self.filter_kwargs)
@@ -43,11 +45,14 @@ class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
 class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
     
     def __init__(self, problem):
-        super(GaussianLogLikelihood, self).__init__(problem)
+        super().__init__(problem)
 
-        if self.problem._model._internal_options.transient_removal!=0:
-            self.time_idx=np.where(self._times>self.problem._model._internal_options.transient_removal)
+        if problem._model._internal_options.transient_removal!=0:
+            self.time_idx=np.where(self._times>problem._model._internal_options.transient_removal)
             self._values=self._values[self.time_idx]
+            self.truncate=True
+        else:
+            self.truncate=False
         self._nt = self._times[len(self.time_idx)]
         self._no = problem.n_outputs()
 
@@ -61,7 +66,7 @@ class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
         sigma = np.asarray(x[-self._no:])
         if any(sigma <= 0):
             return -np.inf
-         if self.problem._model._internal_options.transient_removal!=0:
+        if self.truncate==True:
             sim_vals=self._problem.evaluate(x[:-self._no])[self.time_idx]
         else:
             sim_vals=self._problem.evaluate(x[:-self._no])
