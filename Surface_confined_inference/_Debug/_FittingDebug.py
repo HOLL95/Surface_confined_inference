@@ -20,8 +20,8 @@ class FittingDebug(sci.LoadSingleExperiment):
             self.potential=potential
         if self.Fourier_fitting==True:
             self.Spectrum=self.top_hat_filter(self.current)
-    def simulate(parameters, times):
-        print(self.change_norm_group(parameters, "un_norm"))
+    def simulate(self,parameters, times):
+        print(self.change_normalisation_group(parameters, "un_norm"))
         timeseries=super().simulate(parameters, times)
         ts_fig, ts_ax=plt.subplots()
         ts_ax.plot(self.time, self.current, label="Data")
@@ -45,7 +45,7 @@ class FittingDebug(sci.LoadSingleExperiment):
                                     hanning=hanning)  
             plt.show()
             return timeseries
-    def run():
+    def run(self):
         self.Current_optimisation(self.time, self.current, dimensional=False, Fourier_filter=self.Fourier_fitting, parallel=False)
     def __setattr__(self, name, value):
         super().__setattr__(name, value, silent_flag=True)

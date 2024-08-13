@@ -152,7 +152,12 @@ class SingleSlurmSetup(sci.SingleExperiment):
               f.write(line)
 
         if kwargs["debug"]==True:
-            debug_class=sci.FittingDebug()
+            datafile=np.loadtxt(fileloc)
+            time=datafile[:,0]
+            current=datafile[:,1]
+            potential=datafile[:,2]
+            debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential)
+            debug_class.run()
         elif kwargs["run"]==True:
             date=datetime.datetime.today().strftime('%Y-%m-%d')
             saveloc="{0}/{2}/PooledResults_{1}".format(os.getcwd(), date, kwargs["results_directory"])
