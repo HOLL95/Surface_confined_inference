@@ -19,7 +19,13 @@ class FittingDebug(sci.LoadSingleExperiment):
             self.current=current
             self.potential=potential
         if self.Fourier_fitting==True:
-            self.Spectrum=self.top_hat_filter(self.current)
+            
+            self.Spectrum=sci.top_hat_filter(self.time, self.current, Fourier_window=self._internal_options.Fourier_window,
+                                                           top_hat_width=self._internal_options.top_hat_width,
+                                                           Fourier_function=self._internal_options.Fourier_function, 
+                                                           Fourier_harmonics=self._internal_options.Fourier_harmonics,
+                                                           )
+
     def simulate(self,parameters, times):
         print(self.change_normalisation_group(parameters, "un_norm"))
         timeseries=super().simulate(parameters, times)
@@ -28,10 +34,14 @@ class FittingDebug(sci.LoadSingleExperiment):
         ts_ax.plot(times, timeseries, alpha=0.5, label="Simulation")
         ts_ax.legend()
         if self.Fourier_fitting==True:
-            sim_spectrum=self.top_hat_filter(timeseries)
+            sim_spectrum=sci.top_hat_filter(times, timeseries, Fourier_window=self._internal_options.Fourier_window,
+                                                           top_hat_width=self._internal_options.top_hat_width,
+                                                           Fourier_function=self._internal_options.Fourier_function, 
+                                                           Fourier_harmonics=self._internal_options.Fourier_harmonics,
+                                                           )
             f_fig, f_ax=plt.subplots()
             f_ax.plot(self.Spectrum, label="Data")
-            f_ax.plot(sim_spetrum, alpha=0.5, label="Simulation")
+            f_ax.plot(sim_spectrum, alpha=0.5, label="Simulation")
             f_ax.legend()
             if self._internal_options.experiment_type=="PSV":
                 hanning=False
@@ -39,13 +49,14 @@ class FittingDebug(sci.LoadSingleExperiment):
             else:
                 hanning=True
                 xaxis="time"
-            sci.plot.plot_harmonics(Data_data={"time":self.time, "current":self.current, "potential":self.potential},
-                                    Sim_data={"time":times, "current":timeseries, "potential":self.potential},
+            sci.plot.plot_harmonics(Data_data={"time":self.time, "current":self.current, "potential":self.potential, "harmonics":self._internal_options.Fourier_harmonics,},
+                                    Sim_data={"time":times, "current":timeseries, "potential":self.potential, "harmonics":self._internal_options.Fourier_harmonics,},
+                                    
                                     xaxis=xaxis, 
                                     hanning=hanning)  
             plt.show()
             return timeseries
-    def run(self):
+    def go(self):
         self.Current_optimisation(self.time, self.current, dimensional=False, Fourier_filter=self.Fourier_fitting, parallel=False)
     def __setattr__(self, name, value):
         super().__setattr__(name, value, silent_flag=True)

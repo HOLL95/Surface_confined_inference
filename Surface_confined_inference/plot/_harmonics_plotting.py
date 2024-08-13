@@ -27,7 +27,8 @@ def generate_harmonics(times, data, **kwargs):
     if "one_sided" not in kwargs:
         kwargs["one_sided"] = True
     if "harmonics" not in kwargs:
-        kwargs["harmonics"] = sci.maximum_availiable_harmonics(times, data)
+        #kwargs["harmonics"] = sci.maximum_availiable_harmonics(times, data)
+         kwargs["harmonics"]=list(range(1, 10))
     num_harmonics = len(kwargs["harmonics"])
     if kwargs["return_amps"] == True:
         amps = np.zeros(num_harmonics)
@@ -230,6 +231,9 @@ def plot_harmonics(**kwargs):
     c_counter=0
     for label in label_list:
         if "colour" not in time_series_dict[label]:
+            if c_counter>=len(colours):
+             c_counter=0
+            print(c_counter)
             time_series_dict[label]["colour"]=colours[c_counter]
             c_counter+=1
         if "lw" not in time_series_dict[label]:

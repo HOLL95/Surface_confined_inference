@@ -870,12 +870,12 @@ class SingleExperiment:
         else:
             if "save_csv" not in kwargs:
                 kwargs["save_csv"]=False
-       
-
         if kwargs["dimensional"]==True:
             time_data=self.nondim_t(time_data)
             current_data=self.nondim_i(current_data)
         problem=pints.SingleOutputProblem(self, time_data, current_data)
+        plt.plot(time_data, current_data)
+        plt.show()
         if kwargs["Fourier_filter"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
             error=1000
