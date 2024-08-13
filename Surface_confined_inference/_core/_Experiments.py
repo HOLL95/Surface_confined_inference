@@ -837,6 +837,8 @@ class SingleExperiment:
         return {"Current_array":currents, "DC_voltage":DC_voltage}
     @sci._utils.temporary_options(normalise_parameters=True)
     def Current_optimisation(self, time_data, current_data,**kwargs):
+        if "paralell" in kwargs:
+            raise KeyError("You've mis-spelled paraLLeL")
         if "tolerance" not in kwargs:
             kwargs["tolerance"]=1e-6
         if "method" not in kwargs:
@@ -868,8 +870,6 @@ class SingleExperiment:
         if kwargs["dimensional"]==True:
             time_data=self.nondim_t(time_data)
             current_data=self.nondim_i(current_data)
-        plt.plot(np.diff(time_data))
-        plt.show()
         problem=pints.SingleOutputProblem(self, time_data, current_data)
         if kwargs["Fourier_filter"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
@@ -945,7 +945,7 @@ class SingleExperiment:
         else:
             return list(sorted_params)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name, value, silent_flag=False):
         """
         Args:
             name (str): The name of the attribute to set.
@@ -965,7 +965,8 @@ class SingleExperiment:
             super().__setattr__(name, value)
         else:
             if name not in Options().other_attributes:
-                print("Warning: {0} is not in the list of accepted options and will not change the behaviour of the simulations".format(name))
+                if silent_flag==False:
+                    print("Warning: {0} is not in the list of accepted options and will not change the behaviour of the simulations".format(name))
             super().__setattr__(name, value)
 
 

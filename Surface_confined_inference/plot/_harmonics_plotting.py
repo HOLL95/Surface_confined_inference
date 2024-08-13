@@ -221,9 +221,9 @@ def plot_harmonics(**kwargs):
             label_list.append(key[:index])
             time_series_dict[key[:index]] = kwargs[key]
             label_counter += 1
-
+    
     if label_counter == 0:
-        Exception("No _data arguments passed to function")
+        raise Exception("No _data arguments passed to function")
     max_harm = 0
     all_harmonics = []
     colours=plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -255,7 +255,7 @@ def plot_harmonics(**kwargs):
         else:
             calculated_harmonics=False
         max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
-      
+        
         harm_dict[label] = sci.plot.generate_harmonics(
             time_series_dict[label]["time"],
             time_series_dict[label]["current"],

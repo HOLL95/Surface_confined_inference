@@ -2,6 +2,7 @@ from ._core._Experiments import SingleExperiment
 from ._core._LoadExperiment import LoadSingleExperiment, ChangeTechnique
 from ._core._PintsFunctions import FourierGaussianLogLikelihood
 from ._core._Processing import top_hat_filter
+from ._Debug._FittingDebug import FittingDebug
 from ._HPCInterface._Slurm import SingleSlurmSetup
 from ._core._InputChecking import (
     check_input_dict,
