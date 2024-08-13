@@ -966,6 +966,8 @@ class SingleExperiment:
         if name in ["OptionsDecorator"]:
             super().__setattr__(name, value)
         elif name in Options().accepted_arguments:
+            if name=="transient_removal":
+                value=self.nondim_t(value)
             setattr(self._internal_options, name, value)
             super().__setattr__(name, value)
         else:
