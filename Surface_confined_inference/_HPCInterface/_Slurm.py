@@ -13,7 +13,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
         if "datafile" not in kwargs:
             raise ValueError("Need to provide path to datafile")
         else:
-            os.path.isfile(kwargs["datafile"])
+            if os.path.isfile(kwargs["datafile"]) is False:
+                raise ValueError(kwargs["datafile"]+" not found")
             fileloc=os.path.abspath(kwargs["datafile"])
         path_to_submitter=(sci.__file__).split("/")[:-1]
 
@@ -125,7 +126,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
                 checkfile_types=["--checkfile_types"]
                 json_addresses=["--check_parameters"]
                 for key in check_keys:
-                    os.path.isfile(kwargs["check_experiments"][key]["file"])
+                    if os.path.isfile(kwargs["check_experiments"][key]["file"]) is False:
+                        raise ValueError(kwargs["check_experiments"][key]["file"]+" not found")
                     checkfiles.append(kwargs["check_experiments"][key]["file"])
                     checkfile_types.append(key)
                     if "parameters" in kwargs["check_experiments"][key]:
@@ -147,8 +149,9 @@ class SingleSlurmSetup(sci.SingleExperiment):
              for line in readfile:
               f.write(line)
 
-
-        if kwargs["run"]==True:
+        if kwargs["debug"]==True:
+            debug_class=sci.FittingDebug()
+        elif kwargs["run"]==True:
             date=datetime.datetime.today().strftime('%Y-%m-%d')
             saveloc="{0}/{2}/PooledResults_{1}".format(os.getcwd(), date, kwargs["results_directory"])
             print("")
