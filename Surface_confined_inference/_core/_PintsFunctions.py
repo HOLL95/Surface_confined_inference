@@ -70,6 +70,8 @@ class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
             sim_vals=self._problem.evaluate(x[:-self._no])[self.time_idx]
         else:
             sim_vals=self._problem.evaluate(x[:-self._no])
+        plt.plot(self._times[self.time_idx], self._values)
+        plt.plot(self._times[self.time_idx], sim_vals)
         error = self._values -sim_vals
         return np.sum(- self._logn - self._nt * np.log(sigma)
                       - np.sum(error**2, axis=0) / (2 * sigma**2))
