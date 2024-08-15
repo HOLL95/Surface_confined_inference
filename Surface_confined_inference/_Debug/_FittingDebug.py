@@ -27,7 +27,7 @@ class FittingDebug(sci.LoadSingleExperiment):
                                                            )
 
     def simulate(self,parameters, times):
-        print(self.change_normalisation_group(parameters, "un_norm"))
+        print(dict(zip(self._optim_list, self.change_normalisation_group(parameters, "un_norm"))))
         timeseries=super().simulate(parameters, times)
         ts_fig, ts_ax=plt.subplots()
         ts_ax.plot(self.time, self.current, label="Data")
@@ -54,8 +54,8 @@ class FittingDebug(sci.LoadSingleExperiment):
                                     
                                     xaxis=xaxis, 
                                     hanning=hanning)  
-            plt.show()
-            return timeseries
+        plt.show()
+        return timeseries
     def go(self):
         self.Current_optimisation(self.time, self.current, dimensional=False, Fourier_filter=self.Fourier_fitting, parallel=False)
     def __setattr__(self, name, value):

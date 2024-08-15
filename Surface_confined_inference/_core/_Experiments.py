@@ -809,7 +809,6 @@ class SingleExperiment:
             current = np.array(solver(times, nd_dict))[0, :]
 
         
-    
 
         return current
     

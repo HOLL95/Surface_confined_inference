@@ -27,8 +27,8 @@ def generate_harmonics(times, data, **kwargs):
     if "one_sided" not in kwargs:
         kwargs["one_sided"] = True
     if "harmonics" not in kwargs:
-        #kwargs["harmonics"] = sci.maximum_availiable_harmonics(times, data)
-         kwargs["harmonics"]=list(range(1, 10))
+        kwargs["harmonics"] = sci.maximum_availiable_harmonics(times, data)
+        #kwargs["harmonics"]=list(range(1, 10))
     num_harmonics = len(kwargs["harmonics"])
     if kwargs["return_amps"] == True:
         amps = np.zeros(num_harmonics)

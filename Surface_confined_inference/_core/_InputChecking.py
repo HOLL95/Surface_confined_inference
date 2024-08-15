@@ -65,8 +65,8 @@ def maximum_availiable_harmonics(times, current):
     while in_noise == False:
         index = max_found * input_freq
         noise_idx= np.where(
-                    (frequencies > (index - 0.5 * input_freq))
-                    & (frequencies < (index - 0.4 * input_freq))
+                    (frequencies > (index + 0.4 * input_freq))
+                    & (frequencies < (index + 0.5 * input_freq))
                 )
         peak_idx=np.where(
                     (frequencies > (index - 0.2 * input_freq))
@@ -79,8 +79,8 @@ def maximum_availiable_harmonics(times, current):
         
         #ax.semilogy(frequencies[noise_idx], fft[noise_idx])
         #ax.semilogy(frequencies[peak_idx], fft[peak_idx], label=max_found)
-        
-        if peak_level > (2.5 * noise_level):
+        print(noise_level, peak_level, peak_level/noise_level)
+        if peak_level > (1.5 * noise_level):
             max_found += 1
         else:
             in_noise = True

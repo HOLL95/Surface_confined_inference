@@ -152,6 +152,7 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
                 f.write("{1} Run {0} failed\n".format(i+1, experiment_type))
 
             continue
+    
     if pooled_figure==True:
         pool_ax.legend()
         adjust_and_save(pool_fig, directory, "Pooled current.png")
