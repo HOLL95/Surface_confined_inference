@@ -727,13 +727,17 @@ class SingleExperiment:
    
     @sci._utils.temporary_options()
     def FTsimulate(self,parameters, times, **kwargs):
+        
+        self.optim_list=self._optim_list
+        current=self.simulate(parameters, times)
+        return self.experiment_top_hat(times, current, **kwargs)
+    def experiment_top_hat(self, times, current, **kwargs):
         Fourier_options=["Fourier_window", "Fourier_function", "top_hat_width", "Fourier_harmonics"]
         for key in Fourier_options:
             if key not in kwargs:
                 kwargs[key]=getattr(self, key)
-        self.optim_list=self._optim_list
-        current=self.simulate(parameters, times)
         return sci.top_hat_filter(times, current, **kwargs)
+
     @sci._utils.temporary_options(normalise_parameters=False)
     def Dimensionalsimulate(self, parameters, times):
         self.optim_list=self._optim_list
