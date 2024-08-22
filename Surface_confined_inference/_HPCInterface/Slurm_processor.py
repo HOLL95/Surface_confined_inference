@@ -13,6 +13,7 @@ parser.add_argument("resultsLoc", help="path to results files", type=str)
 parser.add_argument("--checkfiles", help="path to files to check against inference results", default=["none"], nargs="+")
 parser.add_argument("--checkfile_types", help="types of experiment_files", default=["none"],  nargs="+")
 parser.add_argument("--check_parameters", help="types of experiment_files", default=["none"],  nargs="+")
+parser.add_argument("--save_csv", help="whether to save csv files or not", default=False,  type=bool)
 
 args = parser.parse_args()
 datafile=np.loadtxt(args.datafile)
@@ -56,7 +57,8 @@ sci.plot.save_results(time,
                     fixed_parameters=simulator.fixed_parameters,
                     score=sorted_params[:,-1],
                     parameters=sorted_params,
-                    DC_voltage=DC_voltage
+                    DC_voltage=DC_voltage,
+                    save_csv=args.save_csv
                     )
 
 if "none" not in args.checkfiles:
@@ -87,7 +89,7 @@ if "none" not in args.checkfiles:
                     checkloc, 
                     new_technique._internal_options.experiment_type, 
                     new_technique._internal_memory["boundaries"],
-                    save_csv=True,
+                    save_csv=args.save_csv,
                     optim_list=new_technique._optim_list, 
                     fixed_parameters=new_technique.fixed_parameters,
                     score=sorted_params[:,-1],

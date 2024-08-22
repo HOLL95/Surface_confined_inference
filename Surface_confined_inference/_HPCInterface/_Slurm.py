@@ -41,6 +41,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
             kwargs["check_experiments"]={}
         if "results_directory" not in kwargs:
             kwargs["results_directory"]="Results"
+        if "save_csv" not in kwargs:
+            kwargs["save_csv"]=False
         Path("Submission").mkdir(parents=True, exist_ok=True)
         Path("{0}/Individual_runs".format(kwargs["results_directory"])).mkdir(parents=True, exist_ok=True)
         cwd=os.getcwd()
@@ -139,7 +141,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
                         json_addresses.append(check_json_path)
                     else:
                          json_addresses.append("none")
-                python_command+=[" ".join(checkfiles)]+[" ".join(checkfile_types)]+[" ".join(json_addresses)]
+                python_command+=[" ".join(checkfiles)]+[" ".join(checkfile_types)]+[" ".join(json_addresses)]+[" --save_csv {0}".format(kwargs["save_csv"])]
             f.write(" ".join(python_command))
         controller_file=identifier+"_Controller.sh"
         with open("Submission/"+controller_file, "w") as f:

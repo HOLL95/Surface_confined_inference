@@ -881,10 +881,10 @@ class SingleExperiment:
         plt.show()
         if kwargs["Fourier_filter"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
-            error=1000
+            error=5000
         else:
             log_Likelihood=sci.GaussianTruncatedLogLikelihood(problem)
-            error=500
+            error=1000
         boundaries=pints.RectangularBoundaries(
                                                 np.zeros(log_Likelihood.n_parameters()), 
                                                 np.append(
@@ -921,13 +921,13 @@ class SingleExperiment:
             scores[i]=fbest
             dim_params=list(self.change_normalisation_group(xbest[:-log_Likelihood._no], "un_norm"))
             parameters[i,:-log_Likelihood._no]=dim_params
-            parameters[i, -log_Likelihood._no:]=xbest[-log_Likelihood._no:]
+            parameters[i, -log_Likelihood._no:]=fbest#xbest[-log_Likelihood._no:]
             if kwargs["save_to_directory"] is not False:
                 if i==0:
                     save_times=self.dim_t(time_data)
                     Path(kwargs["save_to_directory"]).mkdir(parents=True, exist_ok=True)
                     voltage=self.get_voltage(save_times, dimensional=True)
-        sorted_idx=np.argsort(parameters[:,-1])
+        sorted_idx=np.flip(np.argsort(parameters[:,-1]))
         sorted_params=[list(parameters[x,:]) for x in sorted_idx]
         if kwargs["save_to_directory"] is not False:
             parameters=np.array(sorted_params)
@@ -942,7 +942,7 @@ class SingleExperiment:
                                     save_csv=kwargs["save_csv"],
                                     optim_list=self._optim_list, 
                                     fixed_parameters=self.fixed_parameters,
-                                    score=sorted(parameters[:,-1]),
+                                    score=parameters[:,-1],
                                     parameters=parameters,
                                     DC_voltage=sim_dict["DC_voltage"]
                                     )
