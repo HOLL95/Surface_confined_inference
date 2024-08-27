@@ -16,6 +16,7 @@ parser.add_argument("--check_parameters", help="types of experiment_files", defa
 parser.add_argument("--save_csv", help="whether to save csv files or not", default=False,  type=bool)
 
 args = parser.parse_args()
+print(args.save_csv)
 datafile=np.loadtxt(args.datafile)
 if len(args.checkfiles)!=len(args.checkfile_types):
     raise ValueError("Misconfigured checkfiles - {0} and {1}".format(args.checkfiles, args.checkfile_types))
@@ -52,7 +53,7 @@ sci.plot.save_results(time,
                     savepath, 
                     simulator._internal_options.experiment_type, 
                     simulator._internal_memory["boundaries"],
-                    save_csv=True,
+                    
                     optim_list=simulator._optim_list, 
                     fixed_parameters=simulator.fixed_parameters,
                     score=sorted_params[:,-1],
