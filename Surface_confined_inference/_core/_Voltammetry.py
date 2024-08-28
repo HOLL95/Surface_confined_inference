@@ -612,25 +612,7 @@ class SingleExperiment:
         normal_weights = np.multiply(1 / math.sqrt(math.pi), weights)
         return dict(zip(labels, [nodes, weights, normal_weights]))
 
-    def normalise(self, norm, boundaries):
-        """
-        Args:
-            norm (number): value to be normalised
-            boundaries (list): upper and lower bounds, in the format [lower, upper]
-        Returns:
-            number: Value normalised to value between 0 and 1 relative to the provided boundaries
-        """
-        return (norm - boundaries[0]) / (boundaries[1] - boundaries[0])
-
-    def un_normalise(self, norm, boundaries):
-        """
-        Args:
-            norm (number): value to be un-normalised
-            boundaries (list): upper and lower bounds, in the format [lower, upper] used in the original normalisation
-        Returns:
-            number: Normalised value is returned to its original value, given the same boundaries used in the initial normalisation
-        """
-        return (norm * (boundaries[1] - boundaries[0])) + boundaries[0]
+    
 
     def change_normalisation_group(self, parameters, method):
         """
@@ -645,7 +627,7 @@ class SingleExperiment:
         normed_params = copy.deepcopy(parameters)
         if method == "un_norm":
             for i in range(0, len(parameters)):
-                normed_params[i] = self.un_normalise(
+                normed_params[i] = sci.un_normalise(
                     normed_params[i],
                     [
                         self._internal_memory["boundaries"][self._optim_list[i]][0],
@@ -654,7 +636,7 @@ class SingleExperiment:
                 )
         elif method == "norm":
             for i in range(0, len(parameters)):
-                normed_params[i] = self.normalise(
+                normed_params[i] = sci.normalise(
                     normed_params[i],
                     [
                         self._internal_memory["boundaries"][self._optim_list[i]][0],

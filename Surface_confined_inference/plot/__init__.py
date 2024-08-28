@@ -6,3 +6,4 @@ from ._harmonics_plotting import (
 )
 from ._save_results import save_results
 from ._multiplotter import multiplot
+from ._EIS_plotting import nyquist, bode

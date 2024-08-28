@@ -44,7 +44,7 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         return_dict={}
         for i in range(0, len(names)):
             name=names[i]
-            return_dict[name]=self.normalise(params[i], self._internal_memory["param_boundaries"][name])
+            return_dict[name]=sci.normalise(params[i], self._internal_memory["param_boundaries"][name])
         return return_dict
     def dummy_un_normalise(self, params):
         
@@ -306,3 +306,63 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
             
             return estimated_parameters, table_inferred, estimated_simulated,inferred_simulated
        
+def EIS_solution_resistance(frequencies, spectra, **kwargs):
+    if "Cdl" not in kwargs:
+        kwargs["Cdl"]="Cdl"
+    if "Cf" not in kwargs:
+        kwargs["Cf"]="Cf"
+    if "MCMC" not in kwargs:
+        kwargs["MCMC"]=False
+    if "runs" not in kwargs:
+        kwargs["runs"]=2
+    if "plot_results" not in kwargs:
+        kwargs["plot_results"]=False
+    if "dimensional_freq" not in kwargs:
+        kwargs["dimensional_freq"]=True
+    if "mode" not in kwargs:
+        kwargs["mode"]="nyquist"
+    if kwargs["mode"]=="nyquist":
+        spectra=sci.convert_to_bode(spectra)
+    boundaries={
+        "Rsol":[0.1, 1e4],
+        "Rf":[1e-6, 1e10],
+        "Cdl":[0, 50],
+        "Cf":[0, 50],
+        "Qdl":[0,50],
+        "Qf":[0,50],
+        "alphaf":[0,1],
+        "alphadl":[0,1]
+    }
+    if kwargs["dimensional_freq"]==True:
+        freqs=np.multiply(frequencies, 2*np.pi)
+    else:
+        freqs=frequencies
+    simulator=sci.SimpleSurfaceCircuit(Cdl=kwargs["Cdl"], Cf=kwargs["Cf"], normalise=True, boundaries=boundaries)
+
+    problem = pints.MultiOutputProblem(simulator, freqs, spectra)
+    error = pints.SumOfSquaresError(problem)
+    cmaes_boundaries=pints.RectangularBoundaries(np.zeros(simulator.n_parameters()), 
+                                                np.ones(simulator.n_parameters()))
+   
+    x0=np.random.rand(simulator.n_parameters())
+    opt= pints.OptimisationController(
+                error,
+                x0,
+                boundaries=cmaes_boundaries,
+                method=pints.CMAES,
+                )
+    
+    found_parameters, found_value =opt.run()
+    if kwargs["plot_results"]==True:
+        fig, ax=plt.subplots()
+        twinx=ax.twinx()
+        
+        sci.plot.bode(spectra, frequencies,ax=ax, twinx=twinx, data_type="phase_mag")
+       
+        vals=simulator.simulate(found_parameters, freqs, test=True)
+        
+        sci.plot.bode(vals, frequencies,ax=ax, twinx=twinx, data_type="phase_mag")
+        
+        plt.show()
+        
+    return sci.un_normalise(found_parameters[0], boundaries["Rsol"])

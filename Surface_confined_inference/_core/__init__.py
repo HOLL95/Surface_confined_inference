@@ -1,1 +1,1 @@
-from ._Experiments import OptionsDecorator
+from ._Voltammetry import OptionsDecorator

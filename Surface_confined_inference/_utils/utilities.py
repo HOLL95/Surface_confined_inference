@@ -43,3 +43,23 @@ def temporary_options(**func_kwargs):
             return return_arg
         return wrapper_temporary_options
     return decorator
+
+def normalise(norm, boundaries):
+    """
+    Args:
+        norm (number): value to be normalised
+        boundaries (list): upper and lower bounds, in the format [lower, upper]
+    Returns:
+        number: Value normalised to value between 0 and 1 relative to the provided boundaries
+    """
+    return (norm - boundaries[0]) / (boundaries[1] - boundaries[0])
+
+def un_normalise(norm, boundaries):
+    """
+    Args:
+        norm (number): value to be un-normalised
+        boundaries (list): upper and lower bounds, in the format [lower, upper] used in the original normalisation
+    Returns:
+        number: Normalised value is returned to its original value, given the same boundaries used in the initial normalisation
+    """
+    return (norm * (boundaries[1] - boundaries[0])) + boundaries[0]
