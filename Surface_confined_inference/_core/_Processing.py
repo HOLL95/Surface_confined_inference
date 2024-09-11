@@ -1,7 +1,7 @@
 import numpy as np
 import Surface_confined_inference as sci
 import copy
-
+import matplotlib.pyplot as plt
 def top_hat_filter(times, time_series, **kwargs):
     """
     Args:
@@ -51,14 +51,22 @@ def top_hat_filter(times, time_series, **kwargs):
             filter_bit = top_hat[index]
             results[index] = filter_bit
     else:
-        first_harm = (harmonic_range[0] * true_harm) - (true_harm * filter_val)
-        last_harm = (harmonic_range[-1] * true_harm) + (true_harm * filter_val)
-        freq_idx_1 = tuple(
-            np.where((frequencies > first_harm) & (frequencies < last_harm))
-        )
-        likelihood_1 = top_hat[freq_idx_1]
         results = np.zeros(len(top_hat), dtype=complex)
-        results[freq_idx_1] = likelihood_1
+        if kwargs["Fourier_function"]=="inverse":
+            indexes=[-1,1]
+        else:
+            indexes=[1]
+        for j in indexes:
+            spectrum_range=[(harmonic_range[0] * true_harm*j) - (j*true_harm * filter_val),
+                            (harmonic_range[-1] * true_harm*j) + (j*true_harm * filter_val)]
+
+            freq_idx_1 = tuple(
+                np.where((frequencies > min(spectrum_range)) & (frequencies < max(spectrum_range)))
+            )
+            likelihood_1 = top_hat[freq_idx_1]
+            
+            results[freq_idx_1] = likelihood_1
+       
     if kwargs["Fourier_function"]== "abs":
         return abs(results)
     elif kwargs["Fourier_function"]== "imag":
@@ -69,4 +77,4 @@ def top_hat_filter(times, time_series, **kwargs):
         comp_results = np.append(np.real(results), np.imag(results))
         return comp_results
     elif kwargs["Fourier_function"]== "inverse":
-        return np.fft.ifft(results)
+        return np.real(np.fft.ifft(results))

@@ -84,10 +84,6 @@ class SingleExperiment:
         kwargs["experiment_type"] = experiment_type
         
         self._internal_options = OptionsDecorator(**kwargs)
-        [
-            setattr(self, key, getattr(self._internal_options, key))
-            for key in Options().accepted_arguments
-        ]
         if all(param in experiment_parameters for param in ["phase_phase", "phase_delta_E", "phase_omega"]):
            self._internal_options.phase_function="sinusoidal" 
         if self._internal_options.phase_function=="sinusoidal":
@@ -102,6 +98,11 @@ class SingleExperiment:
         self._NDclass = sci.NDParams(
             self._internal_options.experiment_type, experiment_parameters
         )
+        self._internal_options = OptionsDecorator(**kwargs)
+        [
+            setattr(self, key, getattr(self._internal_options, key))
+            for key in Options().accepted_arguments
+        ]
         self._essential_parameters = [
             "E0",
             "k0",
