@@ -52,7 +52,7 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         return_dict={}
         for i in range(0, len(names)):
             name=names[i]
-            return_dict[name]=self.un_normalise(params[i], self._internal_memory["param_boundaries"][name])
+            return_dict[name]=sci.un_normalise(params[i], self._internal_memory["param_boundaries"][name])
         return return_dict
     def simulate(self,parameters, times):
         param_dict=self.dummy_un_normalise(parameters)

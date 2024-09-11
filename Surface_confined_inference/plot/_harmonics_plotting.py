@@ -212,6 +212,10 @@ def plot_harmonics(**kwargs):
         kwargs["remove_xaxis"]=False
     if "ylabelpad" not in kwargs:
         kwargs["ylabelpad"]=4
+    if "title" not in kwargs:
+        kwargs["title"]=None
+    if "nyticks" not in kwargs:
+        kwargs["nyticks"]=None
 
     label_counter = 0
     for key in kwargs:
@@ -240,6 +244,8 @@ def plot_harmonics(**kwargs):
             time_series_dict[label]["lw"]=1
         if "alpha" not in time_series_dict[label]:
             time_series_dict[label]["alpha"]=1
+        if "linestyle" not in time_series_dict[label]:
+            time_series_dict[label]["linestyle"]="-"
         if kwargs["xaxis"] == "DC_potential":
             time_series_dict[label]["xaxis"] =sci.get_DC_component(time_series_dict[label]["time"],time_series_dict[label]["potential"], time_series_dict[label]["current"])
         else:
@@ -250,7 +256,7 @@ def plot_harmonics(**kwargs):
                 time_series_dict[label]["time"], time_series_dict[label]["current"]
             )
             #plt.plot(time_series_dict[label]["time"],time_series_dict[label]["potential"])
-            print(label, time_series_dict[label]["harmonics"])
+           
             calculated_harmonics=True
             #plt.show()
         else:
@@ -304,7 +310,8 @@ def plot_harmonics(**kwargs):
         
 
         harmonics = time_series_dict[plot_name]["harmonics"]
-
+        if kwargs["title"] is not None:
+            kwargs["axes_list"][0].set_title(kwargs["title"])
         for i in range(0, len(harmonics)):
             ax = kwargs["axes_list"][i]
             xaxis = time_series_dict[plot_name]["xaxis"]
@@ -324,6 +331,7 @@ def plot_harmonics(**kwargs):
                     alpha=time_series_dict[plot_name]["alpha"],
                     color=time_series_dict[plot_name]["colour"],
                     lw=time_series_dict[plot_name]["lw"],
+                    linestyle=time_series_dict[plot_name]["linestyle"]
                 )
             else:
                 
@@ -334,7 +342,11 @@ def plot_harmonics(**kwargs):
                     color=time_series_dict[plot_name]["colour"],
                     lw=time_series_dict[plot_name]["lw"],
                 )
-
+            if kwargs["nyticks"] is not None:
+                if plot_name==label_list[-1]:
+                    print("setting", kwargs["nyticks"])
+                    ax.yaxis.set_major_locator(plt.MaxNLocator(kwargs["nyticks"]))
+                
             if i == ((num_harmonics) // 2):
                 ax.set_ylabel(kwargs["ylabel"], labelpad=kwargs["ylabelpad"])
             if i == num_harmonics - 1:

@@ -52,10 +52,10 @@ static int check_retval(void* returnvalue, const char* funcname, int opt);
 
 py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string, double> params){
     #define NEQ   2               /* number of equations  */
-    #define RTOL  SUN_RCONST(1.0e-5) /* scalar relative tolerance            */
+    #define RTOL  SUN_RCONST(1.0e-6) /* scalar relative tolerance            */
     #define ATOL1 SUN_RCONST(1.0e-6) /* vector absolute tolerance components */
     #define ATOL2 SUN_RCONST(1.0e-6)
-    #define ATOL3 SUN_RCONST(1.0e-5)
+    #define ATOL3 SUN_RCONST(1.0e-6)
     #define ZERO SUN_RCONST(0.0)
 
     SUNContext sunctx;

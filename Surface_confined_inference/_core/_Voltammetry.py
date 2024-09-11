@@ -419,7 +419,8 @@ class SingleExperiment:
             self._internal_options.phase_only = True
         else:
             self._internal_options.phase_only = False
-        print(self._internal_options.phase_only, self._internal_memory["fixed_parameters"])
+        if "simulation_dict" in self._internal_memory:
+            del self._internal_memory["simulation_dict"]
         self.simulation_dict_construction(parameters)
         self._optim_list = parameters
         """if self.simulation_options["method"]=="square_wave":
@@ -692,6 +693,7 @@ class SingleExperiment:
         nd_dict = {}
         for key in self._optim_list:
             self._internal_memory["simulation_dict"][key] = sim_params[key]
+        
         for key in self._internal_memory["simulation_dict"].keys():
             nd_dict[key] = self._NDclass.function_dict[key](
                 self._internal_memory["simulation_dict"][key]

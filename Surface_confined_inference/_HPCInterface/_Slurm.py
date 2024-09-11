@@ -44,7 +44,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
         if "save_csv" not in kwargs:
             kwargs["save_csv"]=False
         Path("Submission").mkdir(parents=True, exist_ok=True)
-        Path("{0}/Individual_runs".format(kwargs["results_directory"])).mkdir(parents=True, exist_ok=True)
+        Path("{0}/Individual_runs".format(kwargs["results_directory"])).mkdir(parents=True, exist_ok=False)
         cwd=os.getcwd()
         loc=cwd+"/Submission"
         num_cpu=4 + int(3 * np.log(self.n_parameters()+self.n_outputs()))            
