@@ -63,3 +63,12 @@ def un_normalise(norm, boundaries):
         number: Normalised value is returned to its original value, given the same boundaries used in the initial normalisation
     """
     return (norm * (boundaries[1] - boundaries[0])) + boundaries[0]
+def read_param_table(loc):
+    return_arg=[]
+    with open(loc, "r")as f:
+        lines=f.readlines()
+        for line in lines[1:]:
+            linelist=re.split(r",\s+", line)
+            numeric_line=[float(x) for x in linelist[1:-1]]
+            return_arg.append(numeric_line)
+    return return_arg

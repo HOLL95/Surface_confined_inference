@@ -1,4 +1,4 @@
-from .utilities import add_noise, RMSE, temporary_options
+from .utilities import add_noise, RMSE, temporary_options, read_param_table
 from .formatting import (
         fancy_names,
         unit_dict,
