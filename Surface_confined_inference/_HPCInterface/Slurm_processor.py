@@ -4,7 +4,7 @@ from pathlib import Path
 import argparse
 import copy
 import datetime
-
+import matplotlib.pyplot as plt
 parser=argparse.ArgumentParser("Slurm processor")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
@@ -63,10 +63,12 @@ sim_dict=simulator.parameter_array_simulate(sorted_params, time)
 sim_currents=sim_dict["Current_array"]
 DC_voltage=sim_dict["DC_voltage"]
 if simulator._internal_options.transient_removal!=0:
+ time=subtime
  sim_voltage=np.array(sim_voltage)[time_idx]
  sim_currents=np.array([x[time_idx] for x in sim_dict["Current_array"]])
  if DC_voltage is not None:
   DC_voltage=DC_voltage[time_idx]
+
 sci.plot.save_results(time, 
                     sim_voltage, 
                     current, 

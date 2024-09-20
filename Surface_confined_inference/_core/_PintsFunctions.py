@@ -16,6 +16,7 @@ class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
        
         if problem._model._internal_options.transient_removal!=0:
             self.time_idx=np.where(self._times>problem._model._internal_options.transient_removal)
+            print(self.time_idx, self._times[-1], problem._model._internal_options.transient_removal)
             self._FTvalues=sci.top_hat_filter(self._times[self.time_idx], self._values[self.time_idx], **self.filter_kwargs)
             self.truncate=True
         else:

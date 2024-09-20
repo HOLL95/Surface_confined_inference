@@ -827,7 +827,9 @@ class SingleExperiment:
             DC_voltage=None
         return {"Current_array":currents, "DC_voltage":DC_voltage}
     @sci._utils.temporary_options(normalise_parameters=True)
+
     def Current_optimisation(self, time_data, current_data,**kwargs):
+
         if "paralell" in kwargs:
             raise KeyError("You've mis-spelled paraLLeL")
         if "tolerance" not in kwargs:
@@ -862,8 +864,6 @@ class SingleExperiment:
             time_data=self.nondim_t(time_data)
             current_data=self.nondim_i(current_data)
         problem=pints.SingleOutputProblem(self, time_data, current_data)
-        plt.plot(time_data, current_data)
-        plt.show()
         if kwargs["Fourier_filter"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
             error=5000
@@ -954,9 +954,6 @@ class SingleExperiment:
         if name in ["OptionsDecorator"]:
             super().__setattr__(name, value)
         elif name in Options().accepted_arguments:
-            if name=="transient_removal":
-                if value!=0:
-                    value=self.nondim_t(value)
             setattr(self._internal_options, name, value)
             super().__setattr__(name, value)
         else:

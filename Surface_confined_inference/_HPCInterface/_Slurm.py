@@ -154,11 +154,14 @@ class SingleSlurmSetup(sci.SingleExperiment):
               f.write(line)
 
         if kwargs["debug"]==True:
+
             datafile=np.loadtxt(fileloc)
             time=datafile[:,0]
             current=datafile[:,1]
             potential=datafile[:,2]
             debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential, dimensional=True, Fourier_fitting=self._internal_options.Fourier_fitting)
+            print(debug_class._internal_options.transient_removal, "slurm")
+
             debug_class.go()
         elif kwargs["run"]==True:
             date=datetime.datetime.today().strftime('%Y-%m-%d')
