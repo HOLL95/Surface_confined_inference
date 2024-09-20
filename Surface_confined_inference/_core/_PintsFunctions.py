@@ -51,10 +51,12 @@ class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
         if problem._model._internal_options.transient_removal!=0:
             self.time_idx=np.where(self._times>problem._model._internal_options.transient_removal)
             self._values=self._values[self.time_idx]
+            self._nt = len(self._times[self.time_idx])
             self.truncate=True
         else:
             self.truncate=False
-        self._nt = self._times[len(self.time_idx)]
+            self._nt=len(self._times)
+        
         self._no = problem.n_outputs()
 
         # Add parameters to problem
@@ -71,8 +73,6 @@ class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
             sim_vals=self._problem.evaluate(x[:-self._no])[self.time_idx]
         else:
             sim_vals=self._problem.evaluate(x[:-self._no])
-        plt.plot(self._times[self.time_idx], self._values)
-        plt.plot(self._times[self.time_idx], sim_vals)
         error = self._values -sim_vals
         return np.sum(- self._logn - self._nt * np.log(sigma)
                       - np.sum(error**2, axis=0) / (2 * sigma**2))
