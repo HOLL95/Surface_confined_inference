@@ -6,6 +6,8 @@ from pathlib import Path
 
 from setuptools import Extension, setup, find_packages
 from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install
+from setuptools.command.develop import develop
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
 PLAT_TO_CMAKE = {
@@ -126,6 +128,8 @@ class CMakeBuild(build_ext):
 
 package_dir = os.path.join(os.path.dirname(__file__))
 
+
+
 # The information here can also be placed in setup.cfg - better separation of
 # logic and declaration, and simpler if you include description/version in a file.
 setup(
@@ -138,6 +142,6 @@ setup(
     ),
     package_dir={"": package_dir},
     zip_safe=False,
-    install_requires=["numpy","scipy", "matplotlib", "pandas", "PyQt5", "pytest", "pytest-cov", "pints","tabulate"],
+    install_requires=["numpy","scipy", "matplotlib", "pandas", "PyQt5", "pytest", "pytest-cov","tabulate",    "pints @ git+https://github.com/pints-team/pints"],
     python_requires=">=3.7",
 )

@@ -696,11 +696,12 @@ class SingleExperiment:
         nd_dict = {}
         for key in self._optim_list:
             self._internal_memory["simulation_dict"][key] = sim_params[key]
-        
+
         for key in self._internal_memory["simulation_dict"].keys():
             nd_dict[key] = self._NDclass.function_dict[key](
                 self._internal_memory["simulation_dict"][key]
             )
+        
         if self._internal_options.phase_only == True:
             self._internal_memory["simulation_dict"]["cap_phase"] = (
                 self._internal_memory["simulation_dict"]["phase"]
