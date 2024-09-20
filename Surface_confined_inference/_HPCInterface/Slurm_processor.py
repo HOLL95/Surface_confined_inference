@@ -66,10 +66,10 @@ if args.method=="optimisation":
     sim_currents=sim_dict["Current_array"]
     DC_voltage=sim_dict["DC_voltage"]
     if simulator._internal_options.transient_removal!=0:
-    sim_voltage=np.array(sim_voltage)[time_idx]
-    sim_currents=np.array([x[time_idx] for x in sim_dict["Current_array"]])
+        sim_voltage=np.array(sim_voltage)[time_idx]
+        sim_currents=np.array([x[time_idx] for x in sim_dict["Current_array"]])
     if DC_voltage is not None:
-    DC_voltage=DC_voltage[time_idx]
+        DC_voltage=DC_voltage[time_idx]
     sci.plot.save_results(time, 
                         sim_voltage, 
                         current, 
@@ -123,77 +123,4 @@ if args.method=="optimisation":
                         )
             
 else:
-<<<<<<< HEAD
- subtime=time
-sim_voltage=simulator.get_voltage(time, dimensional=True)
-date=datetime.datetime.today().strftime('%Y-%m-%d')
-savepath=loc.split("/")
-savepath="/".join(savepath[:-1])+"/PooledResults_{0}".format(date)
-Path(savepath).mkdir(parents=True, exist_ok=True)
-
-
-sim_dict=simulator.parameter_array_simulate(sorted_params, time)
-sim_currents=sim_dict["Current_array"]
-DC_voltage=sim_dict["DC_voltage"]
-if simulator._internal_options.transient_removal!=0:
- time=subtime
- sim_voltage=np.array(sim_voltage)[time_idx]
- sim_currents=np.array([x[time_idx] for x in sim_dict["Current_array"]])
- if DC_voltage is not None:
-  DC_voltage=DC_voltage[time_idx]
-
-sci.plot.save_results(time, 
-                    sim_voltage, 
-                    current, 
-                    sim_currents, 
-                    savepath, 
-                    simulator._internal_options.experiment_type, 
-                    simulator._internal_memory["boundaries"],                    
-                    optim_list=simulator._optim_list, 
-                    fixed_parameters=simulator.fixed_parameters,
-                    score=sorted_params[:,-1],
-                    parameters=sorted_params,
-                    DC_voltage=DC_voltage,
-                    save_csv=args.save_csv
-                    )
-
-if "none" not in args.checkfiles:
-    check_jsons=args.check_parameters
-    for i in range(0, len(args.checkfiles)):
-        checkloc=savepath+"/"+args.checkfile_types[i]+"_check"
-        if check_jsons[i]=="none":
-            new_technique=sci.CheckOtherExperiment(args.checkfile_types[i], 
-                                    args.simulator, 
-                                    datafile=args.checkfiles[i]
-                                    )
-            n_time=new_technique.time
-            n_current=new_technique.current
-        else:
-            new_technique=sci.LoadSingleExperiment(check_jsons[i])
-            data=np.loadtxt(args.checkfiles[i])
-            n_time=data[:,0]
-            n_current=data[:,1]
-        Path(checkloc).mkdir(parents=True, exist_ok=True)
-        sim_dict=new_technique.parameter_array_simulate(sorted_params, n_time)
-        sim_currents=sim_dict["Current_array"]
-        DC_voltage=sim_dict["DC_voltage"]
-        new_voltage=new_technique.get_voltage(n_time, dimensional=True)
-        sci.plot.save_results(n_time, 
-                    new_voltage, 
-                    n_current, 
-                    sim_currents, 
-                    checkloc, 
-                    new_technique._internal_options.experiment_type, 
-                    new_technique._internal_memory["boundaries"],
-                    save_csv=args.save_csv,
-                    optim_list=new_technique._optim_list, 
-                    fixed_parameters=new_technique.fixed_parameters,
-                    score=sorted_params[:,-1],
-                    parameters=sorted_params,
-                    DC_voltage=DC_voltage,
-                    table=False
-                    )
-        
-=======
-    pass
->>>>>>> 13398df75c01ddfdc202152024825b36781f6489
+ pass
