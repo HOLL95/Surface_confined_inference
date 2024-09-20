@@ -27,7 +27,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             os.path.isdir(kwargs["CMAES_results_dir"])
             if kwargs["CMAES_results_dir"][-1]!="/":
                 kwargs["CMAES_results_dir"]=kwargs["CMAES_results_dir"]+"/"
-            kwargs["starting_point"]=sci._utils.read_param_table(kwargs["CMAES_results_dir"]+"full_table.txt")
+            kwargs["starting_point"]=sci._utils.read_param_table(kwargs["CMAES_results_dir"]+"Rounded_table.txt")[0]
         if "starting_point" not in kwargs and kwargs["CMAES_results_dir"]==False:
             raise KeyError("MCMC requires a starting point")
         if "save_to_directory" not in kwargs:
@@ -51,16 +51,19 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
                 kwargs["starting_point"]+=[sci._utils.RMSE(current_data, log_Likelihood._problem.evaluate(kwargs["starting_point"]))]
        
         error=kwargs["starting_point"][-1]
+        lower=[self._internal_memory["boundaries"][x][0] for x in self._optim_list]+[0.1*error]
+        upper=[self._internal_memory["boundaries"][x][1] for x in self._optim_list]+[10*error]
+
         log_prior=pints.UniformLogPrior(
-                                    [self._internal_memory["boundaries"][x][0] for x in self._optim_list]+[0.1*error],
-                                    [self._internal_memory["boundaries"][x][1] for x in self._optim_list]+[10*error]
-                                
+                                       lower,
+                                       upper 
                                     )
         log_posterior = pints.LogPosterior(log_Likelihood, log_prior)
         xs = [
             np.array(kwargs["starting_point"])
             for x in range(0, kwargs["num_chains"])
         ]
+        
         mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,method=pints.HaarioBardenetACMC)
         mcmc.set_max_iterations(kwargs["samples"])
         chains = mcmc.run()
@@ -83,7 +86,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         This dispersed current is then returned
 
         """
-        self.num_cpu=mp.cpu_count()
+        
         if self._internal_options.experiment_type in ["FTACV", "DCV", "PSV"]:
             para_func=individual_ode_sims
         nd_dict = self.nondimensionalise(sim_params)
@@ -105,7 +108,6 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             for params, weight in zip(dictionaries, weights)
         ]
         
-      
         with mp.Pool(processes=self.num_cpu) as pool:
             results=pool.starmap(para_func, iterable)
         np_results=np.array(results)

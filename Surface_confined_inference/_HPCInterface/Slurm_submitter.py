@@ -18,7 +18,7 @@ datafile=np.loadtxt(args.datafile)
 time=datafile[:,0]
 potential=datafile[:,2]
 current=datafile[:,1]
-if args.method=="optimsiation":
+if args.method=="optimisation":
     simclass=sci.LoadSingleExperiment(args.simulator)
     results=simclass.Current_optimisation(time, current,
                                     parallel=True,

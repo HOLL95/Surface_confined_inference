@@ -93,6 +93,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
                                 fileloc,
                                 cwd+"/Submission/"+save_json,
                                 kwargs["results_directory"],
+                                kwargs["method"],
                                 "--threshold={0}".format(kwargs["threshold"]),
                                 "--unchanged_iterations={0}".format(kwargs["unchanged_iterations"])
                 ]
@@ -102,6 +103,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
                                 fileloc,
                                 cwd+"/Submission/"+save_json,
                                 kwargs["results_directory"],
+                                kwargs["method"],
                                 "--chain_samples={0}".format(kwargs["samples"]),
                                 
                 ]
@@ -171,6 +173,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
                                 kwargs["method"],
 
                 ]
+                f.write(" ".join(python_command))
+
         controller_file=identifier+"_Controller.sh"
         with open("Submission/"+controller_file, "w") as f:
             f.write("#!/usr/bin/env bash\n")

@@ -1,5 +1,6 @@
 import numpy as np
 from functools import wraps
+import re
 experimental_input_params={"FTACV":["E_start", "E_reverse", "omega" ,"phase", "delta_E", "v"],
                 "DCV":["E_start", "E_reverse",  "v"],
                 "PSV":["Edc", "omega", "phase", "delta_E"]}
@@ -68,7 +69,11 @@ def read_param_table(loc):
     with open(loc, "r")as f:
         lines=f.readlines()
         for line in lines[1:]:
-            linelist=re.split(r",\s+", line)
+            linelist=re.split(r",\s*", line.strip())
+            try:
+             float(linelist[-1])
+            except:
+             linelist=linelist[:-1]
             numeric_line=[float(x) for x in linelist[1:]]
             return_arg.append(numeric_line)
     return return_arg

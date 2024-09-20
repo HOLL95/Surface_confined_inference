@@ -5,6 +5,7 @@ import argparse
 import copy
 import datetime
 import matplotlib.pyplot as plt
+import os
 parser=argparse.ArgumentParser("Slurm processor")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
@@ -54,7 +55,7 @@ if args.method=="optimisation":
         potential=potential[time_idx]
         current=current[time_idx]
     else:
-    subtime=time
+        subtime=time
     sim_voltage=simulator.get_voltage(time, dimensional=True)
     date=datetime.datetime.today().strftime('%Y-%m-%d')
     savepath=loc.split("/")
@@ -123,4 +124,15 @@ if args.method=="optimisation":
                         )
             
 else:
- pass
+ files=os.listdir(args.resultsLoc)
+ from pints.plot import trace
+ simulator=sci.LoadSingleExperiment(args.simulator)
+ chain_data=[np.load(os.path.join(args.resultsLoc, file)) for file in files]
+ full_chain=np.concatenate(chain_data, axis=0)
+ trace(full_chain, parameter_names=simulator._optim_list+["Noise"])
+ fig=plt.gcf()
+ fig.set_size_inches(9,9)
+ up_one=args.resultsLoc.split("/")
+ up_one="/".join(up_one[:-1])
+ fig.savefig(up_one+"/Trace.png", dpi=300)
+  
