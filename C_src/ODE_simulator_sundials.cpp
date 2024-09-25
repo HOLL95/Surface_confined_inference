@@ -9,6 +9,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "headers/functions.h"
+#include "headers/SW_functions.h"
 namespace py = pybind11;
 using namespace std;
 #if defined(SUNDIALS_EXTENDED_PRECISION)
@@ -220,7 +221,9 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     }
 
 
-    PYBIND11_MODULE(SurfaceODESolver, m) {
-    m.def("ODEsimulate", &ODEsimulate, "solve for I");
-    m.def("potential", &potential, "Get the full list of potential values");
-    }
+PYBIND11_MODULE(SurfaceODESolver, m) {
+m.def("ODEsimulate", &ODEsimulate, "solve for I");
+m.def("potential", &potential, "Get the full list of potential values");
+m.def("SW_current", &SW_current, "Square wave current simulator");
+m.def("SW_potential", &SW_potential, "Square wave potential simulator");
+}

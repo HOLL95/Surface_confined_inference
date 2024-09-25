@@ -20,7 +20,7 @@ class NDParams:
             time_constant = input_parameters["omega"]*self.c_E0
         self.c_T0 = abs(self.c_E0 / time_constant)
         if experiment_type in K_nondim:
-            self.c_T0 = 1 / time_constant
+            self.c_T0 = 1 / input_parameters["omega"]
         self.c_I0 = (
             self.F * input_parameters["area"] * input_parameters["Surface_coverage"]
         ) / self.c_T0
@@ -45,6 +45,18 @@ class NDParams:
                 function_dict[key] = self.omega_nondim
             elif key == "v":
                 function_dict[key] = self.v_nondim
+            else:
+                function_dict[key] = lambda x:x
+        function_dict["cap_phase"] = lambda x:x
+        self.function_dict = function_dict
+    def construct_function_dict_SW(self, dim_dict):
+
+        function_dict = {}
+        for key in dim_dict:
+            if key[0] == "k" and "scale" not in key:
+                function_dict[key] = self.t_nondim
+            elif key == "gamma":
+                function_dict[key] = self.gamma_nondim
             else:
                 function_dict[key] = lambda x:x
         function_dict["cap_phase"] = lambda x:x

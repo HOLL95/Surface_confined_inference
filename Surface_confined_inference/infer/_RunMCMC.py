@@ -87,8 +87,8 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         for i in range(0, len(xs[0])):
             init_sigma[i]=kwargs["sigma0"]*(upper[i]-lower[i])
 
-
-        mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,method=pints.DreamMCMC, transformation=transform,sigma0=np.array(init_sigma))
+        print(init_sigma)
+        mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,transformation=transform,sigma0=np.array(init_sigma))
         mcmc.set_max_iterations(kwargs["samples"])
         chains = mcmc.run()
         
@@ -117,7 +117,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         disp_params, self._values, self._weights = self._disp_class.generic_dispersion(
             self._internal_memory["simulation_dict"], self._internal_memory["GH_values"]
         )
-        #print([sim_params[x] for x in self._optim_list])
+        print([sim_params[x] for x in self._optim_list])
         time_series = np.zeros(len(times))
         dictionaries=[copy.deepcopy(self._internal_memory["simulation_dict"]) for x in range(0, len(self._weights))]
         weights=[np.prod(x) for x in self._weights]
@@ -139,3 +139,5 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
 
 def individual_ode_sims(nd_dict, times, weight):
     return weight*np.array(sos.ODEsimulate(times, nd_dict))[0, :]
+def individual_sw_sims(nd_dict, times, weight):
+    return weight*np.array(sos.SW_current(times, nd_dict))

@@ -59,7 +59,8 @@ class SingleExperiment:
             "PSV": ["Edc","omega", "phase", "delta_E"],
             "DCV": ["E_start", "E_reverse","v"],
             "SquareWave": [
-                "E_start", "E_reverse",
+                "omega",
+                "E_start", 
                 "scan_increment",
                 "sampling_factor",
                 "delta_E",
@@ -105,19 +106,32 @@ class SingleExperiment:
             setattr(self, key, getattr(self._internal_options, key))
             for key in Options().accepted_arguments
         ]
-        self._essential_parameters = [
-            "E0",
-            "k0",
-            "Cdl",
-            "gamma",
-            "CdlE1",
-            "CdlE2",
-            "CdlE3",
-            "alpha",
-            "Ru",
-            "phase",
-        ]
-        
+        if experiment_type!="SquareWave":
+            self._essential_parameters = [
+                "E0",
+                "k0",
+                "Cdl",
+                "gamma",
+                "CdlE1",
+                "CdlE2",
+                "CdlE3",
+                "alpha",
+                "Ru",
+                "phase",
+            ]
+        else:
+            self._essential_parameters=[
+                "E0",
+                "k0",
+                "gamma",
+                "alpha",
+                "Cdl",
+                "CdlE1",
+                "CdlE2",
+                "CdlE3",
+                "phase"
+            ]
+            self.SW_sampling()
         self._optim_list = []
 
     def calculate_times(self, **kwargs):
@@ -137,6 +151,11 @@ class SingleExperiment:
             NotImplementedError: Squarewave currently not implemented
         """
         params = self._internal_memory["input_parameters"]
+        if self._internal_options.experiment_type == "SquareWave":
+            
+            end_time=(abs(params["delta_E"]/params["scan_increment"])*params["sampling_factor"])
+            dt=1
+            return  np.arange(0, end_time, dt)
         if "sampling_factor" not in kwargs:
             sampling_factor=200
         else:
@@ -154,8 +173,10 @@ class SingleExperiment:
             if "PSV_num_peaks" not in kwargs:
                 kwargs["PSV_num_peaks"]=50
             end_time = kwargs["PSV_num_peaks"]/ params["omega"]
-        elif self._internal_options.experiment_type == "SquareWave":
-            raise NotImplementedError()
+        if self._internal_options.experiment_type == "SquareWave":
+            
+            end_time=(abs(params["delta_E"]/params["scan_increment"])*params["sampling_factor"])
+            dt=1
         if self._internal_options.experiment_type == "DCV":
             dt = 1 / sampling_factor
         elif (
@@ -163,9 +184,7 @@ class SingleExperiment:
             or self._internal_options.experiment_type == "PSV"
         ):
             dt = 1 / (sampling_factor * params["omega"])
-        elif self._internal_options.experiment_type == "SquareWave":
-            raise NotImplementedError()
-
+       
         times = np.arange(0, end_time, dt)
         
         if dimensional == False:
@@ -246,6 +265,56 @@ class SingleExperiment:
         return len(self._optim_list)
     def n_outputs(self,):
         return 1
+    def SW_sampling(self,**kwargs):
+        #TODO implement setter property if someone changes delta_E part way through
+        self._internal_memory["SW_params"]={}
+        if "parameters" not in kwargs:
+            parameters=self._internal_memory["input_parameters"]
+        else:
+            parameters=kwargs["parameters"]
+        sampling_factor=parameters["sampling_factor"]
+        self._internal_memory["SW_params"]["end"]=int(abs(parameters['delta_E']//parameters['scan_increment']))
+
+        p=np.array(range(0, self._internal_memory["SW_params"]["end"]))
+
+        self._internal_memory["SW_params"]["b_idx"]=(sampling_factor*p)+(sampling_factor/2)
+        self._internal_memory["SW_params"]["f_idx"]=p*sampling_factor
+        Es=parameters["E_start"]#-parameters["E_0"]
+        self._internal_memory["SW_params"]["E_p"]=(Es+parameters["v"]*(p*parameters['scan_increment']))
+        self._internal_memory["SW_params"]["sim_times"]=self.calculate_times()
+    def SW_peak_extractor(self, current, **kwargs):
+        if "mean" not in kwargs:
+            kwargs["mean"]=0
+        if "window_length" not in kwargs:
+            kwargs["window_length"]=1
+       
+        j=np.array(range(1, self._internal_memory["SW_params"]["end"]*self._internal_memory["input_parameters"]["sampling_factor"]))
+
+        if kwargs["mean"]==0:
+            forwards=np.zeros(len(self._internal_memory["SW_params"]["f_idx"]))
+            backwards=np.zeros(len(self._internal_memory["SW_params"]["b_idx"]))
+            forwards=np.array([current[x-1] for x in self._internal_memory["SW_params"]["f_idx"]])
+            backwards=np.array([current[int(x)-1] for x in self._internal_memory["SW_params"]["b_idx"]])
+        else:
+            raise NotImplementedError
+            indexes=[self._internal_memory["SW_params"]["f_idx"], self._internal_memory["SW_params"]["b_idx"]]
+            sampled_currents=[np.zeros(len(self._internal_memory["SW_params"]["f_idx"])), np.zeros(len(self._internal_memory["SW_params"]["b_idx"]))]
+            colours=["red", "green"]
+            mean_idx=copy.deepcopy(sampled_currents)
+            for i in range(0, len(self._internal_memory["SW_params"]["f_idx"])):
+                for j in range(0, len(sampled_currents)):
+                    x=indexes[j][i]
+                    data=self.rolling_window(current[int(x-kwargs["mean"]-1):int(x-1)], kwargs["window_length"])
+                    #plt.scatter(range(int(x-kwargs["mean"]-1),int(x-1)), data, color=colours[j])
+                    #mean_idx[j][i]=np.mean(range(int(x-kwargs["mean"]-1),int(x-1)))
+                    sampled_currents[j][i]=np.mean(data)
+
+            forwards=np.zeros(len(self._internal_memory["SW_params"]["f_idx"]))
+            backwards=np.zeros(len(self._internal_memory["SW_params"]["b_idx"]))
+            forwards=np.array([current[x-1] for x in self._internal_memory["SW_params"]["f_idx"]])
+            backwards=np.array([current[int(x)-1] for x in self._internal_memory["SW_params"]["b_idx"]])
+        return forwards, backwards, forwards-backwards, self._internal_memory["SW_params"]["E_p"]
+
 
     def get_voltage(self, times, **kwargs):
         """
@@ -278,11 +347,22 @@ class SingleExperiment:
         )
         input_parameters=copy.deepcopy(input_parameters)
         input_parameters = self.validate_input_parameters(input_parameters)
-        if "tr" in input_parameters:
-            if kwargs["dimensional"]==True:
-                input_parameters["tr"]*=self._NDclass.c_T0
-        input_parameters["omega"] *= 2 * np.pi
-        return sos.potential(times, input_parameters)
+        if self._internal_options.experiment_type!="SquareWave":
+            if "tr" in input_parameters:
+                if kwargs["dimensional"]==True:
+                    input_parameters["tr"]*=self._NDclass.c_T0
+            input_parameters["omega"] *= 2 * np.pi
+            return sos.potential(times, input_parameters)
+        else:
+           
+            voltages=np.zeros(len(times))
+
+            for i in times:
+                
+                i=int(i)
+                voltages[i-1]=sos.SW_potential(i,input_parameters["sampling_factor"],input_parameters["scan_increment"],input_parameters["SW_amplitude"],input_parameters["E_start"],input_parameters["v"])
+            voltages[-1]=voltages[-2]
+            return voltages
 
     def dispersion_checking(self, optim_list):
         """
@@ -414,9 +494,12 @@ class SingleExperiment:
             if parameters[i] not in self._internal_memory["boundaries"]:
                 missing_parameters.append(parameters[i])
         if len(missing_parameters) > 0:
-            raise Exception(
-                "Need to define boundaries for:\n %s" % ", ".join(missing_parameters)
-            )
+            if self._internal_options.problem=="inverse":
+                raise Exception(
+                    "Need to define boundaries for:\n %s" % ", ".join(missing_parameters)
+                )
+            
+                
         self.dispersion_checking(parameters)
         if "cap_phase" not in parameters and ("cap_phase" not in self._internal_memory["fixed_parameters"].keys()):
             self._internal_options.phase_only = True
@@ -577,8 +660,10 @@ class SingleExperiment:
         simulation_dict = self.validate_input_parameters(simulation_dict)
 
         self._internal_memory["simulation_dict"] = simulation_dict
-
-        self._NDclass.construct_function_dict(self._internal_memory["simulation_dict"])
+        if self._internal_options.experiment_type=="SquareWave":    
+            self._NDclass.construct_function_dict_SW(self._internal_memory["simulation_dict"])
+        else:
+             self._NDclass.construct_function_dict(self._internal_memory["simulation_dict"])
 
     @property
     def fixed_parameters(self):
@@ -676,7 +761,7 @@ class SingleExperiment:
             for j in range(0, len(disp_params)):
                 self._internal_memory["simulation_dict"][disp_params[j]] = self._values[i][j]
             nd_dict = self.nondimensionalise(sim_params)
-            time_series_current = np.array(solver(times, nd_dict))[0, :]
+            time_series_current = solver(times, nd_dict)
             if self._internal_options.dispersion_test == True:
                 self._disp_test.append(time_series_current)
             time_series = np.add(
@@ -792,17 +877,36 @@ class SingleExperiment:
         else:
             sim_params = dict(zip(self._optim_list, parameters))
         if self._internal_options.experiment_type != "SquareWave":
-            solver = sos.ODEsimulate
-
+            solverclass=SolverWrapper(sos.ODEsimulate)
+            solver=solverclass.ode_current_wrapper
+            t=times
+        elif self._internal_options.experiment_type == "SquareWave":
+            solverclass=SolverWrapper(sos.SW_current)
+            solver=solverclass.swv_current_wrapper
+            t=self._internal_memory["SW_params"]["sim_times"]
         if self._internal_options.dispersion == True:
-            current = self.dispersion_simulator(solver,  sim_params, times)
+            nd_dict = self.nondimensionalise(sim_params)
+            current = self.dispersion_simulator(solver,  sim_params, t)
         else:
             nd_dict = self.nondimensionalise(sim_params)
-            current = np.array(solver(times, nd_dict))[0, :]
+            current = solver(t, nd_dict)
+        if self._internal_options.experiment_type == "SquareWave":
+            sw_dict={"total":current}
+            sw_dict["forwards"], sw_dict["backwards"], sw_dict["net"], E_p=self.SW_peak_extractor(current)
+            if self._internal_options.square_wave_return!="total":
+                polynomial_cap=nd_dict["Cdl"]*np.ones(len(E_p))
+                keys=["CdlE1", "CdlE2", "CdlE3"]
+                
+                for i in range(0, len(keys)):
+                    cdl=keys[i]
+                    if nd_dict[cdl]!=0:
+                        ep_power=np.power(E_p, i+1)
+                        polynomial_cap=np.add(polynomial_cap, nd_dict[cdl]*ep_power)
+                current=np.add(polynomial_cap, sw_dict[self._internal_options.square_wave_return])
 
-        
 
         return current
+
     
     def parameter_array_simulate(self, sorted_dimensional_parameter_array, dimensional_times, **kwargs):
         times=dimensional_times
@@ -996,7 +1100,11 @@ class Options:
             "top_hat_width": {"type": numbers.Number, "default": 0.5},
             "dispersion_test": {"type": bool, "default": False},
             "phase_function":{"args":["constant", "sinusoidal"], "default":"constant"},
-            "transient_removal":{"type": numbers.Number, "default":0}
+            "transient_removal":{"type": numbers.Number, "default":0},
+            "square_wave_return":{"args":["forwards","backwards","net", "total"],"default":"net"},
+            "problem":{"args":["forwards","inverse"], "default":"forwards"}
+        
+            
         }
         self.other_attributes=["_internal_memory", "_internal_options", "_NDclass", "_essential_parameters", "_optim_list", "boundaries", "fixed_parameters", "optim_list", "_disp_class", "_weights", "_disp_test", "_values"]
         if len(kwargs) == 0:
@@ -1085,4 +1193,11 @@ class OptionsDecorator:
             raise AttributeError(f"Options has no attribute '{name}'")
 
 
+class SolverWrapper:
+    def __init__(self, solver):
+        self.solver=solver
 
+    def ode_current_wrapper(self,times, params):
+        return np.array(self.solver(times, params))[:,0]
+    def swv_current_wrapper(self,times, params):
+        return np.array(self.solver(times, params))
