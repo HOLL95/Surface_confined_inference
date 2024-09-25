@@ -56,9 +56,11 @@ if args.method=="optimisation":
         current=current[time_idx]
     else:
         subtime=time
-    sim_voltage=simulator.get_voltage(time, dimensional=True)
     if simulator._internal_options.experiment_type=="SquareWave":
         sim_voltage=simulator._internal_memory["SW_params"]["E_p"]
+    else:
+        sim_voltage=simulator.get_voltage(time, dimensional=True)
+
     date=datetime.datetime.today().strftime('%Y-%m-%d')
     savepath=loc.split("/")
     savepath="/".join(savepath[:-1])+"/PooledResults_{0}".format(date)

@@ -30,7 +30,7 @@ if args.method=="optimisation":
                                     sigma0=0.075,
                                     dimensional=True)
     job_id=os.environ.get('SLURM_JOB_ID')
-    
+    task_id=os.environ.get('SLURM_ARRAY_TASK_ID')    
     np.save("{2}/Individual_runs/Results_run_{0}_{1}.npy".format(job_id,task_id, args.saveloc), results)
 elif args.method=="sampling":
     simclass=sci.LoadSingleExperiment(args.simulator,class_type="mcmc")
