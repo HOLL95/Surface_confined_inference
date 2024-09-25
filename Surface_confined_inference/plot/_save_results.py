@@ -84,6 +84,10 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
         harmonic=False
         xaxis=voltage
         xlabel="voltage"
+    elif experiment_type=="SquareWave":
+        harmonic=False
+        xaxis=voltage
+        xlabel="voltage"
     
     
     if pooled_figure==True:

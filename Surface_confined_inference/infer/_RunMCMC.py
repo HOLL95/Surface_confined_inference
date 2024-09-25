@@ -11,8 +11,6 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         
         super().__init__(experiment_type, experiment_parameters, **kwargs)
-        self.k0_values=np.zeros(1000)
-        self.i=0
     @sci._utils.temporary_options(normalise_parameters=False)
     def run(self, time_data, current_data,**kwargs):
         if "runs" not in kwargs:
@@ -56,7 +54,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         if "starting_point" in kwargs and kwargs["CMAES_results_dir"]==False:
             if len(kwargs["starting_point"])!=problem.n_parameters()+problem.n_outputs():
                 kwargs["starting_point"]+=[sci._utils.RMSE(current_data, log_Likelihood._problem.evaluate(kwargs["starting_point"]))]
-        kwargs["starting_point"][-1]*=100000
+        #kwargs["starting_point"][-1]*=100000
         error=kwargs["starting_point"][-1]
         lower=[self._internal_memory["boundaries"][x][0] for x in self._optim_list]+[0.1*error]
         upper=[self._internal_memory["boundaries"][x][1] for x in self._optim_list]+[10*error]
@@ -87,7 +85,6 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         for i in range(0, len(xs[0])):
             init_sigma[i]=kwargs["sigma0"]*(upper[i]-lower[i])
 
-        print(init_sigma)
         mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,transformation=transform,sigma0=np.array(init_sigma))
         mcmc.set_max_iterations(kwargs["samples"])
         chains = mcmc.run()
@@ -117,7 +114,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         disp_params, self._values, self._weights = self._disp_class.generic_dispersion(
             self._internal_memory["simulation_dict"], self._internal_memory["GH_values"]
         )
-        print([sim_params[x] for x in self._optim_list])
+        
         time_series = np.zeros(len(times))
         dictionaries=[copy.deepcopy(self._internal_memory["simulation_dict"]) for x in range(0, len(self._weights))]
         weights=[np.prod(x) for x in self._weights]

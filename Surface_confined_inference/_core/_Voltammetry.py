@@ -1198,6 +1198,6 @@ class SolverWrapper:
         self.solver=solver
 
     def ode_current_wrapper(self,times, params):
-        return np.array(self.solver(times, params))[:,0]
+        return np.array(self.solver(times, params))[0,:]
     def swv_current_wrapper(self,times, params):
         return np.array(self.solver(times, params))
