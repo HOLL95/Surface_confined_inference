@@ -13,23 +13,25 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         super().__init__(experiment_type, experiment_parameters, **kwargs)
     @sci._utils.temporary_options(normalise_parameters=False)
     def run(self, time_data, current_data,**kwargs):
+       
         if "runs" not in kwargs:
             kwargs["runs"]=1
         if "samples" not in kwargs:
             kwargs["samples"]=10000
        
-        if "Fourier_filter" not in kwargs:
-            kwargs["Fourier_filter"]=False
+        if "Fourier_fitting" not in kwargs:
+            kwargs["Fourier_fitting"]=False
         if "num_chains" not in kwargs:
             kwargs["num_chains"]=3
         if "CMAES_results_dir" not in kwargs:
             kwargs["CMAES_results_dir"]=False
         else:
-            os.path.isdir(kwargs["CMAES_results_dir"])
-            if kwargs["CMAES_results_dir"][-1]!="/":
-                kwargs["CMAES_results_dir"]=kwargs["CMAES_results_dir"]+"/"
-            kwargs["starting_point"]=sci._utils.read_param_table(kwargs["CMAES_results_dir"]+"Rounded_table.txt")[0]
-        if "starting_point" not in kwargs and kwargs["CMAES_results_dir"]==False:
+            print(kwargs["CMAES_results_dir"])
+            if kwargs["CMAES_results_dir"] is not None and os.path.isdir(kwargs["CMAES_results_dir"])==True: 
+             if kwargs["CMAES_results_dir"][-1]!="/":
+                 kwargs["CMAES_results_dir"]=kwargs["CMAES_results_dir"]+"/"
+             kwargs["starting_point"]=sci._utils.read_param_table(kwargs["CMAES_results_dir"]+"Rounded_table.txt")[0]
+        if "starting_point" not in kwargs and (kwargs["CMAES_results_dir"]==False or kwargs["CMAES_results_dir"]==None):
             raise KeyError("MCMC requires a starting point")
         if "save_to_directory" not in kwargs:
             kwargs["save_to_directory"]=False
@@ -46,7 +48,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             kwargs["sigma0"]=0.075
         self.num_cpu=kwargs["num_cpu"]
         problem=pints.SingleOutputProblem(self, time_data, current_data)
-        if kwargs["Fourier_filter"]==True:
+        if kwargs["Fourier_fitting"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
         else:
             log_Likelihood=sci.GaussianTruncatedLogLikelihood(problem)

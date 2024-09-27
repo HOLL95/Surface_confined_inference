@@ -47,7 +47,8 @@ class SingleSlurmSetup(sci.SingleExperiment):
         Path("Submission").mkdir(parents=True, exist_ok=True)
         cwd=os.getcwd()
         loc=cwd+"/Submission"
-        Path("{0}/Individual_runs".format(kwargs["results_directory"])).mkdir(parents=True, exist_ok=False)
+        if kwargs["debug"]!=True:
+            Path("{0}/Individual_runs".format(kwargs["results_directory"])).mkdir(parents=True, exist_ok=False)
         if kwargs["method"]=="optimisation":
             num_cpu=4 + int(3 * np.log(self.n_parameters()+self.n_outputs()))            
         else:
@@ -109,6 +110,9 @@ class SingleSlurmSetup(sci.SingleExperiment):
                 ]
                 if kwargs["CMAES_results_dir"] is not False:
                     python_command+=["--init_point_dir={0}".format(kwargs["CMAES_results_dir"])]
+                if isinstance(kwargs["starting_point"], list):
+                    python_command+=["--init_point=\"{0}\"".format(" ".join([str(x) for x in kwargs["starting_point"]]))]       
+
             f.write(" ".join(python_command))
        
       
@@ -191,8 +195,16 @@ class SingleSlurmSetup(sci.SingleExperiment):
             time=datafile[:,0]
             current=datafile[:,1]
             potential=datafile[:,2]
-            debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential, dimensional=True, Fourier_fitting=self._internal_options.Fourier_fitting)
+            if kwargs["method"]=="optimisation":
+                class_type="base"
+                debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential, dimensional=True, Fourier_fitting=self._internal_options.Fourier_fitting, class_type=class_type)
+            elif kwargs["method"]=="sampling":
+                class_type="mcmc"
+                debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential, dimensional=True, Fourier_fitting=self._internal_options.Fourier_fitting, class_type=class_type,starting_point=kwargs["starting_point"], CMAES_results_dir=kwargs["CMAES_results_dir"], num_cpu=num_cpu,)
             print(debug_class._internal_options.transient_removal, "slurm")
+            
+            #debug_class.simulate(kwargs["starting_point"][:-1], debug_class.nondim_t(time))
+            #raise Exception()
 
             debug_class.go()
         elif kwargs["run"]==True:
