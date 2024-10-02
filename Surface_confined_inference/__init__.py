@@ -20,3 +20,4 @@ from ._core._Dispersion import Dispersion
 from . import (infer, plot, _utils)
 from ._utils.utilities import experimental_input_params, normalise, un_normalise
 from ._Heuristics._HeuristicMethods import HeuristicMethod
+from ._Heuristics._DCVMethods import  TrumpetSimulator

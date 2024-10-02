@@ -2,7 +2,7 @@ import numpy as np
 import copy
 import matplotlib.pyplot as plt
 import Surface_confined_inference as sci
-
+from pandas import DataFrame
 
 def generate_harmonics(times, data, **kwargs):
     if "func" not in kwargs or kwargs["func"] == None:
@@ -29,6 +29,10 @@ def generate_harmonics(times, data, **kwargs):
     if "harmonics" not in kwargs:
         kwargs["harmonics"] = sci.maximum_availiable_harmonics(times, data)
         #kwargs["harmonics"]=list(range(1, 10))
+    if "save_csv" not in kwargs:
+        kwargs["save_csv"]=False
+    elif isinstance(kwargs["save_csv"], str)==False:
+        raise TypeError("save_csv argument needs to be str, not {0}".format(type(kwargs["save_csv"])))
     num_harmonics = len(kwargs["harmonics"])
     if kwargs["return_amps"] == True:
         amps = np.zeros(num_harmonics)
@@ -87,7 +91,14 @@ def generate_harmonics(times, data, **kwargs):
         else:
 
             ft_peak_return[i, :] = f_domain_harmonic
-
+    if kwargs["save_csv"] is not False:
+        save_dict={"Time":times}
+        for i in range(0, len(kwargs["harmonics"])):
+            if kwargs["one_sided"]==True:
+                save_dict["Harmonic {0}".format(kwargs["harmonics"][i])]=np.abs(harmonics[i, :])
+            else:
+                save_dict["Harmonic {0}".format(kwargs["harmonics"][i])]=np.real(harmonics[i, :])
+        DataFrame(data=save_dict).to_csv(kwargs["save_csv"])
     if kwargs["return_amps"] == True:
         return harmonics, amps
     if kwargs["return_fourier"] == False:

@@ -4,11 +4,14 @@ import warnings
 import time
 import os
 import re
+import copy
 from matplotlib.widgets import Slider, Button, RadioButtons, TextBox, CheckButtons
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy.optimize import curve_fit
 from scipy.integrate import simpson
 from decimal import Decimal
+import Surface_confined_inference as sci
+import pints
 class DCV_peak_area():
     
     def __init__(self, times, potential, current, area, **kwargs):
@@ -330,7 +333,7 @@ class Automated_trumpet(DCV_peak_area):
         curr_idx=kwargs["data_order"].index("current")
 
         for i in range(0,len(file_list)):
-            DCV_data=np.loadtxt(kwargs["data_loc"]+file_list[i], skiprows=kwargs["skiprows"])
+            DCV_data=np.loadtxt(os.path.join(kwargs["data_loc"],file_list[i]), skiprows=kwargs["skiprows"])
             if DCV_data.shape[1]<3:
                 warnings.warn("Attempting to get scan rate from potential - life is easier if the files have a time column")
                 if isinstance(scan_rates, bool) is True:
@@ -413,3 +416,218 @@ class Automated_trumpet(DCV_peak_area):
             sorted_idx=np.argsort(scan_list)
             return_list=[file_list[x] for x in sorted_idx]
             return return_list, sorted(scan_list)
+class TrumpetSimulator:
+    def __init__(self,experiment_parameters, **kwargs):
+
+        self.experiment_parameters=experiment_parameters
+        self._scan_rates=[]
+        
+        self.volts={}
+        self.times={}
+        self.nd_times={}
+        self.classes={}
+        if "fixed_parameters" not in kwargs:
+            self.fixed_parameters={"gamma":experiment_parameters["Surface_coverage"]}
+        else:
+            self.fixed_parameters=kwargs["fixed_parameters"]
+        if "optim_list" not in kwargs:
+            self.optim_list=[]
+        else:
+            self.optim_list=kwargs["optim_list"]
+        if "sampling_factor" not in kwargs:
+            self.sampling_factor=50
+        else:
+            self.sampling_factor=kwargs["sampling_factor"]
+        if "scan_rates" in kwargs:
+            self.scan_rates_defined=True
+            self.scan_rates=kwargs["scan_rates"]
+        else:
+            self.scan_rates_defined=False
+    @property
+    def scan_rates(self):
+        return self._scan_rates
+    @scan_rates.setter
+    def scan_rates(self, scan_rates,):
+       
+        for i in range(0, len(scan_rates)):
+            sim_params=copy.deepcopy(self.experiment_parameters)
+            fl_scan_rate=float(scan_rates[i])
+            sim_params["v"]=fl_scan_rate
+            self.classes[fl_scan_rate]=sci.SingleExperiment("DCV", sim_params)
+           
+            self.times[fl_scan_rate]=self.classes[fl_scan_rate].calculate_times(input_parameters=sim_params,dimensional=True, sampling_factor=self.sampling_factor)
+            self.volts[fl_scan_rate]=self.classes[fl_scan_rate].get_voltage(self.times[fl_scan_rate], input_parameters=sim_params, dimensional=True)
+            self.nd_times[fl_scan_rate]=self.classes[fl_scan_rate].nondim_t(self.times[fl_scan_rate])
+            if self.optim_list!=[]:
+                self.classes[fl_scan_rate].fixed_parameters=self.fixed_parameters
+                self.classes[fl_scan_rate].optim_list=self.optim_list
+        self.scan_rates_defined=True
+        
+        self._scan_rates=scan_rates
+    @property 
+    def optim_list(self):
+        return self._optim_list
+    @optim_list.setter
+    def optim_list(self, parameters):
+        if parameters!=[]:
+            for key in self.classes.keys():
+               
+                self.classes[key].optim_list=parameters
+                
+        self._optim_list=parameters
+    @property
+    def fixed_parameters(self):
+        return self._fixed_parameters
+    @fixed_parameters.setter
+    def fixed_parameters(self, fixed_parameters):
+        for key in self.classes.keys():
+                self.classes[key].fixed_parameters=fixed_parameters
+        self._fixed_parameters=fixed_parameters
+    def trumpet_positions(self, current, voltage):
+        volts=np.array(voltage)
+        amps=np.array(current)
+
+        """if self.simulation_options["find_in_range"]!=False:
+            dim_volts=self.e_nondim(volts)
+            search_idx=tuple(np.where((dim_volts>self.simulation_options["find_in_range"][0])&(dim_volts<self.simulation_options["find_in_range"][1])))
+            #fig, ax=plt.subplots(1,1)
+            #ax.plot(dim_volts, amps)
+            volts=volts[search_idx]
+            amps=amps[search_idx]"""
+        max_pos=volts[np.where(amps==max(amps))]
+        min_pos=volts[np.where(amps==min(amps))]
+        return max_pos, min_pos
+       
+    def n_outputs(self):
+        return 2
+    def n_parameters(self):
+        return len(self._optim_list)
+    def trumpet_plot(self, scan_rates, trumpets, **kwargs):
+        if "ax" not in kwargs:
+            ax=None
+        else:
+            ax=kwargs["ax"]
+        if "label" not in kwargs:
+            label=None
+        else:
+            label=kwargs["label"]
+        if "description" not in kwargs:
+            kwargs["description"]=False
+        else:
+            label=None
+        if "log" not in kwargs:
+            kwargs["log"]=np.log10
+        if len(trumpets.shape)!=2:
+            raise ValueError("For plotting reductive and oxidative sweeps together")
+        else:
+            colors=plt.rcParams['axes.prop_cycle'].by_key()['color']
+            if ax==None:
+                plt.scatter(kwargs["log"](scan_rates),  trumpets[:, 0], label="Forward sim", color=colors[0])
+                plt.scatter(kwargs["log"](scan_rates),  trumpets[:, 1], label="Reverse sim", color=colors[0], facecolors='none')
+                plt.legend()
+                plt.show()
+            else:
+                if kwargs["description"]==False:
+                    if ax.collections:
+                        pass
+                    else:
+                        self.color_counter=0
+                    ax.scatter(kwargs["log"](scan_rates),  trumpets[:, 0], label=label, color=colors[self.color_counter])
+                    ax.scatter(kwargs["log"](scan_rates),  trumpets[:, 1], color=colors[self.color_counter], facecolors='none')
+                    self.color_counter+=1
+                else:
+                    ax.scatter(kwargs["log"](scan_rates),  trumpets[:, 0], label="$E_{p(ox)}-E^0$", color=colors[0])
+                    ax.scatter(kwargs["log"](scan_rates),  trumpets[:, 1], label="$E_{p(red)}-E^0$", color=colors[0], facecolors='none')
+    def simulate(self, parameters, scan_rates):
+        if self.scan_rates_defined==False:
+            self.scan_rates=scan_rates
+        param_dict=dict(zip(self._optim_list, parameters))
+        forward_sweep_pos=np.zeros(len(scan_rates))
+        reverse_sweep_pos=np.zeros(len(scan_rates))
+        for i in range(0, len(scan_rates)):
+            #print(self.classes[scan_rates[i]]._internal_memory["input_parameters"]["v"], scan_rates[i])
+            current=self.classes[scan_rates[i]].simulate(parameters, self.nd_times[scan_rates[i]])
+            try:
+                forward_sweep_pos[i], reverse_sweep_pos[i]=self.trumpet_positions(current, self.volts[float(scan_rates[i])])
+            except:
+                 forward_sweep_pos[i]=-1000
+                 reverse_sweep_pos[i]=-1000
+            #plt.plot(self.nd_times[scan_rates[i]], current)
+        #plt.show()
+
+        if "dcv_sep" in self._optim_list:
+            forward_sweep_pos+=param_dict["dcv_sep"]
+            reverse_sweep_pos-=param_dict["dcv_sep"]
+        return np.column_stack((forward_sweep_pos, reverse_sweep_pos))
+    def fit(self, scan_rates, positions,**kwargs):
+        if "paralell" in kwargs:
+            raise KeyError("You've mis-spelled paraLLeL")
+        if "tolerance" not in kwargs:
+            kwargs["tolerance"]=1e-6
+        if "method" not in kwargs:
+            kwargs["method"]=pints.CMAES
+        if "runs" not in kwargs:
+            kwargs["runs"]=1
+        if "unchanged_iterations" not in kwargs:
+            kwargs["unchanged_iterations"]=200
+        if "parallel" not in kwargs:
+            kwargs["parallel"]=True
+        if "sigma0" not in kwargs:
+            kwargs["sigma0"]=0.075
+        if "starting_point" not in kwargs:
+            kwargs["starting_point"]="random"
+        if "boundaries" not in kwargs:
+            raise KeyError("Requires boundaries for {0}".format(self._optim_list))
+        if "plot_results" not in kwargs:
+            kwargs["plot_results"]=False
+        
+        self.scan_rates=scan_rates
+        for key in self.classes.keys():
+            self.classes[key].boundaries=kwargs["boundaries"]
+            self.classes[key].normalise_parameters=True
+        problem=pints.MultiOutputProblem(self, scan_rates, positions)
+        error=pints.SumOfSquaresError(problem)
+        boundaries=pints.RectangularBoundaries(
+                                            np.zeros(self.n_parameters()), 
+                                            np.ones(self.n_parameters())
+                                        )
+        if kwargs["starting_point"]=="random":
+            x0=np.random.random(self.n_parameters())
+        else:
+            between_0_and_1=[(x>0 and x<1) for x in kwargs["starting_point"]]
+            if all(between_0_and_1)==True:
+
+                x0=kwargs["starting_point"]
+            else:
+                x0=self.classes[key].change_normalisation_group(kwargs["starting_point"], "norm")
+           
+                
+        if kwargs["sigma0"] is not list:
+            sigma0=[kwargs["sigma0"] for x in range(0,self.n_parameters())]
+        else:
+            sigma0=kwargs["sigma0"]
+        best_score=-1e20
+        scores=np.zeros(kwargs["runs"])
+        parameters=np.zeros((kwargs["runs"], self.n_parameters()))
+
+        noises=np.zeros(kwargs["runs"])
+        for i in range(0, kwargs["runs"]):
+            optimiser=pints.OptimisationController(error, x0, sigma0=sigma0, boundaries=boundaries, method=kwargs["method"])
+            optimiser.set_max_unchanged_iterations(iterations=kwargs["unchanged_iterations"], threshold=kwargs["tolerance"])
+            optimiser.set_parallel(kwargs["parallel"])
+            xbest, fbest=optimiser.run()
+            scores[i]=fbest
+            dim_params=list(self.classes[key].change_normalisation_group(xbest, "un_norm"))
+            parameters[i,:]=dim_params
+        sorted_idx=np.argsort(scores)
+        best_param=parameters[sorted_idx[0],:]   
+        print(list(best_param))
+        for key in self.classes.keys():
+            self.classes[key].normalise_parameters=False
+        if kwargs["plot_results"]==True:
+            fig,ax=plt.subplots()
+            self.trumpet_plot(scan_rates, positions, ax=ax, label="Data") 
+            values=self.simulate(best_param, scan_rates)
+            self.trumpet_plot(scan_rates, values, ax=ax, label="Simulation") 
+            plt.show()
+        return best_param

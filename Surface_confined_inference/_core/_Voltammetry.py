@@ -144,13 +144,18 @@ class SingleExperiment:
         Args:
             sampling_factor (int, default=200): defines the timestep dt. For the experiments involving a sinusoid (PSV, FTACV, SquareWave), this is taken to mean
             X points per oscillation. For DCV, it is taken to mean X points per second.
+            input_parameters (dict, default=self._internal_memory["input_parameters"]): Defines the parameters used to calculate the time
             Dimensional: controls whether the time is returned in dimensional or non-dimensional form
         Returns:
             np.ndarray: Array of times
         Raises:
             NotImplementedError: Squarewave currently not implemented
         """
-        params = self._internal_memory["input_parameters"]
+        if "input_parameters" not in kwargs:
+            params = self._internal_memory["input_parameters"]
+        else:
+            params=kwargs["input_parameters"]
+       
         if self._internal_options.experiment_type == "SquareWave":
             
             end_time=(abs(params["delta_E"]/params["scan_increment"])*params["sampling_factor"])
@@ -168,6 +173,7 @@ class SingleExperiment:
             self._internal_options.experiment_type == "FTACV"
             or self._internal_options.experiment_type == "DCV"
         ):
+            
             end_time = 2 * abs(params["E_start"] - params["E_reverse"]) / params["v"]
         elif self._internal_options.experiment_type == "PSV":
             if "PSV_num_peaks" not in kwargs:
@@ -178,7 +184,7 @@ class SingleExperiment:
             end_time=(abs(params["delta_E"]/params["scan_increment"])*params["sampling_factor"])
             dt=1
         if self._internal_options.experiment_type == "DCV":
-            dt = 1 / sampling_factor
+            dt = 1 / (sampling_factor * params["v"])
         elif (
             self._internal_options.experiment_type == "FTACV"
             or self._internal_options.experiment_type == "PSV"
@@ -186,7 +192,6 @@ class SingleExperiment:
             dt = 1 / (sampling_factor * params["omega"])
        
         times = np.arange(0, end_time, dt)
-        
         if dimensional == False:
             times = self.nondim_t(times)
 
@@ -781,7 +786,7 @@ class SingleExperiment:
         nd_dict = {}
         for key in self._optim_list:
             self._internal_memory["simulation_dict"][key] = sim_params[key]
-
+        
         for key in self._internal_memory["simulation_dict"].keys():
             nd_dict[key] = self._NDclass.function_dict[key](
                 self._internal_memory["simulation_dict"][key]
@@ -873,7 +878,7 @@ class SingleExperiment:
                     self.change_normalisation_group(parameters, "un_norm"),
                 )
             )
-
+        
         else:
             sim_params = dict(zip(self._optim_list, parameters))
         if self._internal_options.experiment_type != "SquareWave":
@@ -886,6 +891,7 @@ class SingleExperiment:
             t=self._internal_memory["SW_params"]["sim_times"]
         if self._internal_options.dispersion == True:
             nd_dict = self.nondimensionalise(sim_params)
+            
             current = self.dispersion_simulator(solver,  sim_params, t)
         else:
             nd_dict = self.nondimensionalise(sim_params)
@@ -903,8 +909,7 @@ class SingleExperiment:
                         ep_power=np.power(E_p, i+1)
                         polynomial_cap=np.add(polynomial_cap, nd_dict[cdl]*ep_power)
                 current=np.add(polynomial_cap, sw_dict[self._internal_options.square_wave_return])
-
-
+        #print(nd_dict["k0"])
         return current
 
     
