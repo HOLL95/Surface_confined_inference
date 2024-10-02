@@ -3,6 +3,7 @@ import Surface_confined_inference as sci
 import os
 import copy
 import  multiprocessing as mp
+from scipy.optimize import minimize_scalar
 import matplotlib.pyplot as plt
 import pints
 import time
@@ -13,14 +14,13 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         super().__init__(experiment_type, experiment_parameters, **kwargs)
     @sci._utils.temporary_options(normalise_parameters=False)
     def run(self, time_data, current_data,**kwargs):
-       
         if "runs" not in kwargs:
             kwargs["runs"]=1
         if "samples" not in kwargs:
             kwargs["samples"]=10000
        
-        if "Fourier_fitting" not in kwargs:
-            kwargs["Fourier_fitting"]=False
+        if "fourier_fitting" not in kwargs:
+            kwargs["fourier_fitting"]=False
         if "num_chains" not in kwargs:
             kwargs["num_chains"]=3
         if "CMAES_results_dir" not in kwargs:
@@ -40,6 +40,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         if kwargs["dimensional"]==True:
             time_data=self.nondim_t(time_data)
             current_data=self.nondim_i(current_data)
+
         if "num_cpu" not in kwargs:
             kwargs["num_cpu"]=len(os.sched_getaffinity(0))
         if "transformation" not in kwargs:
@@ -48,7 +49,9 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             kwargs["sigma0"]=0.075
         self.num_cpu=kwargs["num_cpu"]
         problem=pints.SingleOutputProblem(self, time_data, current_data)
-        if kwargs["Fourier_fitting"]==True:
+        #plt.plot(time_data, current_data)
+        #plt.show()
+        if kwargs["fourier_fitting"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
         else:
             log_Likelihood=sci.GaussianTruncatedLogLikelihood(problem)
@@ -56,8 +59,13 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         if "starting_point" in kwargs and kwargs["CMAES_results_dir"]==False:
             if len(kwargs["starting_point"])!=problem.n_parameters()+problem.n_outputs():
                 kwargs["starting_point"]+=[sci._utils.RMSE(current_data, log_Likelihood._problem.evaluate(kwargs["starting_point"]))]
-        #kwargs["starting_point"][-1]*=100000
-        error=kwargs["starting_point"][-1]
+        
+        score=np.sum(log_Likelihood.return_error(kwargs["starting_point"]))
+        min_result=minimize_scalar(lambda x: -(-log_Likelihood._logn-log_Likelihood._nt*np.log(x)-score/(2*x**2)), bounds=(0.1, max(10*kwargs["starting_point"][-1], 1e4)))
+
+        error=min_result.x
+        print(error, score)
+        print(min_result.fun)
         lower=[self._internal_memory["boundaries"][x][0] for x in self._optim_list]+[0.1*error]
         upper=[self._internal_memory["boundaries"][x][1] for x in self._optim_list]+[10*error]
 
@@ -70,6 +78,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             np.array(kwargs["starting_point"])
             for x in range(0, kwargs["num_chains"])
         ]
+        
         if kwargs["transformation"]=="identity":
             transform=pints.IdentityTransformation(len(xs[0]))
         elif kwargs["transformation"]=="log":
@@ -83,11 +92,13 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
                     transforms.append(pints.IdentityTransformation(1))
             transforms.append(pints.LogTransformation(problem.n_outputs()))
             transform=pints.ComposedTransformation(*transforms)
-        init_sigma=[0 for x in range(0, log_posterior.n_parameters())]
-        for i in range(0, len(xs[0])):
-            init_sigma[i]=kwargs["sigma0"]*(upper[i]-lower[i])
-
-        mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,transformation=transform,sigma0=np.array(init_sigma))
+        if kwargs["sigma0"] is not None:
+         init_sigma=[0 for x in range(0, log_posterior.n_parameters())]
+         for i in range(0, len(xs[0])):
+             init_sigma[i]=kwargs["sigma0"]*(upper[i]-lower[i])
+        else:
+         init_sigma=None
+        mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,transformation=transform,sigma0=init_sigma)
         mcmc.set_max_iterations(kwargs["samples"])
         chains = mcmc.run()
         

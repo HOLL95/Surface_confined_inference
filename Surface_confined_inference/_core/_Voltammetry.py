@@ -951,8 +951,8 @@ class SingleExperiment:
             kwargs["parallel"]=True
         if "dimensional" not in kwargs:
             kwargs["dimensional"]=True
-        if "Fourier_filter" not in kwargs:
-            kwargs["Fourier_filter"]=False
+        if "Fourier_fitting" not in kwargs:
+            kwargs["Fourier_fitting"]=False
         if "sigma0" not in kwargs:
             kwargs["sigma0"]=0.075
         if "starting_point" not in kwargs:
@@ -971,7 +971,7 @@ class SingleExperiment:
             time_data=self.nondim_t(time_data)
             current_data=self.nondim_i(current_data)
         problem=pints.SingleOutputProblem(self, time_data, current_data)
-        if kwargs["Fourier_filter"]==True:
+        if kwargs["Fourier_fitting"]==True:
             log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
             error=5000
         else:

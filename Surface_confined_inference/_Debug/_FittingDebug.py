@@ -38,7 +38,7 @@ class FittingDebug:
                 
                 timeseries=super().simulate(parameters, times)
                 ts_fig, ts_ax=plt.subplots()
-                ts_ax.plot(times, self.current, label="Data")
+                ts_ax.plot(self.time, self.current, label="Data")
                 ts_ax.plot(times, timeseries, alpha=0.5, label="Simulation")
                 ts_ax.legend()
                 if self.Fourier_fitting==True:
@@ -54,21 +54,25 @@ class FittingDebug:
                     if self._internal_options.experiment_type=="PSV":
                         hanning=False
                         xaxis="potential"
+                        func=np.real
                     else:
                         hanning=True
                         xaxis="time"
-                    sci.plot.plot_harmonics(Data_data={"time":times, "current":self.current, "potential":self.potential, "harmonics":self._internal_options.Fourier_harmonics,},
+                        func=np.abs
+                    sci.plot.plot_harmonics(Data_data={"time":self.time, "current":self.current, "potential":self.potential, "harmonics":self._internal_options.Fourier_harmonics,},
                                             Sim_data={"time":times, "current":timeseries, "potential":self.potential, "harmonics":self._internal_options.Fourier_harmonics,},
                                             
                                             xaxis=xaxis, 
-                                            hanning=hanning)  
+                                            hanning=hanning,
+                                            plot_func=func)  
                 plt.show()
                 return timeseries
             def go(self,):
                 if self.kwargs["class_type"]=="base":
-                    self.Current_optimisation(self.time, self.current, dimensional=False, Fourier_filter=self.Fourier_fitting, parallel=False)
+                    self.Current_optimisation(self.time, self.current, Fourier_filter=self.Fourier_fitting, parallel=False, dimensional=False)
                 elif  self.kwargs["class_type"]=="mcmc":
-                    self.run(self.time, self.current, starting_point=self.kwargs["starting_point"], CMAES_results_dir=self.kwargs["CMAES_results_dir"], num_cpu=self.kwargs["num_cpu"])
+                    print("starts here")
+                    self.run(self.time, self.current, starting_point=self.kwargs["starting_point"],fourier_fitting=self.kwargs["Fourier_fitting"], CMAES_results_dir=self.kwargs["CMAES_results_dir"], num_cpu=self.kwargs["num_cpu"],dimensional=False)
             #def __setattr__(self, name, value):
             #    super().__setattr__(name, value, silent_flag=True)
 

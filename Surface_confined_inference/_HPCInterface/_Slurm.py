@@ -201,7 +201,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
             elif kwargs["method"]=="sampling":
                 class_type="mcmc"
                 debug_class=sci.FittingDebug("Submission/"+save_json, time, current, potential, dimensional=True, Fourier_fitting=self._internal_options.Fourier_fitting, class_type=class_type,starting_point=kwargs["starting_point"], CMAES_results_dir=kwargs["CMAES_results_dir"], num_cpu=num_cpu,)
-            print(debug_class._internal_options.transient_removal, "slurm")
+            print(debug_class._internal_options.transient_removal, "slurm",self._internal_options.Fourier_fitting)
             
             #debug_class.simulate(kwargs["starting_point"][:-1], debug_class.nondim_t(time))
             #raise Exception()

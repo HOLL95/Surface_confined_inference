@@ -32,6 +32,7 @@ class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
         
     
     def __call__(self, x):
+        
         sigma = np.asarray(x[-self._no:])
         if any(sigma <= 0):
             return -np.inf
@@ -41,8 +42,25 @@ class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
             sim_vals=sci.top_hat_filter(self._times, self._problem.evaluate(x[:-self._no]), **self.filter_kwargs)
 
         error = self._FTvalues - sim_vals
+        print(np.sum(- self._logn - self._nt * np.log(sigma)
+                      - np.sum(error**2, axis=0) / (2 * sigma**2)),"error")
+        plt.title("In likelihood")
+        plt.plot(self._FTvalues)
+        plt.plot(sim_vals)
+        plt.show()
         return np.sum(- self._logn - self._nt * np.log(sigma)
                       - np.sum(error**2, axis=0) / (2 * sigma**2))
+    def return_error(self, x):
+        if self.truncate==True:
+            sim_vals=sci.top_hat_filter(self._times[self.time_idx], self._problem.evaluate(x[:-self._no])[self.time_idx], **self.filter_kwargs)
+        else:
+            sim_vals=sci.top_hat_filter(self._times, self._problem.evaluate(x[:-self._no]), **self.filter_kwargs)
+        fig,ax=plt.subplots()
+        error = self._FTvalues - sim_vals
+
+        return np.sum(error**2, axis=0)
+
+
 class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
     
     def __init__(self, problem):
@@ -76,3 +94,10 @@ class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
         error = self._values -sim_vals
         return np.sum(- self._logn - self._nt * np.log(sigma)
                       - np.sum(error**2, axis=0) / (2 * sigma**2))
+    def return_error(self, x):
+        if self.truncate==True:
+            sim_vals=self._problem.evaluate(x[:-self._no])[self.time_idx]
+        else:
+            sim_vals=self._problem.evaluate(x[:-self._no])
+        error = self._values -sim_vals
+        return np.sum(error**2, axis=0)
