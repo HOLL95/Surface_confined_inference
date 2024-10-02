@@ -5,13 +5,14 @@ import os
 from datetime import datetime
 parser = argparse.ArgumentParser("Slurm submitter")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
-parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
+parser.add_argument("simulator", help="Json filename that initilises simulator class",)
 parser.add_argument("saveloc" , help="Save directory address", type=str)
-parser.add_argument("method", help="Optimisation or sampling", type=str)
-parser.add_argument("--threshold", help="Inference will terminated after the score doesn't change by this amount for unchanged iterations", default=1e-6, type=float)
-parser.add_argument("--unchanged_iterations",  help="Inference will terminated after the score doesn't change after this number of unchanged iterations", default=200, type=int)
-parser.add_argument("--chain_samples",  help="Fixed number of samples per chain", default=10000, type=int)
-parser.add_argument("--init_point_dir",  help="Location of CMAES inference results", type=str)
+parser.add_argument("method", help="Optimisation or sampling", type=str,)
+parser.add_argument("--threshold", help="Inference will terminated after the score doesn't change by this amount for unchanged iterations", default=1e-6, type=float,required=False)
+parser.add_argument("--unchanged_iterations",  help="Inference will terminated after the score doesn't change after this number of unchanged iterations", default=200, type=int, required=False)
+parser.add_argument("--chain_samples",  help="Fixed number of samples per chain", default=10000, type=int, required=False,)
+parser.add_argument("--init_point_dir",  help="Location of CMAES inference results", type=str, required=False)
+parser.add_argument("--init_point", help="Initial point values", type=str,  required=False)
 args = parser.parse_args()
 
 datafile=np.loadtxt(args.datafile)
@@ -34,12 +35,17 @@ if args.method=="optimisation":
     np.save("{2}/Individual_runs/Results_run_{0}_{1}.npy".format(job_id,task_id, args.saveloc), results)
 elif args.method=="sampling":
     simclass=sci.LoadSingleExperiment(args.simulator,class_type="mcmc")
+    extra_args={}
+    if args.init_point is not None:
+     extra_args["starting_point"]=[float(x) for x in args.init_point.split(" ")]
+     
     results=simclass.run(time, current,
                         Fourier_filter=simclass._internal_options.Fourier_fitting, 
                         num_chains=1, 
                         samples=args.chain_samples,
                         CMAES_results_dir=args.init_point_dir,
-                        num_cpu=np.prod(simclass._internal_options.dispersion_bins)
+                        num_cpu=np.prod(simclass._internal_options.dispersion_bins),
+                        **extra_args
     )
     task_id=os.environ.get('SLURM_ARRAY_TASK_ID')
     np.save("{1}/Individual_runs/Chain_{0}.npy".format(task_id, args.saveloc), results)
