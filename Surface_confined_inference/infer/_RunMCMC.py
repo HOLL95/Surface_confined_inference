@@ -47,38 +47,56 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             kwargs["transformation"]="identity"
         if "sigma0" not in kwargs:
             kwargs["sigma0"]=0.075
+        if "fixed_sigma" not in kwargs:
+            kwargs["fixed_sigma"]=False
         self.num_cpu=kwargs["num_cpu"]
         problem=pints.SingleOutputProblem(self, time_data, current_data)
         #plt.plot(time_data, current_data)
         #plt.show()
-        if kwargs["fourier_fitting"]==True:
-            log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
-        else:
-            log_Likelihood=sci.GaussianTruncatedLogLikelihood(problem)
-       
-        if "starting_point" in kwargs and kwargs["CMAES_results_dir"]==False:
-            if len(kwargs["starting_point"])!=problem.n_parameters()+problem.n_outputs():
-                kwargs["starting_point"]+=[sci._utils.RMSE(current_data, log_Likelihood._problem.evaluate(kwargs["starting_point"]))]
+        if kwargs["fixed_sigma"]==False:
+            if kwargs["fourier_fitting"]==True:
+                log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
+            else:
+                log_Likelihood=sci.GaussianTruncatedLogLikelihood(problem)
         
-        score=np.sum(log_Likelihood.return_error(kwargs["starting_point"]))
-        min_result=minimize_scalar(lambda x: -(-log_Likelihood._logn-log_Likelihood._nt*np.log(x)-score/(2*x**2)), bounds=(0.1, max(10*kwargs["starting_point"][-1], 1e4)))
-
-        error=min_result.x
-        print(error, score)
-        print(min_result.fun)
-        lower=[self._internal_memory["boundaries"][x][0] for x in self._optim_list]+[0.1*error]
-        upper=[self._internal_memory["boundaries"][x][1] for x in self._optim_list]+[10*error]
-
-        log_prior=pints.UniformLogPrior(
-                                       lower,
-                                       upper 
-                                    )
-        log_posterior = pints.LogPosterior(log_Likelihood, log_prior)
-        xs = [
-            np.array(kwargs["starting_point"])
-            for x in range(0, kwargs["num_chains"])
-        ]
+            if "starting_point" in kwargs and kwargs["CMAES_results_dir"]==False:
+                if len(kwargs["starting_point"])!=problem.n_parameters()+problem.n_outputs():
+                    kwargs["starting_point"]+=[sci._utils.RMSE(current_data, log_Likelihood._problem.evaluate(kwargs["starting_point"]))]
         
+
+            score=np.sum(log_Likelihood.return_error(kwargs["starting_point"]))
+            min_result=minimize_scalar(lambda x: -(-log_Likelihood._logn-log_Likelihood._nt*np.log(x)-score/(2*x**2)), bounds=(0.1, max(10*kwargs["starting_point"][-1], 1e4)))
+
+            error=min_result.x
+            lower=[self._internal_memory["boundaries"][x][0] for x in self._optim_list]+[0.1*error]
+            upper=[self._internal_memory["boundaries"][x][1] for x in self._optim_list]+[10*error]
+
+            log_prior=pints.UniformLogPrior(
+                                        lower,
+                                        upper 
+                                        )
+            log_posterior = pints.LogPosterior(log_Likelihood, log_prior)
+            xs = [
+                np.array(kwargs["starting_point"])
+                for x in range(0, kwargs["num_chains"])
+            ]
+        if kwargs["fixed_sigma"]==True:
+            
+            if kwargs["fourier_fitting"]==True:
+                log_Likelihood=sci.FourierKnownSigmaGaussianLogLikelihood(problem, kwargs["starting_point"][-1])
+            else:
+                log_Likelihood=sci.GaussianKnownSigmaTruncatedLogLikelihood(problem, kwargs["starting_point"][-1])
+            lower=[self._internal_memory["boundaries"][x][0] for x in self._optim_list]
+            upper=[self._internal_memory["boundaries"][x][1] for x in self._optim_list]
+            log_prior=pints.UniformLogPrior(
+                                        lower,
+                                        upper 
+                                        )
+            log_posterior = pints.LogPosterior(log_Likelihood, log_prior)
+            xs = [
+                np.array(kwargs["starting_point"])[:-1]
+                for x in range(0, kwargs["num_chains"])
+            ]
         if kwargs["transformation"]=="identity":
             transform=pints.IdentityTransformation(len(xs[0]))
         elif kwargs["transformation"]=="log":
