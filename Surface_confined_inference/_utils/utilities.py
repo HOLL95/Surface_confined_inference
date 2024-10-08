@@ -64,8 +64,10 @@ def un_normalise(norm, boundaries):
         number: Normalised value is returned to its original value, given the same boundaries used in the initial normalisation
     """
     return (norm * (boundaries[1] - boundaries[0])) + boundaries[0]
-def read_param_table(loc):
+def read_param_table(loc, **kwargs):
     return_arg=[]
+    if "get_titles" not in kwargs:
+        kwargs["get_titles"]=False
     with open(loc, "r")as f:
         lines=f.readlines()
         for line in lines[1:]:
@@ -76,4 +78,33 @@ def read_param_table(loc):
              linelist=linelist[:-1]
             numeric_line=[float(x) for x in linelist[1:]]
             return_arg.append(numeric_line)
-    return return_arg
+    if kwargs["get_titles"]==False:
+        return return_arg
+    elif kwargs["get_titles"]==True:
+        titles=re.split(r",\s*", lines[0].strip())[1:]
+        return return_arg, titles
+
+def custom_linspace(start, end, custom_value, num_points):
+  
+    values = np.linspace(start, end, num_points)
+    
+    closest_index = np.argmin(np.abs(values - custom_value))
+    
+    offset = custom_value - values[closest_index]
+    
+    
+    adjusted_values = values + offset
+    
+    return adjusted_values
+
+def custom_logspace(start, end, custom_value, num_points):
+    values = np.logspace(np.log10(start), np.log10(end), num_points)
+    
+    closest_index = np.argmin(np.abs(values - custom_value))
+    
+    offset = custom_value - values[closest_index]
+    
+    
+    adjusted_values = values + offset
+    
+    return adjusted_values

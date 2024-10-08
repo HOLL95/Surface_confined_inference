@@ -53,6 +53,16 @@ class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
         error = self._FTvalues - sim_vals
 
         return np.sum(error**2, axis=0)
+    def test(self, x):
+       
+        if self.truncate==True:
+            sim_vals=sci.top_hat_filter(self._times[self.time_idx], self._problem.evaluate(x)[self.time_idx], **self.filter_kwargs)
+        else:
+            sim_vals=sci.top_hat_filter(self._times, self._problem.evaluate(x), **self.filter_kwargs)
+
+        plt.plot(self._FTvalues, label="Data")
+        plt.plot(sim_vals, label="Simulation")
+        plt.show()
 
 
 class GaussianTruncatedLogLikelihood(pints.ProblemLogLikelihood):
@@ -185,3 +195,4 @@ class FourierGaussianKnownSigmaLogLikelihood(pints.ProblemLogLikelihood):
 
         error = self._FTvalues - sim_vals
         return np.sum(self._offset + self._multip * np.sum(error**2, axis=0))
+    

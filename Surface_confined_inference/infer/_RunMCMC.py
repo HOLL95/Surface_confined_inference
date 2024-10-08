@@ -12,6 +12,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         
         super().__init__(experiment_type, experiment_parameters, **kwargs)
+        self.num_cpu=len(os.sched_getaffinity(0))
     @sci._utils.temporary_options(normalise_parameters=False)
     def run(self, time_data, current_data,**kwargs):
         if "runs" not in kwargs:
