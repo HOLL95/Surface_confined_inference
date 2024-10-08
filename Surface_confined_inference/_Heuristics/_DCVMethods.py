@@ -473,8 +473,8 @@ class TrumpetSimulator:
             for key in self.classes.keys():
                
                 self.classes[key].optim_list=parameters
-                
         self._optim_list=parameters
+        
     @property
     def fixed_parameters(self):
         return self._fixed_parameters
@@ -483,6 +483,7 @@ class TrumpetSimulator:
         for key in self.classes.keys():
                 self.classes[key].fixed_parameters=fixed_parameters
         self._fixed_parameters=fixed_parameters
+
     def trumpet_positions(self, current, voltage):
         volts=np.array(voltage)
         amps=np.array(current)
@@ -538,6 +539,11 @@ class TrumpetSimulator:
                 else:
                     ax.scatter(kwargs["log"](scan_rates),  trumpets[:, 0], label="$E_{p(ox)}-E^0$", color=colors[0])
                     ax.scatter(kwargs["log"](scan_rates),  trumpets[:, 1], label="$E_{p(red)}-E^0$", color=colors[0], facecolors='none')
+    def TrumpetSimulate(self, parameters, scan_rates):
+        for key in self.classes.keys():
+            self.classes[key].optim_list=self._optim_list
+            self.classes[key].fixed_parameters=self._fixed_parameters
+        return self.simulate(parameters, scan_rates)    
     def simulate(self, parameters, scan_rates):
         if self.scan_rates_defined==False:
             self.scan_rates=scan_rates
@@ -621,9 +627,11 @@ class TrumpetSimulator:
             parameters[i,:]=dim_params
         sorted_idx=np.argsort(scores)
         best_param=parameters[sorted_idx[0],:]   
+        print(xbest)
         print(list(best_param))
         for key in self.classes.keys():
             self.classes[key].normalise_parameters=False
+            print(self.classes[key].fixed_parameters)
         if kwargs["plot_results"]==True:
             fig,ax=plt.subplots()
             self.trumpet_plot(scan_rates, positions, ax=ax, label="Data") 
