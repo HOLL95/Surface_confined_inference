@@ -133,7 +133,10 @@ else:
  simulator=sci.LoadSingleExperiment(args.simulator)
  chain_data=[np.load(os.path.join(args.resultsLoc, file)) for file in files]
  full_chain=np.concatenate(chain_data, axis=0)
- trace(full_chain, parameter_names=simulator._optim_list+["Noise"])
+ try:
+  trace(full_chain, parameter_names=simulator._optim_list+["Noise"])
+ except:
+  trace(full_chain, parameter_names=simulator._optim_list)
  fig=plt.gcf()
  fig.set_size_inches(9,9)
  up_one=args.resultsLoc.split("/")

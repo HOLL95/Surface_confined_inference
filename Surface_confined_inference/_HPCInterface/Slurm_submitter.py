@@ -41,7 +41,7 @@ elif args.method=="sampling":
      
     results=simclass.run(time, current,
                         Fourier_filter=simclass._internal_options.Fourier_fitting, 
-                        num_chains=1, 
+                        num_chains=9, 
                         samples=args.chain_samples,
                         CMAES_results_dir=args.init_point_dir,
                         num_cpu=np.prod(simclass._internal_options.dispersion_bins),
