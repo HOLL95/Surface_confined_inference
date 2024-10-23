@@ -120,23 +120,29 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
             ax.set_xlabel(label_dict[xlabel])
             ax.set_ylabel("Current (A)")
             ax.legend()
+            
             adjust_and_save(fig, directory, "Rank {0} current.png".format(i+1))
             if pooled_figure==True:
                 pool_ax.plot(xaxis, simulations[i,:], label="Rank {0}".format(i+1), alpha=0.5)
             if harmonic==True:
+                
                 h_fig, h_ax=plt.subplots(len(kwargs["harmonics"]), 1)
+                
                 plot_dict=dict(
-                    Experimental_data={"time": time, "current": experiment, "voltage":voltage},
+                    Experimental_data={"time": time, "current": experiment, "voltage":voltage, "harmonics":kwargs["harmonics"]},
                     xaxis=xlabel,
                     hanning=hanning,
                     plot_func=harm_func,
-                    harmonics=kwargs["harmonics"],
+                    
                     xlabel=label_dict[xlabel],
                     ylabel="Current (A)",
                     axes_list=h_ax
                     )
-                plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage}
-                sci.plot.plot_harmonics(**plot_dict)   
+                plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage, "harmonics":kwargs["harmonics"]}
+
+                
+                sci.plot.plot_harmonics(**plot_dict)  
+                
                 if pooled_figure==True:
                     pooled_plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage}
                 adjust_and_save(h_fig, directory,"Rank {0} harmonics.png".format(i+1))

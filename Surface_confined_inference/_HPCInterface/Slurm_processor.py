@@ -74,7 +74,8 @@ if args.method=="optimisation":
         sim_voltage=np.array(sim_voltage)[time_idx]
         sim_currents=np.array([x[time_idx] for x in sim_dict["Current_array"]])
     if DC_voltage is not None:
-        DC_voltage=DC_voltage[time_idx]
+        if simulator._internal_options.transient_removal!=0:
+                DC_voltage=DC_voltage[time_idx]
     sci.plot.save_results(time, 
                         sim_voltage, 
                         current, 

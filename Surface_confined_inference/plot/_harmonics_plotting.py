@@ -42,13 +42,13 @@ def generate_harmonics(times, data, **kwargs):
     Y = np.fft.fft(time_series)
     input_frequency = sci.get_frequency(times, time_series)
     last_harm = kwargs["harmonics"][-1] * input_frequency
-
     frequencies = f
     harmonics = np.zeros((num_harmonics, len(time_series)), dtype="complex")
     if kwargs["return_fourier"] == True:
         one_side_idx = np.where((f > 0) & (f < (last_harm + (0.5 * input_frequency))))
         one_side_frequencies = f[one_side_idx]
         ft_peak_return = np.zeros((num_harmonics, len(f)), dtype="complex")
+    
     for i in range(0, num_harmonics):
         true_harm = kwargs["harmonics"][i] * input_frequency
         # plt.axvline(true_harm, color="black")
@@ -91,6 +91,7 @@ def generate_harmonics(times, data, **kwargs):
         else:
 
             ft_peak_return[i, :] = f_domain_harmonic
+    
     if kwargs["save_csv"] is not False:
         save_dict={"Time":times}
         for i in range(0, len(kwargs["harmonics"])):
@@ -227,7 +228,7 @@ def plot_harmonics(**kwargs):
         kwargs["title"]=None
     if "nyticks" not in kwargs:
         kwargs["nyticks"]=None
-
+    
     label_counter = 0
     for key in kwargs:
         if "data" in key:
@@ -248,7 +249,6 @@ def plot_harmonics(**kwargs):
         if "colour" not in time_series_dict[label]:
             if c_counter>=len(colours):
              c_counter=0
-            print(c_counter)
             time_series_dict[label]["colour"]=colours[c_counter]
             c_counter+=1
         if "lw" not in time_series_dict[label]:
@@ -261,7 +261,6 @@ def plot_harmonics(**kwargs):
             time_series_dict[label]["xaxis"] =sci.get_DC_component(time_series_dict[label]["time"],time_series_dict[label]["potential"], time_series_dict[label]["current"])
         else:
             time_series_dict[label]["xaxis"] = time_series_dict[label][kwargs["xaxis"]]
-       
         if "harmonics" not in time_series_dict[label]:
             time_series_dict[label]["harmonics"] = sci.maximum_availiable_harmonics(
                 time_series_dict[label]["time"], time_series_dict[label]["current"]
@@ -272,8 +271,8 @@ def plot_harmonics(**kwargs):
             #plt.show()
         else:
             calculated_harmonics=False
-        max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
         
+        max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
         harm_dict[label] = sci.plot.generate_harmonics(
             time_series_dict[label]["time"],
             time_series_dict[label]["current"],
