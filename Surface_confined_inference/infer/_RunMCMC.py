@@ -130,6 +130,11 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         chains = mcmc.run()
         
         return chains
+    def __setattr__(self, name, value):
+     if name=="num_cpu":
+      super().__setattr__(name, value, silent_flag=True)
+     else:
+      super().__setattr__(name, value)
     def dispersion_simulator(self, solver, sim_params, times):
         """
         Args:
@@ -149,6 +154,8 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         """
         if self._internal_options.experiment_type in ["FTACV", "DCV", "PSV"]:
             para_func=individual_ode_sims
+        elif self._internal_options.experiment_type in ["SquareWave"]:
+            para_func=individual_sw_sims
         nd_dict = self.nondimensionalise(sim_params)
         
         disp_params, self._values, self._weights = self._disp_class.generic_dispersion(

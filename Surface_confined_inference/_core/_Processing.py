@@ -18,7 +18,6 @@ def top_hat_filter(times, time_series, **kwargs):
     L = len(time_series)
     window = np.hanning(L)
     if kwargs["Fourier_window"] == "hanning":
-        print("hanning")
         time_series = np.multiply(time_series, window)
     if "top_hat_width" not in kwargs:
         filter_val = 0.5

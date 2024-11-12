@@ -282,8 +282,8 @@ class SingleExperiment:
 
         p=np.array(range(0, self._internal_memory["SW_params"]["end"]))
 
-        self._internal_memory["SW_params"]["b_idx"]=(sampling_factor*p)+(sampling_factor/2)
-        self._internal_memory["SW_params"]["f_idx"]=p*sampling_factor
+        self._internal_memory["SW_params"]["b_idx"]=(sampling_factor*p)+(sampling_factor/2)-1
+        self._internal_memory["SW_params"]["f_idx"]=p*sampling_factor-1
         Es=parameters["E_start"]#-parameters["E_0"]
         self._internal_memory["SW_params"]["E_p"]=(Es+parameters["v"]*(p*parameters['scan_increment']))
         self._internal_memory["SW_params"]["sim_times"]=self.calculate_times()
@@ -318,7 +318,7 @@ class SingleExperiment:
             backwards=np.zeros(len(self._internal_memory["SW_params"]["b_idx"]))
             forwards=np.array([current[x-1] for x in self._internal_memory["SW_params"]["f_idx"]])
             backwards=np.array([current[int(x)-1] for x in self._internal_memory["SW_params"]["b_idx"]])
-        return forwards, backwards, forwards-backwards, self._internal_memory["SW_params"]["E_p"]
+        return forwards, backwards, backwards-forwards, self._internal_memory["SW_params"]["E_p"]
 
 
     def get_voltage(self, times, **kwargs):
