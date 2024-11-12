@@ -281,12 +281,12 @@ class SingleExperiment:
         self._internal_memory["SW_params"]["end"]=int(abs(parameters['delta_E']//parameters['scan_increment']))
 
         p=np.array(range(0, self._internal_memory["SW_params"]["end"]))
-
-        self._internal_memory["SW_params"]["b_idx"]=(sampling_factor*p)+(sampling_factor/2)-1
-        self._internal_memory["SW_params"]["f_idx"]=p*sampling_factor-1
+        self._internal_memory["SW_params"]["b_idx"]=((sampling_factor*p)+(sampling_factor/2))-1
+        self._internal_memory["SW_params"]["f_idx"]=(p*sampling_factor)-1
         Es=parameters["E_start"]#-parameters["E_0"]
         self._internal_memory["SW_params"]["E_p"]=(Es+parameters["v"]*(p*parameters['scan_increment']))
         self._internal_memory["SW_params"]["sim_times"]=self.calculate_times()
+    
     def SW_peak_extractor(self, current, **kwargs):
         if "mean" not in kwargs:
             kwargs["mean"]=0
@@ -368,7 +368,8 @@ class SingleExperiment:
                 voltages[i-1]=sos.SW_potential(i,input_parameters["sampling_factor"],input_parameters["scan_increment"],input_parameters["SW_amplitude"],input_parameters["E_start"],input_parameters["v"])
             voltages[-1]=voltages[-2]
             return voltages
-
+    def redimensionalise(self, nondim_dict):
+        return self._NDclass.redimensionalise(nondim_dict)
     def dispersion_checking(self, optim_list):
         """
 
@@ -641,6 +642,8 @@ class SingleExperiment:
                         "actions":["simulation_options"],
                         "options":{"values":{"Marcus":1, "ButlerVolmer":0}, "flag":"Marcus_flag"}}
         }
+        if "theta" not in simulation_dict:
+            simulation_dict["theta"]=0
         for key in options_and_requirements.keys():
             sub_dict=options_and_requirements[key]
             option_value=sub_dict["option_value"]

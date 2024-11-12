@@ -12,7 +12,7 @@ unit_dict={
         'v': '$V s^{-1}$',   #       (scan rate s^-1)
         'area': '$cm^{2}$', #(electrode surface area cm^2)
         'Ru': "$\\Omega$",  #     (uncompensated resistance ohms)
-        'Cdl': "F", #(capacitance parameters)
+        'Cdl': "F cm$^{-2}$", #(capacitance parameters)
         'CdlE1': "",#0.000653657774506,
         'CdlE2': "",#0.000245772700637,
         'CdlE3': "",#1.10053945995e-06,

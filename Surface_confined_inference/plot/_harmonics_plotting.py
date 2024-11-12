@@ -31,7 +31,8 @@ def generate_harmonics(times, data, **kwargs):
         #kwargs["harmonics"]=list(range(1, 10))
     if "save_csv" not in kwargs:
         kwargs["save_csv"]=False
-    elif isinstance(kwargs["save_csv"], str)==False:
+    
+    elif kwargs["save_csv"] is not False and isinstance(kwargs["save_csv"], str)==False:
         raise TypeError("save_csv argument needs to be str, not {0}".format(type(kwargs["save_csv"])))
     num_harmonics = len(kwargs["harmonics"])
     if kwargs["return_amps"] == True:
@@ -228,7 +229,9 @@ def plot_harmonics(**kwargs):
         kwargs["title"]=None
     if "nyticks" not in kwargs:
         kwargs["nyticks"]=None
-    
+    if "save_csv" not in kwargs:
+        kwargs["save_csv"]=False
+
     label_counter = 0
     for key in kwargs:
         if "data" in key:
@@ -271,8 +274,16 @@ def plot_harmonics(**kwargs):
             #plt.show()
         else:
             calculated_harmonics=False
+<<<<<<< HEAD
+        max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
+        if kwargs["save_csv"] is not False:
+            filename=label+".csv"
+        else:
+            filename=False
+=======
         
         max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
+>>>>>>> fa6d7ca32f5e66b14123e0f3fdf6cefc26027da9
         harm_dict[label] = sci.plot.generate_harmonics(
             time_series_dict[label]["time"],
             time_series_dict[label]["current"],
@@ -281,6 +292,7 @@ def plot_harmonics(**kwargs):
             one_sided=kwargs["one_sided"],
             harmonics=time_series_dict[label]["harmonics"],
             filter_val=kwargs["filter_val"],
+            save_csv=filename
         )
         all_harmonics += time_series_dict[label]["harmonics"]
     all_harmonics = list(set(sorted(all_harmonics)))

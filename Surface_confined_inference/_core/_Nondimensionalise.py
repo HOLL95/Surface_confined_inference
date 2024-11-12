@@ -61,6 +61,28 @@ class NDParams:
                 function_dict[key] = lambda x:x
         function_dict["cap_phase"] = lambda x:x
         self.function_dict = function_dict
+    def redimensionalise(self, nondim_dict):
+
+        dim_dict = {}
+        for key in nondim_dict:
+            if key[0] == "E" or key == "delta_E":
+                dim_dict[key] = self.e_redim(nondim_dict[key])
+            elif key[0] == "k" and "scale" not in key:
+                dim_dict[key] = self.t_redim(nondim_dict[key])
+            elif key == "Ru":
+                dim_dict[key] = self.Ru_redim(nondim_dict[key])
+            elif key == "Cdl":
+                dim_dict[key] = self.Cdl_redim(nondim_dict[key])
+            elif key == "gamma":
+                dim_dict[key] = self.gamma_redim(nondim_dict[key])
+            elif key == "omega":
+                dim_dict[key] = self.omega_redim(nondim_dict[key])
+            elif key == "v":
+                dim_dict[key] = self.v_redim(nondim_dict[key])
+            else:
+                dim_dict[key] = nondim_dict[key]
+        return dim_dict
+       
 
     def e_nondim(self, value):
         return value / self.c_E0
@@ -72,7 +94,7 @@ class NDParams:
         return value / self.c_I0
 
     def Ru_nondim(self, value):
-        return value / self.c_E0 * self.c_I0
+        return( value / self.c_E0 )* self.c_I0
 
     def Cdl_nondim(self, value):
         return value / self.c_I0 / self.c_T0 * (self.area * self.c_E0)
@@ -85,5 +107,25 @@ class NDParams:
 
     def v_nondim(self, value):
         return value * self.c_T0 / self.c_E0
+    def e_redim(self, value):
+        return value * self.c_E0
+
+    def t_redim(self, value):
+        return value / self.c_T0
+
+    def Ru_redim(self, value):
+        return (value * self.c_E0) / self.c_I0
+
+    def Cdl_redim(self, value):
+        return value* (self.c_I0 * self.c_T0)  / (self.area * self.c_E0)
+
+    def gamma_redim(self, value):
+        return value * self.c_Gamma
+
+    def omega_redim(self, value):
+        return value / (2 * pi * self.c_T0)
+
+    def v_redim(self, value):
+        return value / self.c_T0 * self.c_E0
 
     

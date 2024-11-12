@@ -1,4 +1,4 @@
-from .utilities import add_noise, RMSE, temporary_options, read_param_table, custom_linspace, custom_logspace
+from .utilities import add_noise, RMSE, temporary_options, read_param_table, custom_linspace, custom_logspace, normalise, un_normalise
 from .formatting import (
         fancy_names,
         unit_dict,
