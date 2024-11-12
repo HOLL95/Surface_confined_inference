@@ -58,7 +58,6 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     #define ATOL2 SUN_RCONST(1.0e-6)
     #define ATOL3 SUN_RCONST(1.0e-6)
     #define ZERO SUN_RCONST(0.0)
-
     SUNContext sunctx;
     sunrealtype t, tout;
     N_Vector y;
@@ -86,7 +85,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
         retval = SUNContext_Create(NULL, &sunctx);
     #endif
     if (check_retval(&retval, "SUNContext_Create", 1)) { return (return_val); }
-
+    
     /* Initial conditions */
     y = N_VNew_Serial(NEQ, sunctx);
     if (check_retval((void*)y, "N_VNew_Serial", 0)) { return (return_val); }
@@ -95,10 +94,12 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     //Current
     Ith(y, 1)=params["Cdl"]*mono_dE(params, 0, params["phase"]);
     
-    Ith(y, 2)=0;
+    Ith(y, 2)=params["theta"];
+   
     for (int j=2; j<NEQ;j++){
-        Ith(y, j+1) = 0;
+        Ith(y, j+1) = params["theta"];
     }
+    
     
 
     /* Set the vector absolute tolerance */
@@ -112,6 +113,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     /* Call CVodeCreate to create the solver memory and specify the
     * Backward Differentiation Formula */
     cvode_mem = CVodeCreate(CV_BDF, sunctx);
+    int flag = CVodeSetMaxNumSteps(cvode_mem, 10000000);
     if (check_retval((void*)cvode_mem, "CVodeCreate", 0)) { return (return_val); }
 
     /* Call CVodeInit to initialize the integrator memory and specify the

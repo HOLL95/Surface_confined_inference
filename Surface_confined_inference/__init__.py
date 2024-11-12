@@ -1,6 +1,6 @@
 from ._core._Voltammetry import SingleExperiment
 from ._HPCInterface._Slurm import SingleSlurmSetup
-
+from ._core._SWVStepwise import SWVStepwise
 from ._core._LoadExperiment import LoadSingleExperiment, ChangeTechnique
 from ._core._PintsFunctions import (FourierGaussianLogLikelihood, 
                                     GaussianTruncatedLogLikelihood,
