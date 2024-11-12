@@ -274,16 +274,11 @@ def plot_harmonics(**kwargs):
             #plt.show()
         else:
             calculated_harmonics=False
-<<<<<<< HEAD
         max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
         if kwargs["save_csv"] is not False:
             filename=label+".csv"
         else:
             filename=False
-=======
-        
-        max_harm = max([len(time_series_dict[label]["harmonics"]), max_harm])
->>>>>>> fa6d7ca32f5e66b14123e0f3fdf6cefc26027da9
         harm_dict[label] = sci.plot.generate_harmonics(
             time_series_dict[label]["time"],
             time_series_dict[label]["current"],
