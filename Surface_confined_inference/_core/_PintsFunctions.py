@@ -139,9 +139,9 @@ class GaussianKnownSigmaTruncatedLogLikelihood(pints.ProblemLogLikelihood):
 
     def __call__(self, x):
         if self.truncate==True:
-            sim_vals=self._problem.evaluate(x[:-self._no])[self.time_idx]
+            sim_vals=self._problem.evaluate(x)[self.time_idx]
         else:
-            sim_vals=self._problem.evaluate(x[:-self._no])
+            sim_vals=self._problem.evaluate(x)
         error = self._values -sim_vals
         return np.sum(self._offset + self._multip * np.sum(error**2, axis=0))
 class FourierGaussianKnownSigmaLogLikelihood(pints.ProblemLogLikelihood):
@@ -184,15 +184,12 @@ class FourierGaussianKnownSigmaLogLikelihood(pints.ProblemLogLikelihood):
         
     
     def __call__(self, x):
-        
-        sigma = np.asarray(x[-self._no:])
-        if any(sigma <= 0):
-            return -np.inf
+
         if self.truncate==True:
-            sim_vals=sci.top_hat_filter(self._times[self.time_idx], self._problem.evaluate(x[:-self._no])[self.time_idx], **self.filter_kwargs)
+            sim_vals=sci.top_hat_filter(self._times[self.time_idx], self._problem.evaluate(x)[self.time_idx], **self.filter_kwargs)
         else:
-            sim_vals=sci.top_hat_filter(self._times, self._problem.evaluate(x[:-self._no]), **self.filter_kwargs)
+            sim_vals=sci.top_hat_filter(self._times, self._problem.evaluate(x), **self.filter_kwargs)
 
         error = self._FTvalues - sim_vals
         return np.sum(self._offset + self._multip * np.sum(error**2, axis=0))
-    
+

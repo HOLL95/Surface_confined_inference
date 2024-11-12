@@ -74,7 +74,8 @@ if args.method=="optimisation":
         sim_voltage=np.array(sim_voltage)[time_idx]
         sim_currents=np.array([x[time_idx] for x in sim_dict["Current_array"]])
     if DC_voltage is not None:
-        DC_voltage=DC_voltage[time_idx]
+        if simulator._internal_options.transient_removal!=0:
+                DC_voltage=DC_voltage[time_idx]
     sci.plot.save_results(time, 
                         sim_voltage, 
                         current, 
@@ -133,7 +134,10 @@ else:
  simulator=sci.LoadSingleExperiment(args.simulator)
  chain_data=[np.load(os.path.join(args.resultsLoc, file)) for file in files]
  full_chain=np.concatenate(chain_data, axis=0)
- trace(full_chain, parameter_names=simulator._optim_list+["Noise"])
+ try:
+  trace(full_chain, parameter_names=simulator._optim_list+["Noise"])
+ except:
+  trace(full_chain, parameter_names=simulator._optim_list)
  fig=plt.gcf()
  fig.set_size_inches(9,9)
  up_one=args.resultsLoc.split("/")

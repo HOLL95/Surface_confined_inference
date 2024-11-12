@@ -54,6 +54,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         problem=pints.SingleOutputProblem(self, time_data, current_data)
         #plt.plot(time_data, current_data)
         #plt.show()
+      
         if kwargs["fixed_sigma"]==False:
             if kwargs["fourier_fitting"]==True:
                 log_Likelihood=sci.FourierGaussianLogLikelihood(problem)
@@ -77,14 +78,19 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
                                         upper 
                                         )
             log_posterior = pints.LogPosterior(log_Likelihood, log_prior)
+            jitter=np.linspace(0.9, 1.1, kwargs["num_chains"])
             xs = [
-                np.array(kwargs["starting_point"])
+                jitter[x]*np.array(kwargs["starting_point"])
                 for x in range(0, kwargs["num_chains"])
             ]
+            for initpoint in xs:
+             print(list(lower))
+             print(list(initpoint))
+             print(list(upper))
         if kwargs["fixed_sigma"]==True:
             
             if kwargs["fourier_fitting"]==True:
-                log_Likelihood=sci.FourierKnownSigmaGaussianLogLikelihood(problem, kwargs["starting_point"][-1])
+                log_Likelihood=sci.FourierGaussianKnownSigmaLogLikelihood(problem, kwargs["starting_point"][-1])
             else:
                 log_Likelihood=sci.GaussianKnownSigmaTruncatedLogLikelihood(problem, kwargs["starting_point"][-1])
             lower=[self._internal_memory["boundaries"][x][0] for x in self._optim_list]
@@ -98,6 +104,8 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
                 np.array(kwargs["starting_point"])[:-1]
                 for x in range(0, kwargs["num_chains"])
             ]
+           
+           
         if kwargs["transformation"]=="identity":
             transform=pints.IdentityTransformation(len(xs[0]))
         elif kwargs["transformation"]=="log":
@@ -117,7 +125,7 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
              init_sigma[i]=kwargs["sigma0"]*(upper[i]-lower[i])
         else:
          init_sigma=None
-        mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,transformation=transform,sigma0=init_sigma)
+        mcmc=pints.MCMCController(log_posterior, kwargs["num_chains"],  xs,transformation=transform,sigma0=init_sigma, method=pints.EmceeHammerMCMC)
         mcmc.set_max_iterations(kwargs["samples"])
         chains = mcmc.run()
         
