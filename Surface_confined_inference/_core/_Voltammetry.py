@@ -298,8 +298,8 @@ class SingleExperiment:
         if kwargs["mean"]==0:
             forwards=np.zeros(len(self._internal_memory["SW_params"]["f_idx"]))
             backwards=np.zeros(len(self._internal_memory["SW_params"]["b_idx"]))
-            forwards=np.array([current[x-1] for x in self._internal_memory["SW_params"]["f_idx"]])
-            backwards=np.array([current[int(x)-1] for x in self._internal_memory["SW_params"]["b_idx"]])
+            forwards=np.array([current[x] for x in self._internal_memory["SW_params"]["f_idx"]])
+            backwards=np.array([current[int(x)] for x in self._internal_memory["SW_params"]["b_idx"]])
         else:
             raise NotImplementedError
             indexes=[self._internal_memory["SW_params"]["f_idx"], self._internal_memory["SW_params"]["b_idx"]]

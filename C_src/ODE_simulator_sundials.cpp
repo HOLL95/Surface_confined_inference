@@ -51,6 +51,7 @@ static int check_retval(void* returnvalue, const char* funcname, int opt);
 
 
 
+
 py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string, double> params){
     #define NEQ   2               /* number of equations  */
     #define RTOL  SUN_RCONST(1.0e-6) /* scalar relative tolerance            */
@@ -113,7 +114,6 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     /* Call CVodeCreate to create the solver memory and specify the
     * Backward Differentiation Formula */
     cvode_mem = CVodeCreate(CV_BDF, sunctx);
-    int flag = CVodeSetMaxNumSteps(cvode_mem, 10000000);
     if (check_retval((void*)cvode_mem, "CVodeCreate", 0)) { return (return_val); }
 
     /* Call CVodeInit to initialize the integrator memory and specify the
