@@ -14,6 +14,13 @@ def add_noise(series, sd, **kwargs):
             for i in range(0, len(series)):
                 noisy_series[i]+=(np.random.normal()*series[i]*sd)
             return noisy_series
+def moving_avg(x,n):
+    mv =  np.convolve(x,np.ones(n)/n,mode='valid')
+    vals=np.concatenate(([np.nan for k in range(n-1)],mv))
+    window_len=(n//2)+1
+    for k in range(0, n-1):
+        vals[k]=np.mean(vals[max(k-window_len, 0):k+window_len])
+    return vals
 def RMSE(simulation, data):
     """
     Args:

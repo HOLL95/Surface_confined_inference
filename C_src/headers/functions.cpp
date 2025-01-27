@@ -47,10 +47,17 @@ extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_dat
     kred=BV_reduction(*params, Er);
     kox=BV_oxidation(*params, Er);
   }
+  
   double dtheta = Ith(ydot, 2) =kox*(1-theta)-kred*theta ;
   double Er2=pow(cap_Er,2);
   Cdlp=(*params)["Cdl"]*(1+((*params)["CdlE1"]*cap_Er)+((*params)["CdlE2"]*Er2)+((*params)["CdlE3"]*Er2*cap_Er));
-  dIdt=-(1/((*params)["Ru"]*Cdlp))*(I-(*params)["gamma"]*dtheta-Cdlp*cap_dE);
+  if (((*params)["Cdl"]<=0)){
+    dE=mono_dE(*params, t, (*params)["phase"]);
+    dIdt=dE*(1-(*params)["alpha"])*kox*(1-theta)-kred*theta*-(*params)["alpha"]*dE;
+  }else{
+     dIdt=-(1/((*params)["Ru"]*Cdlp))*(I-(*params)["gamma"]*dtheta-Cdlp*cap_dE);
+  }
+ 
 
   Ith(ydot, 1) = dIdt;
   updateCdlp(*params, Cdlp);
@@ -68,13 +75,26 @@ extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,
   double I = Ith(y, 1);
   double theta = Ith(y, 2);
   double dtheta_dtheta=-(*params)["kox"]-(*params)["kred"];
-  double dtheta_dI=-(*params)["Ru"]*(*params)["alpha"]*theta*(*params)["kred"]-(*params)["Ru"]*(1-(*params)["alpha"])*(1-theta)*(*params)["kox"];
+  double dtheta_dI=-(*params)["Ru"]*theta*(*params)["kred"]-(*params)["Ru"]*(1-(*params)["alpha"])*(1-theta)*(*params)["kox"];
+  double dE=mono_dE(*params, t, (*params)["phase"]);
+  
+  if (((*params)["Cdl"]<=0)){
 
-  IJth(J, 1, 1) = -(1/((*params)["Ru"]*(*params)["Cdlp"]))*(1-(*params)["gamma"]*dtheta_dI);
-  IJth(J, 1, 2) = -(1/((*params)["Ru"]*(*params)["Cdlp"]))*((*params)["gamma"]*dtheta_dtheta);
-  IJth(J, 2, 1) = dtheta_dI;
+    IJth(J, 1, 1) = std::pow((1 - (*params)["alpha"]),2) * (*params)["Ru"] * (1 - theta) * dE * (*params)["kox"] - std::pow((*params)["alpha"],2) *  (*params)["Ru"] * theta * dE *(*params)["kred"];
+    IJth(J, 1, 2) = -dE*(1-(*params)["alpha"])*(*params)["kox"]-(*params)["kred"]*-(*params)["alpha"]*dE;
+    IJth(J, 2, 1) = dtheta_dI;
 
-  IJth(J, 2, 2) = dtheta_dtheta;
+    IJth(J, 2, 2) = dtheta_dtheta;
+
+  }
+  else{
+    IJth(J, 1, 1) = -(1/((*params)["Ru"]*(*params)["Cdlp"]))*(1-(*params)["gamma"]*dtheta_dI);
+    IJth(J, 1, 2) = -(1/((*params)["Ru"]*(*params)["Cdlp"]))*((*params)["gamma"]*dtheta_dtheta);
+    IJth(J, 2, 1) = dtheta_dI;
+
+    IJth(J, 2, 2) = dtheta_dtheta;
+  }
+ 
   return (0);
 }
 

@@ -182,7 +182,7 @@ def numbered_title( name, **kwargs):
     return return_name, true_name
 def format_values( value, dp=2):
     abs_val=abs(value)
-    if abs_val<1000 and abs_val>0.015:
+    if abs_val<10000 and abs_val>0.001:
         return str(round(value, dp))
     else:
         return "{:.{}e}".format(value, dp)
