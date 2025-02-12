@@ -252,6 +252,7 @@ def plot_harmonics(**kwargs):
         if "colour" not in time_series_dict[label]:
             if c_counter>=len(colours):
              c_counter=0
+
             time_series_dict[label]["colour"]=colours[c_counter]
             c_counter+=1
         if "lw" not in time_series_dict[label]:

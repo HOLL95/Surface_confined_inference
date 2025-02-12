@@ -886,7 +886,10 @@ class SingleExperiment:
             sim_params = dict(zip(self._optim_list, parameters))
         if self._internal_options.experiment_type != "SquareWave":
             solverclass=SolverWrapper(sos.ODEsimulate)
-            solver=solverclass.ode_current_wrapper
+            if self._internal_options.Faradaic_only==False:
+                solver=solverclass.ode_current_wrapper
+            else:
+                solver=solverclass.farad_current_wrapper
             t=times
         elif self._internal_options.experiment_type == "SquareWave":
             solverclass=SolverWrapper(sos.SW_current)
@@ -1110,7 +1113,8 @@ class Options:
             "phase_function":{"args":["constant", "sinusoidal"], "default":"constant"},
             "transient_removal":{"type": numbers.Number, "default":0},
             "square_wave_return":{"args":["forwards","backwards","net", "total"],"default":"net"},
-            "problem":{"args":["forwards","inverse"], "default":"forwards"}
+            "problem":{"args":["forwards","inverse"], "default":"forwards"},
+            "Faradaic_only":{"type":bool, "default":False}
         
             
         }
@@ -1207,5 +1211,7 @@ class SolverWrapper:
 
     def ode_current_wrapper(self,times, params):
         return np.array(self.solver(times, params))[0,:]
+    def farad_current_wrapper(self, times, params):
+        return np.array(self.solver(times, params))[2,:]
     def swv_current_wrapper(self,times, params):
         return np.array(self.solver(times, params))

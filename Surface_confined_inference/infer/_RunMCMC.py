@@ -153,7 +153,11 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
 
         """
         if self._internal_options.experiment_type in ["FTACV", "DCV", "PSV"]:
-            para_func=individual_ode_sims
+            if self._internal_options.Faradaic_only==False:
+                
+                para_func=individual_ode_sims
+            else:
+                para_func=individual_farad_only_sims
         elif self._internal_options.experiment_type in ["SquareWave"]:
             para_func=individual_sw_sims
         nd_dict = self.nondimensionalise(sim_params)
@@ -175,13 +179,18 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             tuple([params, times, weight]) 
             for params, weight in zip(dictionaries, weights)
         ]
-        
+        print(self.num_cpu,"here")
+        import time
+        start=time.time()
         with mp.Pool(processes=self.num_cpu) as pool:
             results=pool.starmap(para_func, iterable)
+        print(time.time()-start)
         np_results=np.array(results)
         return np.sum(np_results, axis=0)
 
 def individual_ode_sims(nd_dict, times, weight):
     return weight*np.array(sos.ODEsimulate(times, nd_dict))[0, :]
+def individual_farad_only_sims(nd_dict, times, weight):
+    return weight*np.array(sos.ODEsimulate(times, nd_dict))[2, :]
 def individual_sw_sims(nd_dict, times, weight):
     return weight*np.array(sos.SW_current(times, nd_dict))
