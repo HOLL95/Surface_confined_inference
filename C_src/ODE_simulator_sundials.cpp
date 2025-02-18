@@ -71,7 +71,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     FILE* FID;
     std::vector<vector<double>> state_variables;
     int num_times=times.size();
-    state_variables.resize(NEQ+1, std::vector<double>(num_times));
+    state_variables.resize(NEQ+2, std::vector<double>(num_times));
     py::object return_val=py::cast(state_variables);
 
     y         = NULL;
@@ -144,14 +144,15 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     /* Set the user-supplied Jacobian routine Jac */
     retval = CVodeSetJacFn(cvode_mem, Jac);
     if (check_retval(&retval, "CVodeSetJacFn", 1)) { return (return_val); }
-
+    N_Vector ydot = N_VNew_Serial(NEQ, sunctx);
     for (iout=1; iout<num_times; iout++)
     {
         retval = CVode(cvode_mem, SUN_RCONST(times[iout]), y, &t, CV_NORMAL);
-        
+        single_e(t, y, ydot, &params);
         state_variables[0][iout]=Ith(y, 1);
         state_variables[1][iout]=Ith(y, 2);
-        for (int j=2; j<NEQ;j++){
+        state_variables[2][iout] = params["gamma"] * Ith(ydot, 2);
+        for (int j=3; j<NEQ;j++){
             state_variables[j][iout]=Ith(y, j+1);
             
         }
@@ -164,6 +165,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
 
 
     /* Free memory */
+    N_VDestroy(ydot);  
     N_VDestroy(y);            /* Free y vector */
     N_VDestroy(abstol);       /* Free abstol vector */
     CVodeFree(&cvode_mem);    /* Free CVODE memory */
