@@ -179,12 +179,9 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
             tuple([params, times, weight]) 
             for params, weight in zip(dictionaries, weights)
         ]
-        print(self.num_cpu,"here")
-        import time
-        start=time.time()
         with mp.Pool(processes=self.num_cpu) as pool:
             results=pool.starmap(para_func, iterable)
-        print(time.time()-start)
+       
         np_results=np.array(results)
         return np.sum(np_results, axis=0)
 
