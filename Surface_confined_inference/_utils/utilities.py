@@ -1,6 +1,7 @@
 import numpy as np
 from functools import wraps
 import re
+import Surface_confined_inference as sci
 experimental_input_params={"FTACV":["E_start", "E_reverse", "omega" ,"phase", "delta_E", "v"],
                 "DCV":["E_start", "E_reverse",  "v"],
                 "PSV":["Edc", "omega", "phase", "delta_E"]}
@@ -115,3 +116,15 @@ def custom_logspace(start, end, custom_value, num_points):
     adjusted_values = values + offset
     
     return adjusted_values
+def construct_experimental_dictionary(existing_dictionary,terminal_entry, *args):
+    if len(args)==1:
+        existing_dictionary[args[0]]=terminal_entry
+        return existing_dictionary
+    else:
+        if args[0] not in existing_dictionary:
+            existing_dictionary[args[0]]={}
+        sci.construct_experimental_dictionary(existing_dictionary[args[0]], terminal_entry, *args[1:])
+        return existing_dictionary
+    
+
+        

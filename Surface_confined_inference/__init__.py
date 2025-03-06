@@ -22,6 +22,6 @@ from .infer._RunMCMC import RunSingleExperimentMCMC
 from ._core._Nondimensionalise import NDParams
 from ._core._Dispersion import Dispersion
 from . import (infer, plot, _utils)
-from ._utils.utilities import experimental_input_params, normalise, un_normalise
+from ._utils.utilities import experimental_input_params, normalise, un_normalise, construct_experimental_dictionary
 from ._Heuristics._HeuristicMethods import HeuristicMethod
 from ._Heuristics._DCVMethods import  TrumpetSimulator
