@@ -4,6 +4,8 @@ import os
 import uuid
 from pathlib import Path
 import datetime
+
+@sci.LoadExperiment.register("slurm")
 class SingleSlurmSetup(sci.SingleExperiment):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         super().__init__(experiment_type, experiment_parameters, **kwargs)

@@ -1,5 +1,5 @@
 # Set the minimum required CMake version
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 
 # Specify project name and languages
 project(SurfaceODESolver)

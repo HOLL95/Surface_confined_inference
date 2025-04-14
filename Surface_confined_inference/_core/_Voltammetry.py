@@ -14,8 +14,8 @@ import time
 import math
 import matplotlib.pyplot as plt
 import json
-
-class SingleExperiment:
+@sci.LoadExperiment.register("single")
+class SingleExperiment(sci.BaseExperiment):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         """
         Initialize a SingleExperiment object, for use with a pints.ForwardProblem interface.

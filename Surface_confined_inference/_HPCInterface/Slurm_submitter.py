@@ -20,7 +20,7 @@ time=datafile[:,0]
 potential=datafile[:,2]
 current=datafile[:,1]
 if args.method=="optimisation":
-    simclass=sci.LoadSingleExperiment(args.simulator)
+    simclass=sci.BaseExperiment.from_json(args.simulator)
     results=simclass.Current_optimisation(time, current,
                                     parallel=True,
                                     Fourier_filter=simclass._internal_options.Fourier_fitting, 
@@ -34,7 +34,7 @@ if args.method=="optimisation":
     task_id=os.environ.get('SLURM_ARRAY_TASK_ID')    
     np.save("{2}/Individual_runs/Results_run_{0}_{1}.npy".format(job_id,task_id, args.saveloc), results)
 elif args.method=="sampling":
-    simclass=sci.LoadSingleExperiment(args.simulator,class_type="mcmc")
+    simclass=sci.sci.BaseExperiment.from_json(args.simulator,class_type="parallelsimulator")
     extra_args={}
     if args.init_point is not None:
      extra_args["starting_point"]=[float(x) for x in args.init_point.split(" ")]

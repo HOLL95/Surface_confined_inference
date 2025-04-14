@@ -145,23 +145,43 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     retval = CVodeSetJacFn(cvode_mem, Jac);
     if (check_retval(&retval, "CVodeSetJacFn", 1)) { return (return_val); }
     N_Vector ydot = N_VNew_Serial(NEQ, sunctx);
-    for (iout=1; iout<num_times; iout++)
-    {
-        retval = CVode(cvode_mem, SUN_RCONST(times[iout]), y, &t, CV_NORMAL);
-        single_e(t, y, ydot, &params);
-        state_variables[0][iout]=Ith(y, 1);
-        state_variables[1][iout]=Ith(y, 2);
-        state_variables[2][iout] = params["gamma"] * Ith(ydot, 2);
-        for (int j=3; j<NEQ;j++){
-            state_variables[j][iout]=Ith(y, j+1);
+    try {
+        for (iout=1; iout<num_times; iout++) {
+            retval = CVode(cvode_mem, SUN_RCONST(times[iout]), y, &t, CV_NORMAL);
             
+            if (retval < 0) {
+                fprintf(stderr, "\nCVode error: %d at time %f\n", retval, times[iout]);
+                // Return zeros on numerical error
+                throw std::runtime_error("CVode failed");
+            }
+            
+            single_e(t, y, ydot, &params);
+            
+            state_variables[0][iout]=Ith(y, 1);
+            state_variables[1][iout]=Ith(y, 2);
+            state_variables[2][iout] = params["gamma"] * Ith(ydot, 2);
+            
+            for (int j=3; j<NEQ;j++){
+                state_variables[j][iout]=Ith(y, j+1);
+            }
         }
-
+    } catch (const std::exception& e) {
+        // Clean up resources and return zeros array
+        N_VDestroy(ydot);
+        N_VDestroy(y);
+        N_VDestroy(abstol);
+        SUNLinSolFree(LS);
+        SUNMatDestroy(A);
+        CVodeFree(&cvode_mem);
+        if (sunctx) SUNContext_Free(&sunctx);
         
-        
-        if (check_retval(&retval, "CVode", 1)) { break; }
-        
+        // Reset state_variables to zeros
+        for (int i = 0; i < NEQ+2; i++) {
+            std::fill(state_variables[i].begin(), state_variables[i].end(), 0.0);
         }
+        
+        return py::cast(state_variables);
+    }
 
 
     /* Free memory */
