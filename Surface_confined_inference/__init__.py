@@ -1,7 +1,8 @@
+from ._core._Base import BaseExperiment
+from ._core._LoadExperiment import LoadExperiment
 from ._core._Voltammetry import SingleExperiment
 from ._HPCInterface._Slurm import SingleSlurmSetup
 from ._core._SWVStepwise import SWVStepwise
-from ._core._LoadExperiment import LoadSingleExperiment, ChangeTechnique
 from ._core._PintsFunctions import (FourierGaussianLogLikelihood, 
                                     GaussianTruncatedLogLikelihood,
                                     FourierGaussianKnownSigmaLogLikelihood,
@@ -17,8 +18,7 @@ from ._core._InputChecking import (
     get_DC_component
 )
 from ._core._EIS import SimpleSurfaceCircuit, convert_to_bode
-from .infer._SimpleInference import CheckOtherExperiment
-from .infer._RunMCMC import RunSingleExperimentMCMC
+from .infer._RunMCMC import ParallelSimulator
 from ._core._Nondimensionalise import NDParams
 from ._core._Dispersion import Dispersion
 from . import (infer, plot, _utils)

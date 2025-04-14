@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import pints
 import time
 import SurfaceODESolver as sos
-class RunSingleExperimentMCMC(sci.SingleExperiment):
+@sci.LoadExperiment.register("parallelsimulator")
+class ParallelSimulator(sci.SingleExperiment):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         
         super().__init__(experiment_type, experiment_parameters, **kwargs)
@@ -181,8 +182,10 @@ class RunSingleExperimentMCMC(sci.SingleExperiment):
         ]
         with mp.Pool(processes=self.num_cpu) as pool:
             results=pool.starmap(para_func, iterable)
-       
+        
         np_results=np.array(results)
+        if any([x==0 for x in np.sum(results, axis=1)]):
+            return np.zeros((np_results.shape[0], np_results.shape[1]))
         return np.sum(np_results, axis=0)
 
 def individual_ode_sims(nd_dict, times, weight):

@@ -29,7 +29,7 @@ if args.method=="optimisation":
     current=datafile[:,1]
     with open(args.JobIds, "r") as f:
         ids=f.readlines()
-    simulator=sci.LoadSingleExperiment(args.simulator)
+    simulator=sci.BaseExperiment.from_json(args.simulator)
     loc=args.resultsLoc
     param_array=[]
     for i in range(0, len(ids)):
@@ -95,18 +95,11 @@ if args.method=="optimisation":
         check_jsons=args.check_parameters
         for i in range(0, len(args.checkfiles)):
             checkloc=savepath+"/"+args.checkfile_types[i]+"_check"
-            if check_jsons[i]=="none":
-                new_technique=sci.CheckOtherExperiment(args.checkfile_types[i], 
-                                        args.simulator, 
-                                        datafile=args.checkfiles[i]
-                                        )
-                n_time=new_technique.time
-                n_current=new_technique.current
-            else:
-                new_technique=sci.LoadSingleExperiment(check_jsons[i])
-                data=np.loadtxt(args.checkfiles[i])
-                n_time=data[:,0]
-                n_current=data[:,1]
+        
+            new_technique=sci.BaseExperiment.from_json(check_jsons[i])
+            data=np.loadtxt(args.checkfiles[i])
+            n_time=data[:,0]
+            n_current=data[:,1]
             Path(checkloc).mkdir(parents=True, exist_ok=True)
             sim_dict=new_technique.parameter_array_simulate(sorted_params, n_time)
             sim_currents=sim_dict["Current_array"]
@@ -131,7 +124,7 @@ if args.method=="optimisation":
 else:
  files=os.listdir(args.resultsLoc)
  from pints.plot import trace
- simulator=sci.LoadSingleExperiment(args.simulator)
+ simulator=sci.BaseExperiment.from_json(args.simulator)
  chain_data=[np.load(os.path.join(args.resultsLoc, file)) for file in files]
  full_chain=np.concatenate(chain_data, axis=0)
  try:
