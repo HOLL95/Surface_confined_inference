@@ -57,22 +57,20 @@ class OptionsManager(metaclass=OptionsMeta):
         raise AttributeError(f"Unknown option: {key}")
     
     def __setattr__(self, name: str, value: Any) -> None:
-        """Set an attribute with validation if it's an option."""
+        """Set an attribute with validation if it's a registered option."""
         if name in self._options:
-            # Let the descriptor handle validation
+            # Possibly trigger validation via descriptor, etc.
             super().__setattr__(name, value)
         else:
-            # For non-options, check if we should warn or allow
-            if name.startswith('_'):
-                # Private attributes are always allowed
-                super().__setattr__(name, value)
-            else:
-                # Let subclasses decide how to handle this
+            if not name.startswith('_'):
                 self._handle_unknown_attribute(name, value)
+            else:
+                super().__setattr__(name, value)
     
     def _handle_unknown_attribute(self, name: str, value: Any) -> None:
         """Handle setting an unknown attribute. Subclasses can override this."""
-        # By default, just set the attribute
+        # Default behavior: warn, but still allow
+        print(f"Warning: Unknown attribute '{name}' set.")
         super().__setattr__(name, value)
     
     def as_dict(self) -> Dict[str, Any]:
@@ -102,12 +100,3 @@ class OptionsManager(metaclass=OptionsMeta):
                 defaults[name] = descriptor.default
         return defaults
 
-
-class WarningOptionsManager(OptionsManager):
-    """An options manager that warns about unknown options but allows them."""
-    
-    def __init__(self, **kwargs):
-        self._warned_attrs = set()
-        super().__init__(**kwargs)
-    
-    

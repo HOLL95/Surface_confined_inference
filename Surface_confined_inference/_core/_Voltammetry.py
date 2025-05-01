@@ -15,7 +15,8 @@ import math
 import matplotlib.pyplot as plt
 import json
 @sci.LoadExperiment.register("single")
-class SingleExperiment(sci.BaseExperiment):
+
+class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
     def __init__(self, experiment_type, experiment_parameters, options_handler=None, **kwargs):
         """
         Initialize a SingleExperiment object, for use with a pints.ForwardProblem interface.
@@ -72,8 +73,8 @@ class SingleExperiment(sci.BaseExperiment):
         if options_handler is None:
             options_handler=None
             
-        self.options_class = sci.SingleExperimentOptions(options_handler=options_handler,**kwargs)
-        self._internal_options=self.options_class.experiment_options
+        self._options_class = sci.SingleExperimentOptions(options_handler=options_handler,**kwargs)
+        self._internal_options=self._options_class.experiment_options
         sci.check_input_dict(
             experiment_parameters,
             accepted_arguments[self._internal_options.experiment_type],
@@ -607,7 +608,7 @@ class SingleExperiment(sci.BaseExperiment):
                 )
             )
         options_and_requirements={
-            "phase_function":{"option_value":self._internal_options.phase_function, 
+            "phase_function":{"option_value":"constant", 
                     "actions":["param_check", "simulation_options"], 
                     "params":{"sinusoidal":["phase_delta_E", "phase_omega", "phase_phase"], "constant":["phase"]}, 
                     "options":{"values":{"constant":0, "sinusoidal":1}, "flag":"phase_flag"}},

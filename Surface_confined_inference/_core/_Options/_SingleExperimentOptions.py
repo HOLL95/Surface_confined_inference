@@ -9,7 +9,7 @@ from typing import List, Optional, Sequence
 from ._OptionsDescriptor import (
     BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor
 )
-from ._OptionsMeta import WarningOptionsManager, OptionsManager
+from ._OptionsMeta import OptionsManager
 
 
 

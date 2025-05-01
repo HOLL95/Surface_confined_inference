@@ -9,7 +9,7 @@ import pints
 import time
 import SurfaceODESolver as sos
 @sci.LoadExperiment.register("parallelsimulator")
-class ParallelSimulator(sci.SingleExperiment):
+class ParallelSimulator(sci.SingleExperiment,sci.OptionsAwareMixin):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         
         super().__init__(experiment_type, experiment_parameters, options_handler=sci.ParallelOptions, **kwargs)
