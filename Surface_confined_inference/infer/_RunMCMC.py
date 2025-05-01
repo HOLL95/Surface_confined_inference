@@ -12,8 +12,8 @@ import SurfaceODESolver as sos
 class ParallelSimulator(sci.SingleExperiment):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         
-        super().__init__(experiment_type, experiment_parameters, **kwargs)
-        self.num_cpu=len(os.sched_getaffinity(0))
+        super().__init__(experiment_type, experiment_parameters, options_handler=sci.ParallelOptions, **kwargs)
+        self.num_cpu=self._internal_options.num_cpu
     @sci._utils.temporary_options(normalise_parameters=False)
     def run(self, time_data, current_data,**kwargs):
         if "runs" not in kwargs:
@@ -131,11 +131,6 @@ class ParallelSimulator(sci.SingleExperiment):
         chains = mcmc.run()
         
         return chains
-    def __setattr__(self, name, value):
-     if name=="num_cpu":
-      super().__setattr__(name, value, silent_flag=True)
-     else:
-      super().__setattr__(name, value)
     def dispersion_simulator(self, solver, sim_params, times):
         """
         Args:
@@ -184,8 +179,8 @@ class ParallelSimulator(sci.SingleExperiment):
             results=pool.starmap(para_func, iterable)
         
         np_results=np.array(results)
-        if any([x==0 for x in np.sum(results, axis=1)]):
-            return np.zeros((np_results.shape[0], np_results.shape[1]))
+        #if any([x==0 for x in np.sum(results, axis=1)]):
+        #    return np.zeros(np_results.shape[1])
         return np.sum(np_results, axis=0)
 
 def individual_ode_sims(nd_dict, times, weight):

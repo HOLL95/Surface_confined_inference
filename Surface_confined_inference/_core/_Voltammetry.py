@@ -16,27 +16,13 @@ import matplotlib.pyplot as plt
 import json
 @sci.LoadExperiment.register("single")
 class SingleExperiment(sci.BaseExperiment):
-    def __init__(self, experiment_type, experiment_parameters, **kwargs):
+    def __init__(self, experiment_type, experiment_parameters, options_handler=None, **kwargs):
         """
         Initialize a SingleExperiment object, for use with a pints.ForwardProblem interface.
 
         Args:
             experiment_type (str): Type of experiment (FTACV, PSV, DCV, SquareWave).
             experiment_parameters (dict): Dictionary of experiment input parameters.
-            GH_quadrature (bool): Whether or not to implement Gauss-Hermite quadrature for approximating normal distributions in dispersion. Defaults to True
-            phase_only (bool): Whether or not to fit the phase of the capacitance currentas the same value as that of the phase of the Faradaic current. Defaults to True
-            normalise_parameters (bool): In CMAES, it is convenient to normalise the parameters to between 0 and 1 when searching in parameter space. 
-                                        This option is to allow the `simulate` function to handle those normalised values. Defaults to True.
-            kinetiss (str): Type of electrochemical kinetics to use, of the options "Nernst", "ButlerVolmer" and "Marcus". Defaults to BulterVolmer" TODO: implement Marcus and Nernst rate equations
-            dispersion_bins (list): Number of bins used to approximate each dispersion distribution
-            Fourier_fitting: (bool): Used (in combination with the appropriate likelihood function) to fit Fourier spectrum data. Defaults to False.
-            Fourier function (str): Defines how to represent Fourier filtered current data. Defaults to "abs"
-            Fourier harmonics (list): Defines the harmonics to be included in the filtered Fourier spectrum
-            Fourier window (str): Defines whether or not to use a windowing function when applying Fourier filtration methods. Defaults to "hanning"
-            top_hat_window (float): Defines the width of the top hat window (as a percentage of the input frequency) around which to extract the individual harmonics. Defaults to 0.5
-            dispersion_test (bool): Defines whether to save the unweighted indivual simualtions of a dispersed simulation to self._disp_test.
-            phase_function (str): Defines what phase function to use in the input potential. Default is constant
-
         Initialises:
             class: NDClass, responsible for non-dimensionalising parameters in a manner distinct to each technique
             class: OptionsDecorator, responsible for storing different simulation options, and verifying that the provided option is of the correct type, or from the list of accepted options
@@ -83,29 +69,20 @@ class SingleExperiment(sci.BaseExperiment):
             "fixed_parameters": {},
         }
         kwargs["experiment_type"] = experiment_type
-        
-        self._internal_options = OptionsDecorator(**kwargs)
-        if all(param in experiment_parameters for param in ["phase_phase", "phase_delta_E", "phase_omega"]):
-           self._internal_options.phase_function="sinusoidal" 
-        if self._internal_options.phase_function=="sinusoidal":
-            optional_arguments=["phase_phase", "phase_delta_E", "phase_omega","phase_flag"]
-        else:
-            optional_arguments=[]
-        if "phase_flag" in experiment_parameters:
-            del experiment_parameters["phase_flag"]
+        if options_handler is None:
+            options_handler=None
+            
+        self.options_class = sci.SingleExperimentOptions(options_handler=options_handler,**kwargs)
+        self._internal_options=self.options_class.experiment_options
         sci.check_input_dict(
             experiment_parameters,
             accepted_arguments[self._internal_options.experiment_type],
-            optional_arguments=optional_arguments
+            optional_arguments=[]
         )
         self._NDclass = sci.NDParams(
             self._internal_options.experiment_type, experiment_parameters
         )
-        self._internal_options = OptionsDecorator(**kwargs)
-        [
-            setattr(self, key, getattr(self._internal_options, key))
-            for key in Options().accepted_arguments
-        ]
+
         if experiment_type!="SquareWave":
             self._essential_parameters = [
                 "E0",
@@ -339,16 +316,12 @@ class SingleExperiment(sci.BaseExperiment):
         if input_parameters == None:
             input_parameters = self._internal_memory["input_parameters"]
         
-        if self._internal_options.phase_function=="sinusoidal":
-            optional_arguments=["phase_phase", "phase_delta_E", "phase_omega"]
-            input_parameters["phase_flag"]=1
-        else:
-            optional_arguments=[]
-            input_parameters["phase_flag"]=0
+        
+        input_parameters["phase_flag"]=0
         checking_dict=copy.deepcopy(self._internal_memory["input_parameters"])
         checking_dict["phase_flag"]=input_parameters["phase_flag"]
         sci.check_input_dict(
-            input_parameters, checking_dict, optional_arguments=optional_arguments
+            input_parameters, checking_dict, optional_arguments=[]
         )
         input_parameters=copy.deepcopy(input_parameters)
         input_parameters = self.validate_input_parameters(input_parameters)
@@ -825,13 +798,6 @@ class SingleExperiment(sci.BaseExperiment):
         return self.simulate(parameters, self.nondim_t(times))
         
     def save_class(self,path,**kwargs):
-        if "switch_type" not in kwargs:
-            kwargs["switch_type"]=None
-        elif "experiment" not in kwargs["switch_type"].keys():
-            raise KeyError("Switch experiment types requires a new experiment")
-        elif "parameters" not in kwargs["switch_type"].keys():
-            raise KeyError("Switch experiment types requires parameters ")
-
         dict_class=vars(self)
         save_dict={"Options":{}}
         option_keys=Options().accepted_arguments.keys()
@@ -1055,155 +1021,6 @@ class SingleExperiment(sci.BaseExperiment):
             return dim_params+list(xbest[-log_Likelihood._no:])
         else:
             return list(sorted_params)
-
-    def __setattr__(self, name, value, silent_flag=False):
-        """
-        Args:
-            name (str): The name of the attribute to set.
-            value (Any): The value to assign to the attribute.
-
-        If the attribute name is 'OptionsDecorator', it sets the attribute using the superclass's __setattr__ method.
-
-        If the attribute name is in the list of accepted arguments from the Options class, it sets the attribute on the instance's internal options as well as the instance itself.
-        This allows for the checking of the value of the option to take place
-
-        For all other attribute names, it defaults to the superclass's __setattr__ method.
-        """
-        if name in ["OptionsDecorator"]:
-            super().__setattr__(name, value)
-        elif name in Options().accepted_arguments:
-            setattr(self._internal_options, name, value)
-            super().__setattr__(name, value)
-        else:
-            if name not in Options().other_attributes:
-                if silent_flag==False:
-                    print("Warning: {0} is not in the list of accepted options and will not change the behaviour of the simulations".format(name))
-            super().__setattr__(name, value)
-
-
-class Options:
-    def __init__(self, **kwargs):
-        """
-        Args:
-            **kwargs: Arbitrary keyword arguments representing option names and values. Only accepted arguments defined in accepted_arguments are allowed.
-        """
-        self.accepted_arguments = {
-            "experiment_type": {"type": str, "default": None},
-            "GH_quadrature": {"type": bool, "default": True},
-            "phase_only": {"type": bool, "default": True},
-            "normalise_parameters": {"type": bool, "default": False},
-            "kinetics": {
-                "args": ["ButlerVolmer", "Marcus", "Nernst"],
-                "default": "ButlerVolmer",
-            },
-            "dispersion": {"type": bool, "default": False},
-            "dispersion_bins": {"type": collections.abc.Sequence, "default": []},
-            "Fourier_fitting":{"type":bool, "default":False},
-            "Fourier_function": {
-                "args": ["composite", "abs", "real", "imaginary", "inverse"],
-                "default": "abs",
-            },
-            "Fourier_harmonics": {
-                "type": collections.abc.Sequence,
-                "default": list(range(0, 10)),
-            },
-            "Fourier_window": {"args": ["hanning", False], "default": "hanning"},
-            "top_hat_width": {"type": numbers.Number, "default": 0.5},
-            "dispersion_test": {"type": bool, "default": False},
-            "phase_function":{"args":["constant", "sinusoidal"], "default":"constant"},
-            "transient_removal":{"type": numbers.Number, "default":0},
-            "square_wave_return":{"args":["forwards","backwards","net", "total"],"default":"net"},
-            "problem":{"args":["forwards","inverse"], "default":"forwards"},
-            "Faradaic_only":{"type":bool, "default":False}
-        
-            
-        }
-        self.other_attributes=["_internal_memory", "_internal_options", "_NDclass", "_essential_parameters", "_optim_list", "boundaries", "fixed_parameters", "optim_list", "_disp_class", "_weights", "_disp_test", "_values"]
-        if len(kwargs) == 0:
-            self.options_dict = self.accepted_arguments
-        else:
-            self.options_dict = {}
-            for kwarg in kwargs:
-                if kwarg not in self.accepted_arguments:
-                    raise Exception(f"{kwarg} not an accepted option")
-            for key in self.accepted_arguments:
-                if key in kwargs:
-                    self.options_dict[key] = kwargs[key]
-                else:
-                    self.options_dict[key] = self.accepted_arguments[key]["default"]
-
-    def checker(self, name, value, defaults):
-        """
-        Args:
-            name (str): The name of the option.
-            value (Any): The value to check.
-            defaults (dict): The dictionary containing type or allowed arguments information for the option.
-        """
-        if "type" in defaults:
-            if isinstance(defaults["type"], list) is not True:
-                type_list = [defaults["type"]]
-            else:
-                type_list = defaults["type"]
-            type_error = True
-            for current_type in type_list:
-
-                if isinstance(value, current_type) is True:
-                    type_error = False
-            if type_error == True:
-                raise TypeError("{0} must be of type".format(name), defaults["type"])
-        elif "args" in defaults:
-            if value not in defaults["args"]:
-
-                raise Exception(
-                    "Value '{0}' not part of the following allowed arguments:\n{1}".format(
-                        value, ", ".join(defaults["args"])
-                    )
-                )
-
-
-class OptionsDecorator:
-    def __init__(self, **kwargs):
-        """
-        Args:
-           **kwargs: Arbitrary keyword arguments representing option names and values.
-        """
-        self.options = Options(**kwargs)
-
-    def __getattr__(self, name):
-        """
-
-        Args:
-            name (str): The name of the attribute to retrieve.
-
-        Returns:
-            Any: The value of the requested attribute.
-
-        Raises:
-            AttributeError: If the attribute does not exist in the options dictionary.
-        """
-        if name in self.options.options_dict:
-            return self.options.options_dict[name]
-        raise AttributeError(f"Options has no attribute '{name}'")
-
-    def __setattr__(self, name, value):
-        """
-        Args:
-            name (str): The name of the attribute to set.
-            value (Any): The value to assign to the attribute.
-
-        Raises:
-            AttributeError: If the attribute does not exist in the options dictionary.
-        """
-        if name in [
-            "options"
-        ]:  # To handle the initialization of the 'options' attribute
-            super().__setattr__(name, value)
-        elif name in self.options.options_dict:
-            self.options.checker(name, value, self.options.accepted_arguments[name])
-            self.options.options_dict[name] = value
-        else:
-            raise AttributeError(f"Options has no attribute '{name}'")
-
 
 class SolverWrapper:
     def __init__(self, solver):
