@@ -74,7 +74,8 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             options_handler=None
             
         self._options_class = sci.SingleExperimentOptions(options_handler=options_handler,**kwargs)
-        self._internal_options=self._options_class.experiment_options
+        self._internal_options=self._options_class._experiment_options
+        self.experiment_type=self._internal_options.experiment_type
         sci.check_input_dict(
             experiment_parameters,
             accepted_arguments[self._internal_options.experiment_type],
@@ -774,10 +775,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
                 self._internal_memory["simulation_dict"]["phase"]
             )
             nd_dict["cap_phase"] = self._internal_memory["simulation_dict"]["phase"]
-            if self._internal_options.phase_function=="sinusoidal":
-                for key in ["phase_delta_E", "phase_omega", "phase_phase"]:
-                     self._internal_memory["simulation_dict"]["cap_"+key]=self._internal_memory["simulation_dict"][key]
-                     nd_dict["cap_"+key] = self._internal_memory["simulation_dict"][key]
+            
         return nd_dict
    
     @sci._utils.temporary_options()

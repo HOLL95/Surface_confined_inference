@@ -53,6 +53,7 @@ class BaseExperimentOptions(OptionsManager):
     dispersion_bins = SequenceOption(
         "dispersion_bins",
         default=[], 
+        item_type=int,
         doc="Number of bins used to approximate each dispersion distribution."
     )
     
@@ -106,6 +107,7 @@ class FTACVOptions(BaseExperimentOptions):
     Fourier_harmonics = SequenceOption(
         "Fourier_harmonics",
         default=list(range(0, 10)),
+        item_type=int,
         doc="Defines the harmonics to be included in the filtered Fourier spectrum."
     )
     
@@ -189,7 +191,7 @@ class SingleExperimentOptions(BaseExperimentOptions):
 
         if options_handler is None or options_handler is base_cls:
             # No custom handler: use base directly
-            self.experiment_options = base_cls(**kwargs)
+            self._experiment_options = base_cls(**kwargs)
         else:
             # Dynamically create a new class that inherits from both
             # Custom comes first so it overrides base where needed
@@ -199,12 +201,14 @@ class SingleExperimentOptions(BaseExperimentOptions):
                 {}
             )
            
-            self.experiment_options = CombinedOptions(**kwargs)
+            self._experiment_options = CombinedOptions(**kwargs)
 
 
         # Copy values from experiment options into self, if names match
-        for name in self.experiment_options.get_option_names():
-            setattr(self, name, getattr(self.experiment_options, name))
+        
+        for name in self._experiment_options.get_option_names():
+            
+            setattr(self, name, getattr(self._experiment_options, name))
 
         super().__init__(**kwargs)
 
@@ -227,3 +231,4 @@ class SingleExperimentOptions(BaseExperimentOptions):
                     if descriptor and isinstance(descriptor, OptionDescriptor):
                         setattr(cls, name, descriptor)
                         descriptors_added.add(name)
+                        

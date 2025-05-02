@@ -26,6 +26,7 @@ class OptionDescriptor:
         return getattr(instance, self.private_name, self.default)
     
     def __set__(self, instance, value):
+        #print(self.private_name, "called", value)
         self.validate(value)
         setattr(instance, self.private_name, value)
     
@@ -112,8 +113,10 @@ class SequenceOption(TypedOption):
             raise ValueError(f"{self.name} must have at least {self.min_length} items, got {len(value)}")
         if self.max_length is not None and len(value) > self.max_length:
             raise ValueError(f"{self.name} must have at most {self.max_length} items, got {len(value)}")
+       
         if self.item_type is not None:
             for i, item in enumerate(value):
+               
                 if not isinstance(item, self.item_type):
                     raise TypeError(f"Item {i} in {self.name} must be of type {self.item_type.__name__}, "
                                     f"got {type(item).__name__}")

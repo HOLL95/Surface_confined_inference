@@ -70,7 +70,7 @@ class OptionsManager(metaclass=OptionsMeta):
     def _handle_unknown_attribute(self, name: str, value: Any) -> None:
         """Handle setting an unknown attribute. Subclasses can override this."""
         # Default behavior: warn, but still allow
-        print(f"Warning: Unknown attribute '{name}' set.")
+        #print(f"Warning: Unknown attribute '{name}' set.")
         super().__setattr__(name, value)
     
     def as_dict(self) -> Dict[str, Any]:
