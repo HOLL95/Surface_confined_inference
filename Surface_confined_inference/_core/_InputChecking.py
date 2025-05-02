@@ -8,7 +8,7 @@ def check_input_dict(input_dict, parameters, **kwargs):
     else:
         kwargs["optional_arguments"]=set(kwargs["optional_arguments"])
     user_params = set(input_dict.keys())
-    required_params = set(parameters).union(kwargs["optional_arguments"])
+    required_params = set(parameters)
     missing = required_params - user_params
     
     extra = user_params - required_params
@@ -19,10 +19,15 @@ def check_input_dict(input_dict, parameters, **kwargs):
             )
         )
     if len(extra) > 0:
-        raise ValueError(
-            "The following parameters are not required for the simulation: {0}".format(
-                (" ").join(list(extra))
-            )
+       
+        if len(extra.intersection(kwargs["optional_arguments"])) ==len(extra):
+            
+            pass
+        else:
+            raise ValueError(
+                "The following parameters are not required for the simulation: {0}".format(
+                    (" ").join([x for x in list(extra) if x not in kwargs["optional_arguments"]])
+                )
         )
 
 

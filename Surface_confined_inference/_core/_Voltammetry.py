@@ -78,7 +78,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         sci.check_input_dict(
             experiment_parameters,
             accepted_arguments[self._internal_options.experiment_type],
-            optional_arguments=[]
+            optional_arguments=["phase_flag"]
         )
         self._NDclass = sci.NDParams(
             self._internal_options.experiment_type, experiment_parameters
