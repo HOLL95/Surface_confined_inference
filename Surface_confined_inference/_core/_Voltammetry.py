@@ -14,8 +14,6 @@ import time
 import math
 import matplotlib.pyplot as plt
 import json
-@sci.LoadExperiment.register("single")
-
 class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
     def __init__(self, experiment_type, experiment_parameters, options_handler=None, **kwargs):
         """
@@ -72,8 +70,9 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         kwargs["experiment_type"] = experiment_type
         if options_handler is None:
             options_handler=None
-            
+        self._options_handler=options_handler
         self._options_class = sci.SingleExperimentOptions(options_handler=options_handler,**kwargs)
+
         self._internal_options=self._options_class._experiment_options
         self.experiment_type=self._internal_options.experiment_type
         sci.check_input_dict(
@@ -797,20 +796,17 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         return self.simulate(parameters, self.nondim_t(times))
         
     def save_class(self,path,**kwargs):
-        dict_class=vars(self)
-        save_dict={"Options":{}}
-        option_keys=Options().accepted_arguments.keys()
-        for key in dict_class:
-            if key in option_keys and key!="experiment_type":
-                save_dict["Options"][key]=dict_class[key]
-        if kwargs["switch_type"] is None:
-            save_dict["experiment_type"]=dict_class["experiment_type"]
+        save_dict={"Options":self._internal_options.as_dict(),}
+        if self._options_handler is not None:
+            save_dict["Options_handler"]={"name":self._options_handler.__name__, "module":self._options_handler.__module__}
         else:
-            save_dict["experiment_type"]=kwargs["switch_type"]["experiment"]
-        if kwargs["switch_type"] is None:
-            save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
-        else:
-            save_dict["Experiment_parameters"]=kwargs["switch_type"]["parameters"]
+            save_dict["Options_handler"]=self._options_handler
+        save_dict["class"]={"name":self.__class__.__name__, "module":self.__class__.__module__}
+            
+        option_keys=self._internal_options.get_option_names()
+
+        
+        save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
         save_dict["optim_list"]=self._optim_list
         save_dict["fixed_parameters"]=self._internal_memory["fixed_parameters"]
         save_dict["boundaries"]=self._internal_memory["boundaries"]

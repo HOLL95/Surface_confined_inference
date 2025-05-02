@@ -2,7 +2,6 @@ from ._core._Options._SingleExperimentOptions import SingleExperimentOptions
 from ._core._Options._ParallelOptions import ParallelOptions
 from ._core._Options._OptionsMixin import OptionsAwareMixin
 from ._core._Base import BaseExperiment
-from ._core._LoadExperiment import LoadExperiment
 from ._core._Voltammetry import SingleExperiment
 from ._HPCInterface._Slurm import SingleSlurmSetup
 from ._core._SWVStepwise import SWVStepwise

@@ -31,6 +31,7 @@ class OptionDescriptor:
         setattr(instance, self.private_name, value)
     
     def validate(self, value: Any) -> None:
+        print("Not passed")
         """Validate the value. Override in subclasses."""
         pass
 

@@ -9,7 +9,7 @@ from typing import List, Optional, Sequence
 from ._OptionsDescriptor import (
     BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor
 )
-from ._OptionsMeta import OptionsManager
+from ._OptionsMeta import OptionsManager, OptionsMeta
 
 
 
@@ -182,53 +182,59 @@ class SingleExperimentOptions(BaseExperimentOptions):
         "DCV": DCVOptions,
         "SquareWave": SquareWaveOptions
     }
-    def __init__(self,options_handler=None,**kwargs):
-        experiment_type=kwargs["experiment_type"]
+    
+    def __init__(self, options_handler=None, **kwargs):
+        # Extract experiment_type first
+        experiment_type = kwargs.get("experiment_type")
+        if not experiment_type:
+            raise ValueError("experiment_type must be specified")
+            
         if experiment_type not in self._experiment_classes:
             raise ValueError(f"Unsupported experiment type: {experiment_type}")
         
+    
+        
+        # Create the experiment-specific options object
         base_cls = self._experiment_classes[experiment_type]
-
         if options_handler is None or options_handler is base_cls:
             # No custom handler: use base directly
-            self._experiment_options = base_cls(**kwargs)
+            options_cls=base_cls
+           
         else:
             # Dynamically create a new class that inherits from both
             # Custom comes first so it overrides base where needed
-            CombinedOptions = type(
-            f"Combined{options_handler.__name__}{base_cls.__name__}",
+            CombinedOptions = OptionsMeta(
+                f"Combined{options_handler.__name__}{base_cls.__name__}",
                 (options_handler, base_cls),
                 {}
             )
+            options_cls=CombinedOptions
+        self._experiment_options = options_cls(**kwargs)
            
-            self._experiment_options = CombinedOptions(**kwargs)
 
-
-        # Copy values from experiment options into self, if names match
         
+        # Copy values from experiment options into self
         for name in self._experiment_options.get_option_names():
-            
-            setattr(self, name, getattr(self._experiment_options, name))
-
-        super().__init__(**kwargs)
-
+            if hasattr(self._experiment_options, name):
+                setattr(self, name, getattr(self._experiment_options, name))
+    
     def as_dict(self):
         """Return a merged dictionary of all options (self + experiment options)."""
-        combined = self.experiment_options.as_dict()
+        combined = self._experiment_options.as_dict()
         combined.update(super().as_dict())
         return combined
-
+    
     @classmethod
     def __init_subclass__(cls, **kwargs):
         """Dynamically attach properties from all possible experiment types."""
         super().__init_subclass__(**kwargs)
         descriptors_added = set()
 
+        # Add all descriptors from all experiment classes
         for exp_cls in cls._experiment_classes.values():
             for name in exp_cls.get_option_names():
                 if name not in descriptors_added:
-                    descriptor = exp_cls.__dict__.get(name)
+                    descriptor = getattr(exp_cls, name, None)
                     if descriptor and isinstance(descriptor, OptionDescriptor):
                         setattr(cls, name, descriptor)
                         descriptors_added.add(name)
-                        

@@ -8,9 +8,8 @@ import matplotlib.pyplot as plt
 import pints
 import time
 import SurfaceODESolver as sos
-@sci.LoadExperiment.register("parallelsimulator")
 class ParallelSimulator(sci.SingleExperiment,sci.OptionsAwareMixin):
-    def __init__(self, experiment_type, experiment_parameters, **kwargs):
+    def __init__(self, experiment_type, experiment_parameters,options_handler=None, **kwargs):
         
         super().__init__(experiment_type, experiment_parameters, options_handler=sci.ParallelOptions, **kwargs)
         self.num_cpu=self._internal_options.num_cpu

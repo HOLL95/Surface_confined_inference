@@ -18,19 +18,27 @@ class BaseExperiment:
         # Determine experiment class to instantiate
         if "class_type" not in kwargs:
             kwargs["class_type"]="single"
-
-        experiment_class =  sci.LoadExperiment.get_class(kwargs["class_type"])
-        
+        class_name=data["class"]["name"]
+        experiment_class =  getattr(importlib.import_module(data["class"]["module"]),class_name)
+        experiment_type= data["Options"]["experiment_type"]
+        data["Options"].pop("experiment_type")
+        if data["Options_handler"] is None:
+            handler_arg=None
+        else:
+            module=importlib.import_module(data["Options_handler"]["module"])
+            handler_arg=getattr(module, data["Options_handler"]["name"])
         # Create instance
         instance = experiment_class(
-            data["experiment_type"],
+            experiment_type,
             data["Experiment_parameters"],
+            options_handler=handler_arg,
             **data["Options"]
         )
-        
         # Add additional attributes
         for key in ["fixed_parameters", "boundaries", "optim_list"]:
             if key in data:
                 setattr(instance, key, data[key])
-                
+        options_dict=instance._internal_options.as_dict()
+        for key in options_dict:
+             setattr(instance, key, options_dict[key])
         return instance

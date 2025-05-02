@@ -39,7 +39,7 @@ def temporary_options(**func_kwargs):
         def wrapper_temporary_options(self, *args, **local_kwargs):
             kwargs={**func_kwargs, **local_kwargs}
             kwargs_set=set(kwargs)
-            options_set=set(self._internal_options.options.accepted_arguments.keys())
+            options_set= set(self._internal_options.get_option_names())
             accepted_keys=list(options_set.intersection(kwargs_set))
             current_options={key:getattr(self, key) for key in accepted_keys}
             for key in accepted_keys:
