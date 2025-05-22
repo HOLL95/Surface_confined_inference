@@ -34,13 +34,13 @@ class AxInterfaceOptions(OptionsManager):
                             default=48,
                             min_value=1, 
                             max_value=48,
-                            doc="Amount of time in hours for run"),
+                            doc="Amount of time in hours for run")
     num_cpu=NumberOption("num_cpu", 
                         default=1,
                         doc="Number of CPUs per submitted job")
     simulate_front=BoolOption("simulate_front",
                             default=True,
-                            doc="Whether to generate simulations for all pareto front points while in slurm cluster")                
+                            doc="Whether to generate simulations for all pareto front points while in slurm cluster")
     rclone_directory=StringOption("rclone_directory",
                                 default="", 
                                 doc="Address to attempt to rclone results directory into")

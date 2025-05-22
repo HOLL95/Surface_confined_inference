@@ -17,15 +17,15 @@ class AxInterface(sci.OptionsAwareMixin):
         self._internal_options = sci.AxInterfaceOptions(**kwargs)
         dirs=["clients","evaluator","pareto_points"]
         for dir in dirs:
-            Path(os.path.join(self._internal_options.results_directory, dir)).mkdir(exists_ok=False)
+            Path(os.path.join(self._internal_options.results_directory, dir)).mkdir()
         
 
     def run(self,job_number):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
         for i in range(0, self._internal_options.num_iterations):
             parameters, trial_index = self.ax_client.get_next_trial()
-            ax_client.complete_trial(trial_index=trial_index, raw_data=cls.optimise_simple_score(parameters))
-            ax_client.save_to_json_file(filepath=os.path.join(self._internal_options.results_directory, "clients", "ax_client_run_{0}.npy".format(job_number)))
+            self.ax_client.complete_trial(trial_index=trial_index, raw_data=cls.optimise_simple_score(parameters))
+            self.ax_client.save_to_json_file(filepath=os.path.join(self._internal_options.results_directory, "clients", "ax_client_run_{0}.npy".format(job_number)))
     def init_sim_executor(self, name, timeout=None, dependency=None):
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         if timeout is None:
@@ -38,8 +38,8 @@ class AxInterface(sci.OptionsAwareMixin):
         executor.update_parameters(slurm_account=self._internal_options.project)
         executor.update_parameters(mem_gb=self._internal_options.GB_ram)
         if self._internal_options.email != "":
-            executor.update_parameters(mail_user=self._internal_options.email)
-            executor.update_parameters(mail_type="END, FAIL")
+            executor.update_parameters(slurm_mail_user=self._internal_options.email)
+            executor.update_parameters(slurm_mail_type="END, FAIL")
         return executor
     def init_process_executor(self, name, timeout=20, dependency=None):
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
@@ -53,8 +53,8 @@ class AxInterface(sci.OptionsAwareMixin):
             )
         if self._internal_options.email != "":
             executor.update_parameters(
-                mail_user=self._internal_options.email,
-                mail_type="END, FAIL"
+                slurm_mail_user=self._internal_options.email,
+                slurm_mail_type="END, FAIL"
             )
         if dependency is not None:
             executor.update_parameters(slurm_additional_parameters={

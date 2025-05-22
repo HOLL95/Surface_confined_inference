@@ -120,11 +120,11 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     def scale(self, value, groupkey, classkey):
         value=copy.deepcopy(value)
         cls=self.classes[classkey]["class"]
-        if "divide" in self.group_to_class[groupkey]["scaling"]:
-            for param in self.group_to_class[groupkey]["scaling"]["divide"]:
+        if "divide" in self.group_to_conditions[groupkey]["scaling"]:
+            for param in self.group_to_conditions[groupkey]["scaling"]["divide"]:
                 value/=cls._internal_memory["input_parameters"][param]
-        if "multiply" in self.group_to_class[groupkey]["scaling"]:
-            for param in self.group_to_class[groupkey]["scaling"]["multiply"]:
+        if "multiply" in self.group_to_conditions[groupkey]["scaling"]:
+            for param in self.group_to_conditions[groupkey]["scaling"]["multiply"]:
                 value*=cls._internal_memory["input_parameters"][param]  
         return value
     def save_class(self, dir_path="saved", **kwargs):
