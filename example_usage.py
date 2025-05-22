@@ -1,6 +1,4 @@
 import Surface_confined_inference as sci
-from Surface_confined_inference.plot import plot_harmonics
-from Surface_confined_inference.infer import get_input_parameters
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,7 +25,7 @@ ftv.fixed_parameters = {
     "alpha": 0.5,
     "Ru": 100,
 }
-ftv.dispersion_bins=[2]
+ftv.dispersion_bins=[10]
 ftv.GH_quadrature=True
 ftv.optim_list = ["E0_std","k0"]
 nondim_t = ftv.calculate_times(sampling_factor=200, dimensional=False)
@@ -36,36 +34,10 @@ dec_amount=8
 voltage=ftv.get_voltage(dim_t, dimensional=True)
 
 current = ftv.dim_i(ftv.simulate([0.03,100],nondim_t, ))
-"""
-sci.infer.get_input_parameters(dim_t, sci._utils.add_noise(voltage, 0.01*max(voltage)), current, "FTACV", plot_results=True)
-current_fig, current_ax = plt.subplots()
-current_ax.plot(dim_t, current)
-current_ax.set_xlabel("Time (s)")
-current_ax.set_ylabel("Current (A)")
-plot_harmonics(
-    Synthetic_data={"time": dim_t, "current": current},
-    hanning=False,
-    plot_func=abs,
-    harmonics=list(range(3, 9)),
-    xlabel="Time (s)",
-    ylabel="Current (A)"
-)
-plt.show()"""
-
 
 
 ftv.save_class("json_test")
-load=sci.LoadSingleExperiment("json_test.json")
+load=sci.BaseExperiment.from_json("json_test.json")
 plt.plot(current)
 plt.plot(load.dim_i(load.simulate([0.03, 100], nondim_t)))
 plt.show()
-"""
-FT=ftv.FTsimulate([0.03,100],nondim_t,dispersion_bins=[5], Fourier_harmonics=list(range(1, 4)))
-print(ftv.dispersion_bins)
-plt.plot(FT)
-plt.show()
-ftv.normalise_parameters=True
-plt.plot(ftv.Dimensionalsimulate([0.03,100],nondim_t,))
-print(ftv.normalise_parameters)
-plt.show()
-"""

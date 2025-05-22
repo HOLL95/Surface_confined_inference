@@ -39,7 +39,7 @@ def temporary_options(**func_kwargs):
         def wrapper_temporary_options(self, *args, **local_kwargs):
             kwargs={**func_kwargs, **local_kwargs}
             kwargs_set=set(kwargs)
-            options_set=set(self._internal_options.options.accepted_arguments.keys())
+            options_set= set(self._internal_options.get_option_names())
             accepted_keys=list(options_set.intersection(kwargs_set))
             current_options={key:getattr(self, key) for key in accepted_keys}
             for key in accepted_keys:
@@ -118,6 +118,8 @@ def custom_logspace(start, end, custom_value, num_points):
     return adjusted_values
 def construct_experimental_dictionary(existing_dictionary,terminal_entry, *args):
     if len(args)==1:
+        if hasattr(existing_dictionary, args[0]):
+            raise ValueError("Overwriting terminal entry in node {0}, aborting".format(args[0]))
         existing_dictionary[args[0]]=terminal_entry
         return existing_dictionary
     else:
