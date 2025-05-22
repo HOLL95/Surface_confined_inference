@@ -5,7 +5,8 @@ These descriptors handle type checking and validation for different option types
 import collections.abc
 import numbers
 from typing import Any, Dict, List, Optional, Type, Union, Sequence
-
+import os
+from pathlib import Path
 
 class OptionDescriptor:
     """Base descriptor class for options with validation."""
@@ -173,3 +174,136 @@ class DictOption(TypedOption):
                 if self.value_type and not isinstance(v, self.value_type):
                     raise TypeError(f"Value for key {repr(k)} in {self.name} must be of type "
                                     f"{self.value_type.__name__}, got {type(v).__name__}")
+class ComposedOption(OptionDescriptor):
+    """Descriptor for options where each item in a sequence must be validated by at least one of the provided validators."""
+    
+    def __init__(self, name: str, validators: List[OptionDescriptor], default: Sequence = None, doc: str = None):
+        """
+        Initialize a ComposedOption with a list of validator options.
+        
+        Args:
+            name: Name of the option
+            validators: List of OptionDescriptor instances to validate against
+            default: Default value (a sequence)
+            doc: Documentation string
+        """
+        super().__init__(name, default or [], doc)
+        self.name
+        self.validators = validators
+    
+    def validate(self, value: Any) -> None:
+        """
+        Validate that each item in the sequence is valid according to at least one validator.
+        
+        Raises:
+            TypeError: If value is not a sequence
+            ValueError: If any item fails validation by all validators
+        """
+        if not isinstance(value, collections.abc.Sequence):
+            raise TypeError(f"{self.name} must be a sequence, got {type(value).__name__}")
+        
+        for i, item in enumerate(value):
+            valid = False
+            validation_errors = []
+            
+            for validator in self.validators:
+                try:
+                    # Create a temporary descriptor instance with the same name
+                    temp_validator = validator("{0}_{1}".format(self.name, i))
+                    temp_validator.validate(item)
+                    valid = True
+                    break
+                except (TypeError, ValueError) as e:
+                    validation_errors.append(str(e))
+            
+            if not valid:
+                error_msg = "\n".join(validation_errors)
+                raise ValueError(f"Item {i} in {self.name} failed validation with all validators:\n{error_msg}")
+
+
+class FileOption(TypedOption):
+    """Descriptor for file path options with existence checking."""
+    
+    def __init__(self, name: str, default: str = "", 
+                 must_exist: bool = True, 
+                 check_readable: bool = False,
+                 check_writable: bool = False,
+                 doc: str = None):
+        """
+        Initialize a FileOption.
+        
+        Args:
+            name: Name of the option
+            default: Default file path
+            must_exist: Whether the file must exist
+            doc: Documentation string
+        """
+        super().__init__(name, str, default, doc)
+        self.must_exist = must_exist
+    
+    def validate(self, value: Any) -> None:
+        """
+        Validate that the value is a string representing a valid file path.
+        
+        Raises:
+            TypeError: If value is not a string
+            ValueError: If file doesn't exist or permissions checks fail
+        """
+        super().validate(value)
+        
+        if not value:  # Allow empty string if not requiring existence
+            if self.must_exist:
+                raise ValueError(f"{self.name} cannot be empty when must_exist=True")
+            return
+        
+        if self.must_exist and not os.path.isfile(value):
+            raise ValueError(f"{self.name} must be a path to an existing file, got '{value}'")
+
+class DirectoryOption(TypedOption):
+    """Descriptor for directory path options with existence and emptiness checking."""
+    
+    def __init__(self, name: str, default: str = "", 
+                 must_exist: bool = True,
+                 must_be_empty: bool = False,
+                 can_create=False,
+                 doc: str = None):
+        """
+        Initialize a DirectoryOption.
+        
+        Args:
+            name: Name of the option
+            default: Default directory path
+            must_exist: Whether the directory must exist
+            must_be_empty: Whether the directory must be empty
+            doc: Documentation string
+        """
+        super().__init__(name, str, default, doc)
+        self.must_exist = must_exist
+        self.must_be_empty = must_be_empty
+        self.can_create=can_create
+    
+    def validate(self, value: Any) -> None:
+        """
+        Validate that the value is a string representing a valid directory path.
+        
+        Raises:
+            TypeError: If value is not a string
+            ValueError: If directory doesn't exist, isn't empty, or permissions checks fail
+        """
+        super().validate(value)
+        
+        if not value:  # Allow empty string if not requiring existence
+            if self.must_exist:
+                raise ValueError(f"{self.name} cannot be empty when must_exist=True")
+            return
+        
+        if self.must_exist and not os.path.isdir(value):
+            if self.can_create==True:
+                Path(value).mkdir(parents=True, exist_ok=False)
+            else:
+                raise ValueError(f"{self.name} must be a path to an existing directory, got '{value}'")
+            
+        if self.must_exist and self.must_be_empty:
+            # Check if directory is empty (only if it exists)
+            if os.path.isdir(value) and os.listdir(value):
+                raise ValueError(f"{self.name} directory '{value}' must be empty")

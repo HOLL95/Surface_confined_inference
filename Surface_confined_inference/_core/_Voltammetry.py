@@ -795,7 +795,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         self.optim_list=self._optim_list
         return self.simulate(parameters, self.nondim_t(times))
         
-    def save_class(self,path,**kwargs):
+    def save_class(self,path):
         save_dict={"Options":self._internal_options.as_dict(),}
         if self._options_handler is not None:
             save_dict["Options_handler"]={"name":self._options_handler.__name__, "module":self._options_handler.__module__}

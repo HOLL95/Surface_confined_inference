@@ -6,7 +6,7 @@ class BaseExperiment:
     """Base class for all experiment types"""
     
     @classmethod
-    def from_json(cls, json_path, **kwargs):
+    def from_json(cls, json_path):
         """Factory method to create experiment from JSON"""
         with open(json_path, "r") as f:
             data = json.load(f)
@@ -15,9 +15,7 @@ class BaseExperiment:
         import importlib
         import sys
         
-        # Determine experiment class to instantiate
-        if "class_type" not in kwargs:
-            kwargs["class_type"]="single"
+
         class_name=data["class"]["name"]
         experiment_class =  getattr(importlib.import_module(data["class"]["module"]),class_name)
         experiment_type= data["Options"]["experiment_type"]
