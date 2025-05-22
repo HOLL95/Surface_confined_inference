@@ -17,7 +17,7 @@ class AxInterfaceOptions(OptionsManager):
     results_directory=DirectoryOption("results_directory",
                     default="results",
                     must_exist=True,
-                    must_be_empty=True,
+                    must_be_empty=False,
                     can_create=True,
                     doc="Location for results of optimisation and simulation files")
     independent_runs=NumberOption("independent_runs",

@@ -73,13 +73,13 @@ def pool_pareto(directory, grouping_keys, parameters, savepath):
     parameter_array=[]
     score_array=[]
     for front_point in total_frontier:
-        parameter_array.append([total_frontier["parameters"][x] for x in parameters])
-        score_array.append([total_frontier["scores"][x] for x in grouping_keys])
+        parameter_array.append([front_point["parameters"][x] for x in parameters])
+        score_array.append([front_point["scores"][x] for x in grouping_keys])
     arrays=[parameter_array, score_array]
     headers=[parameters, grouping_keys]
     exts=["parameters.txt", "scores.txt"]
     for i in range(0,len(exts)):
         with open(os.path.join(savepath, exts[i]), "w") as f:
-            savetxt(arrays[i], header=headers[i])
+            savetxt(f,arrays[i], header=" ".join(headers[i]))
     with open(os.path.join(savepath, "num_points.txt"), "w") as f:
-        f.write(len(parameter_array))
+        f.write(str(len(parameter_array)))

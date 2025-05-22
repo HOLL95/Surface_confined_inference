@@ -72,9 +72,10 @@ class AxInterface(sci.OptionsAwareMixin):
             job=pool_handler.submit(pool_pareto, 
                                     os.path.join(self._internal_options.results_directory, "clients"), 
                                     self._cls.grouping_keys, 
+                                    self._cls._all_parameters,
                                     os.path.join(self._internal_options.results_directory, "pareto_points"))
             if self._internal_options.simulate_front==True:
-                spawn_handler=self.init_process_executor("spawn_simulations", timeout=2, dependency=job.job_id)
+                spawn_handler=self.init_process_executor("spawn_simulations", timeout=2, dependency=[job.job_id])
                 submitted_sim_job=spawn_handler.submit(self.spawn_bulk_simulation)
             if self._internal_options.rclone_directory!="":
                 if self._internal_options.simulate_front:
@@ -134,14 +135,14 @@ class AxInterface(sci.OptionsAwareMixin):
         self._cls.save_class(dir_path=os.path.join(self._internal_options.results_directory,"evaluator"), include_data=True)
         if self._internal_options.simulate_front==True:
             for classkey in self._cls.class_keys:
-                Path(os.path.join(self._internal_options.results_directory, "simulations", classkey)).mkdir(exists_ok=False,parents=True)
+                Path(os.path.join(self._internal_options.results_directory, "simulations", classkey)).mkdir(exist_ok=False,parents=True)
     def get_zero_point_scores(self):
         zero_dict={}
         for classkey in self._cls.class_keys:
             zero_dict[classkey]=self._cls.classes[classkey]["zero_sim"]
         return self._cls.simple_score(zero_dict)
     def spawn_bulk_simulation(self, ):
-        
+        cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
         node_chunks=300
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt"), "r") as f:
             num_points=int(f.readline())
@@ -151,7 +152,7 @@ class AxInterface(sci.OptionsAwareMixin):
         dummy_time=time.time()-start
         total_time=int((int(dummy_time/60)+5)*num_processes)
         simulation_executor=self.init_sim_executor("simulation", timeout=total_time)
-        jobs = simulation_executor.map_array(run_bulk_simulation, range(0, num_points))
+        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, num_processes), [node_chunks]*num_processes)
         job_ids = [job.job_id for job in jobs]
 
    
@@ -164,21 +165,28 @@ class AxInterface(sci.OptionsAwareMixin):
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "parameters.txt"), "r") as f:
             param_values = np.loadtxt(f, skiprows=1)
             f.seek(0)
-            params = f.readline().strip().split()
+            params = f.readline().strip().split()[1:]
         dec_factor=13
         save_dict={}
         for classkey in cls.class_keys:
             if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
-                dec_time=decimate(cls.classes[classkey]["class"]["times"], dec_factor)
+                dec_time=decimate(cls.classes[classkey]["times"], dec_factor)
             else:
-                dec_time=cls.classes[classkey]["class"]["times"]
-            save_dict[classkey]=np.zeros((len(dec_time), chunk_size+1))
+                dec_time=cls.classes[classkey]["times"]
+            if param_values.shape[0]<((index+1)*chunk_size):
+             size=(param_values.shape[0]-(index*chunk_size))+1
+            else:
+             size=chunk_size+1
+            save_dict[classkey]=np.zeros((len(dec_time), size))
             save_dict[classkey][:,0]=dec_time
         counter=1
+
         for i in range(index*chunk_size, ((index+1)*chunk_size)):
+            if param_values.shape[0]-1<i:
+             break
             parameters=dict(zip(params, param_values[i,:]))
-            param_values=[parameters[x] for x in cls._all_parameters]
-            simulation_dict=cls.evaluate(param_values)
+            param_value_list=[parameters[x] for x in cls._all_parameters]
+            simulation_dict=cls.evaluate(param_value_list)
             for classkey in cls.class_keys:
                 if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
                     dec_current=decimate(simulation_dict[classkey], dec_factor)
@@ -186,7 +194,7 @@ class AxInterface(sci.OptionsAwareMixin):
                     dec_current=simulation_dict[classkey]
                 save_dict[classkey][:,counter]=dec_current
             counter+=1
-        for key in cls.class_keys:
+        for classkey in cls.class_keys:
             filepath=os.path.join(self._internal_options.results_directory, "simulations", classkey, "simulations_%d_%d.txt" % (index*chunk_size, ((index+1)*chunk_size)))
             with open(filepath, "w") as f:
                 np.savetxt(f, save_dict[classkey])
@@ -195,7 +203,7 @@ class AxInterface(sci.OptionsAwareMixin):
             jobid_path = os.path.join(self._internal_options.results_directory, "pareto_points", "jobids_bulk_sim.txt")
             with open(jobid_path) as f:
                 sim_job_ids = f.read().strip()
-            dependency=sim_job_ids
+            dependency=[sim_job_ids]
         elif dependency is not None:
             pass
         else:
