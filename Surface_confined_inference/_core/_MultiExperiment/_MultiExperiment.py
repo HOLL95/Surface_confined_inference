@@ -15,6 +15,7 @@ import json
 from ._utils import recursive_list_cast
 from numbers import Number
 from ._BaseMultiExperiment import BaseMultiExperiment
+from .SyntheticFuncs import create_times
 class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     _manual_options=["class_keys", "classes", "input_params", "group_to_conditions", "group_to_class", "group_to_parameters"]
     _allowed_experiments=["FTACV","PSV","DCV","SWV","SquareWave","Trumpet"]
@@ -37,6 +38,8 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                             raise ValueError("If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {0}".format(key))
         self._all_harmonics=list(self._all_harmonics)
         self._all_parameters=list(self._all_parameters)
+        
+            
     @property
     def input_params(self):
         return self._input_params
@@ -73,6 +76,8 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         self._grouping_keys=list(self.group_to_conditions.keys())
         self._manager=ParameterManager(self._all_parameters, self.grouping_keys, self.classes, self._internal_options.SWV_e0_shift, self.group_to_class)
         self.group_to_parameters,_=self._manager.initialise_simulation_parameters(self._internal_options.seperated_parameters)
+        if self._internal_options.synthetic==True:
+            self.classes=create_times(self.classes, self.class_keys)
     @property
     def grouping_keys(self):
         if len(self._internal_options._group_list)==0:
@@ -87,7 +92,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         self._internal_options.seperated_parameters=seperation_dict
         self.group_to_parameters, self._all_parameters=self._manager.initialise_simulation_parameters(seperation_dict)
     def evaluate(self, parameters):
-        simulation_params_dict=self.parse_input(parameters)
+        simulation_params_dict=self._manager.parse_input(parameters)
         simulation_values_dict={}
         for classkey in self.class_keys:
             cls=self.classes[classkey]["class"]

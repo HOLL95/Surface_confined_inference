@@ -31,6 +31,9 @@ class MultiExperimentOptions(OptionsManager):
     seperated_parameters=DictOption("seperated_parameters", 
                                     value_type=list,
                                     doc="Parameters that will be different for different experiment simulation groups (for example two different surface coverage values)")
+    synthetic=BoolOption("synthetic",
+                        default=False,
+                        doc="Mode for synthetic studies")
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

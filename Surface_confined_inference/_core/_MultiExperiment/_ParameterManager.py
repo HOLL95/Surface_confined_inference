@@ -11,6 +11,7 @@ class ParameterManager:
     def initialise_simulation_parameters(self, seperated_param_dictionary={}):
         group_to_parameters={x:copy.deepcopy(self.all_parameters) for x in self.grouping_keys}
         if len(seperated_param_dictionary)==0:
+            self.group_to_parameters=group_to_parameters
             return group_to_parameters, self.all_parameters
         new_all_parameters=[]
         for key in seperated_param_dictionary:
