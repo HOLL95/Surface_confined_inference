@@ -16,6 +16,7 @@ from ._utils import recursive_list_cast
 from numbers import Number
 from ._BaseMultiExperiment import BaseMultiExperiment
 from .SyntheticFuncs import create_times
+from ._Plotting import PlotManager
 class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     _manual_options=["class_keys", "classes", "input_params", "group_to_conditions", "group_to_class", "group_to_parameters"]
     _allowed_experiments=["FTACV","PSV","DCV","SWV","SquareWave","Trumpet"]
@@ -78,6 +79,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         self.group_to_parameters,_=self._manager.initialise_simulation_parameters(self._internal_options.seperated_parameters)
         if self._internal_options.synthetic==True:
             self.classes=create_times(self.classes, self.class_keys)
+        self._plot_manager=PlotManager(self)
     @property
     def grouping_keys(self):
         if len(self._internal_options._group_list)==0:
@@ -117,6 +119,8 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                 current_score+=classscore
             score_dict[groupkey]=current_score
         return score_dict
+    def results_table(self, parameters, mode="table"):
+        self._manager.results_table(parameters, self.class_keys, mode)
     def scale(self, value, groupkey, classkey):
         value=copy.deepcopy(value)
         cls=self.classes[classkey]["class"]
@@ -158,6 +162,8 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         multi_dict={key:recursive_list_cast(multi_dict[key]) for key in multi_dict.keys()}
         with open(os.path.join(dir_path, "multi_options.json"),"w") as f:
             json.dump(multi_dict, f)
+    def check_grouping(self,):
+        self._plot_manager.plot_results([], savename=None, show_legend=True)
             
    #TODO Need to make the individual class options, optimisation lists immutable
     

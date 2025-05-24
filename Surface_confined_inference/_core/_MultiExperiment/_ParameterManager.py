@@ -1,6 +1,7 @@
 import numpy as np
 import itertools
 import copy
+import tabulate
 class ParameterManager:
     def __init__(self, all_parameters, grouping_keys, classes, SWV_e0_shift, group_to_class):
         self.all_parameters=all_parameters
@@ -117,3 +118,47 @@ class ParameterManager:
             if key not in optimisation_parameters:
                 raise KeyError("{0} not added to optimisation list, check that at least one group includes it".format(key))
         return optimisation_parameters   
+    def results_table(self, parameters, class_keys,**kwargs):
+        if "mode" not in kwargs:
+            kwargs["mode"]="table"
+        if kwargs["mode"]=="save":
+            if "filename" not in kwargs:
+                kwargs["filename"]="results_table.txt"
+        mode=kwargs["mode"]
+        simulation_values=self.parse_input(parameters)
+        un_normed_values={}
+        l_optim_list=0
+        for classkey in class_keys:
+            
+            cls=self.classes[classkey]["class"]
+            current_len=max(len(cls.optim_list), l_optim_list)
+            if current_len>l_optim_list:
+                l_optim_list=current_len
+                longest_list=cls.optim_list
+            normed_params_list=simulation_values[classkey]
+            un_normed_values[classkey]=dict(zip(cls.optim_list, cls.change_normalisation_group(normed_params_list, "un_norm")))
+            if mode=="simulation":
+                print(classkey)
+                print(un_normed_values)
+        if mode=="simulation":
+            return
+        for classkey in class_keys:
+            cls=self.classes[classkey]["class"]
+            for param in cls.optim_list:
+                if param not in longest_list:
+                    longest_list+=[param]
+        header_list=["Parameter"]+longest_list
+        table_data=[
+            [classkey]+[sci._utils.format_values(un_normed_values[classkey][x],3)+","
+                if x in un_normed_values[classkey] else "*"
+                for x in longest_list]
+            for classkey in self.class_keys
+        ]
+        table=tabulate.tabulate(table_data, headers=header_list, tablefmt="grid")
+        if mode=="table":
+            print(table)
+        elif mode=="save":
+            with open(kwargs["filename"], "w") as f:
+                f.write(table)
+        
+        return table
