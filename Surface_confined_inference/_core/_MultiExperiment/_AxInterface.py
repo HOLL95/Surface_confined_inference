@@ -164,16 +164,17 @@ class AxInterface(sci.OptionsAwareMixin):
         return self._cls.simple_score(zero_dict)
     def spawn_bulk_simulation(self, ):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
-        node_chunks=300
+        
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt"), "r") as f:
             num_points=int(f.readline())
-        num_processes=(num_points//node_chunks)+1
+        node_chunks=min(num_points, 300)
+        process_per_chunk=int(num_points//node_chunks)+1
         start=time.time()
         cls.evaluate(np.random.rand(len(cls._all_parameters)))
         dummy_time=time.time()-start
-        total_time=int((int(dummy_time/60)+5)*num_processes)
+        total_time=int((int(dummy_time/60)+5)*process_per_chunk)
         simulation_executor=self.init_sim_executor("simulation", timeout=total_time)
-        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, num_processes), [num_processes]*node_chunks)
+        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, node_chunks), [process_per_chunk]*node_chunks)
         job_ids = [job.job_id for job in jobs]
 
    
