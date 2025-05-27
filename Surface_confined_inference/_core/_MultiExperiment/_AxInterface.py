@@ -63,29 +63,50 @@ class AxInterface(sci.OptionsAwareMixin):
         return executor
     def experiment(self,):
         if self._internal_options.in_cluster==True:
-            
-            exp_exectutor=self.init_sim_executor("experiment")
-            run_experiment=exp_exectutor.map_array(self.run, range(0, self._internal_options.independent_runs))
-            exp_job_ids = [job.job_id for job in run_experiment]
-            pool_handler=self.init_process_executor("pool", timeout=30, dependency=exp_job_ids)
-            
-            job=pool_handler.submit(pool_pareto, 
-                                    os.path.join(self._internal_options.results_directory, "clients"), 
-                                    self._cls.grouping_keys, 
-                                    self._cls._all_parameters,
-                                    os.path.join(self._internal_options.results_directory, "pareto_points"))
+            if os.path.isdir(self._internal_options.results_directory) and len(os.listdir(self._internal_options.results_directory))!=0:
+                raise ValueError(f"Results directory '{self._internal_options.results_directory}' must be empty")
+            exp_job_ids=self.run_inference()
+            pool_job=self.pool_inference_results(dependency=exp_job_ids)
             if self._internal_options.simulate_front==True:
-                spawn_handler=self.init_process_executor("spawn_simulations", timeout=2, dependency=[job.job_id])
-                submitted_sim_job=spawn_handler.submit(self.spawn_bulk_simulation)
+                submitted_sim_job=self.simulate_fronts(dependency=pool_job)
             if self._internal_options.rclone_directory!="":
-                if self._internal_options.simulate_front:
-                    depend = [submitted_sim_job.job_id]
+                if self._internal_options.simulate_front is True:
+                    depend = submitted_sim_job
                 else:
-                    depend = [job.job_id]
-                spawn_handler=self.init_process_executor("spawn_rclone", timeout=2, dependency=depend)
-                spawn_handler.submit(self.spawn_rclone, self._internal_options.simulate_front, depend)
-        
-            
+                    depend = pool_job
+                self.rclone_results(dependency=depend)
+    def restart(self, start_point):
+        valid_start_points=["pool", "simulate", "rclone"]
+        if start_point not in valid_start_points:
+            raise ValueError("{0} not in allowed restart point ({1})".format(start_point, valid_start_points))
+        dependency=None
+        if start_point == "pool":
+            dependency = self.pool_inference_results(dependency=dependency)
+        if start_point in ["pool", "simulate"] and self._internal_options.simulate_front is True:
+            dependency = self.simulate_fronts(dependency=dependency)
+        if self._internal_options.rclone_directory != "":
+            self.rclone_results(dependency=dependency)
+    def run_inference(self, ):
+        exp_exectutor=self.init_sim_executor("experiment")
+        run_experiment=exp_exectutor.map_array(self.run, range(0, self._internal_options.independent_runs))
+        exp_job_ids = [job.job_id for job in run_experiment]
+        return exp_job_ids
+    def pool_inference_results(self,dependency=None):
+        pool_handler=self.init_process_executor("pool", timeout=30, dependency=dependency)
+        job=pool_handler.submit(pool_pareto, 
+                                os.path.join(self._internal_options.results_directory, "clients"), 
+                                self._cls.grouping_keys, 
+                                self._cls._all_parameters,
+                                os.path.join(self._internal_options.results_directory, "pareto_points"))
+        return [job.job_id]
+    def simulate_fronts(self, dependency=None):
+        spawn_handler=self.init_process_executor("spawn_simulations", timeout=2, dependency=dependency)
+        submitted_sim_job=spawn_handler.submit(self.spawn_bulk_simulation)
+        return [submitted_sim_job.job_id]
+    def rclone_results(self, dependency=None):
+        spawn_handler=self.init_process_executor("spawn_rclone", timeout=2, dependency=depend)
+        spawn_handler.submit(self.spawn_rclone, self._internal_options.simulate_front, depend)   
+        return None
             
     def setup_client(self, MultiExperimentInstance):
         if isinstance(MultiExperimentInstance, str):
