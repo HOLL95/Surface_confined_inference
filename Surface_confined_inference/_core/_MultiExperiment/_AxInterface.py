@@ -44,7 +44,7 @@ class AxInterface(sci.OptionsAwareMixin):
     def init_process_executor(self, name, timeout=20, dependency=None):
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         executor.update_parameters(
-            cpus_per_task=1,
+            cpus_per_task=4,
             slurm_partition="nodes",
             slurm_job_name=self._internal_options.name+"_"+name,
             slurm_account=self._internal_options.project,
