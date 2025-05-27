@@ -173,7 +173,7 @@ class AxInterface(sci.OptionsAwareMixin):
         dummy_time=time.time()-start
         total_time=int((int(dummy_time/60)+5)*num_processes)
         simulation_executor=self.init_sim_executor("simulation", timeout=total_time)
-        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, num_processes), [node_chunks]*num_processes)
+        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, num_processes), [num_processes]*node_chunks)
         job_ids = [job.job_id for job in jobs]
 
    
