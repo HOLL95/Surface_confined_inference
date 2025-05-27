@@ -17,7 +17,7 @@ class AxInterface(sci.OptionsAwareMixin):
         self._internal_options = sci.AxInterfaceOptions(**kwargs)
         dirs=["clients","evaluator","pareto_points"]
         for dir in dirs:
-            Path(os.path.join(self._internal_options.results_directory, dir)).mkdir()
+            Path(os.path.join(self._internal_options.results_directory, dir)).mkdir(exist_ok=True)
         
 
     def run(self,job_number):
@@ -104,8 +104,8 @@ class AxInterface(sci.OptionsAwareMixin):
         submitted_sim_job=spawn_handler.submit(self.spawn_bulk_simulation)
         return [submitted_sim_job.job_id]
     def rclone_results(self, dependency=None):
-        spawn_handler=self.init_process_executor("spawn_rclone", timeout=2, dependency=depend)
-        spawn_handler.submit(self.spawn_rclone, self._internal_options.simulate_front, depend)   
+        spawn_handler=self.init_process_executor("spawn_rclone", timeout=2, dependency=dependency)
+        spawn_handler.submit(self.spawn_rclone, self._internal_options.simulate_front, dependency)   
         return None
             
     def setup_client(self, MultiExperimentInstance):
@@ -156,7 +156,7 @@ class AxInterface(sci.OptionsAwareMixin):
         self._cls.save_class(dir_path=os.path.join(self._internal_options.results_directory,"evaluator"), include_data=True)
         if self._internal_options.simulate_front==True:
             for classkey in self._cls.class_keys:
-                Path(os.path.join(self._internal_options.results_directory, "simulations", classkey)).mkdir(exist_ok=False,parents=True)
+                Path(os.path.join(self._internal_options.results_directory, "simulations", classkey)).mkdir(exist_ok=True,parents=True)
     def get_zero_point_scores(self):
         zero_dict={}
         for classkey in self._cls.class_keys:
