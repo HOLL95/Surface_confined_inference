@@ -1,6 +1,6 @@
 from ax.service.ax_client import AxClient
 from ax.service.utils.instantiation import ObjectiveProperties
-
+import copy
 from submitit import AutoExecutor
 import numpy as np
 import Surface_confined_inference as sci
@@ -168,13 +168,14 @@ class AxInterface(sci.OptionsAwareMixin):
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt"), "r") as f:
             num_points=int(f.readline())
         node_chunks=min(num_points, 300)
-        process_per_chunk=int(num_points//node_chunks)+1
+        process_per_chunk=int(np.floor(num_points//node_chunks))+1
+        quit_point=int(np.ceil(node_chunks/process_per_chunk))
         start=time.time()
         cls.evaluate(np.random.rand(len(cls._all_parameters)))
         dummy_time=time.time()-start
         total_time=int((int(dummy_time/60)+5)*process_per_chunk)
         simulation_executor=self.init_sim_executor("simulation", timeout=total_time)
-        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, node_chunks), [process_per_chunk]*node_chunks)
+        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, quit_point), [process_per_chunk]*quit_point)
         job_ids = [job.job_id for job in jobs]
 
    
@@ -192,13 +193,10 @@ class AxInterface(sci.OptionsAwareMixin):
         save_dict={}
         for classkey in cls.class_keys:
             if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
-                dec_time=decimate(cls.classes[classkey]["times"], dec_factor)
+                dec_time=decimate(copy.deepcopy(cls.classes[classkey]["times"]), dec_factor)
             else:
                 dec_time=cls.classes[classkey]["times"]
-            if param_values.shape[0]<((index+1)*chunk_size):
-             size=(param_values.shape[0]-(index*chunk_size))+1
-            else:
-             size=chunk_size+1
+            size=chunk_size+1
             save_dict[classkey]=np.zeros((len(dec_time), size))
             save_dict[classkey][:,0]=dec_time
         counter=1
