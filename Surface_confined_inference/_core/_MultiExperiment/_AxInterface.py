@@ -63,8 +63,11 @@ class AxInterface(sci.OptionsAwareMixin):
         return executor
     def experiment(self,):
         if self._internal_options.in_cluster==True:
-            if os.path.isdir(self._internal_options.results_directory) and len(os.listdir(self._internal_options.results_directory))!=0:
-                raise ValueError(f"Results directory '{self._internal_options.results_directory}' must be empty")
+            if os.path.isdir(self._internal_options.results_directory) is True:
+                for directory in ["clients", "pareto_points"]:
+                    path=os.path.join(self._internal_options.results_directory, directory)
+                    if len(os.listdir(path))>0:
+                        raise ValueError(f"Results directory '{path}' must be empty (contains ({os.listdir(path)}))")
             with open(os.path.join(self._internal_options.results_directory, "decimation.txt"), "w") as f:
                 f.write(str(self._internal_options.front_decimation))
             exp_job_ids=self.run_inference()
