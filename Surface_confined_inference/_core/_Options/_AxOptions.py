@@ -56,5 +56,8 @@ class AxInterfaceOptions(OptionsManager):
     GB_ram=NumberOption("GB_ram",
                         default=8,
                         doc="Gigabytes of RAM to assign for Slurm cluster")
+    front_decimation=NumberOption("front_decimation",
+                                    default=8,
+                                    doc="Amount to decimate front by for simulating")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

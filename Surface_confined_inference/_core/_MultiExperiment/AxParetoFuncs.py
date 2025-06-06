@@ -21,6 +21,22 @@ def internal_domination(front, keys):
         if not is_dominated:
             non_dominated.append(candidate)
     return non_dominated
+def exclude_copies(front):
+    excluded_idx=[]
+    keys=front[0]["parameters"].keys()
+    for i in range(0, len(front)):
+        if i not in excluded_idx:
+            params=[front[i]["parameters"][key] for key in keys]
+            for j in range(0, len(front)):
+                if i==j:
+                    continue
+                if j not in excluded_idx:
+                    target_params=[front[j]["parameters"][key] for key in keys]
+                    equality=[x==y for x,y in zip(params, target_params)]
+                    if all(equality) is True:
+                        excluded_idx.append(j)
+    return [front[x] for x in range(0, len(front)) if x not in excluded_idx]
+            
 def is_dominated(existing_front, proposed_front, keys, test_print=False):
     removal_idx=set()
     added_idx=list(range(0, len(proposed_front)))
@@ -38,7 +54,7 @@ def is_dominated(existing_front, proposed_front, keys, test_print=False):
                         break 
     
     final_frontier=[existing_front[x] for x in range(0, len(existing_front)) if x not in removal_idx]+[proposed_front[x] for x in added_idx]
-    return internal_domination(final_frontier, keys)
+    return exclude_copies(internal_domination(final_frontier, keys))
 
 def pool_pareto(directory, grouping_keys, parameters, savepath):
     total_front_dict={}

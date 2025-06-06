@@ -790,7 +790,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
                 kwargs[key]=getattr(self, key)
         return sci.top_hat_filter(times, current, **kwargs)
 
-    @sci._utils.temporary_options(normalise_parameters=False)
+    #@sci._utils.temporary_options(normalise_parameters=False)
     def Dimensionalsimulate(self, parameters, times):
         self.optim_list=self._optim_list
         return self.simulate(parameters, self.nondim_t(times))

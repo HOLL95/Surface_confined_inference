@@ -2,14 +2,28 @@ import Surface_confined_inference as sci
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import copy
+from string import ascii_uppercase
+from scipy.spatial import ConvexHull
+from scipy.interpolate import CubicSpline
+from sklearn.neighbors import NearestNeighbors, BallTree
+from scipy.spatial.distance import cdist
+from matplotlib.ticker import FuncFormatter
+import matplotlib.cm as cm
+import re
+from scipy.signal import envelope
 class PlotManager:
-    def __init__(self, composed_class):
+    def __init__(self, composed_class, results_array=None, pre_saved=False):
         self._cls=composed_class
         self.grouping_keys=self._cls.grouping_keys
         self.group_to_class=self._cls.group_to_class
         self.group_to_parameters=self._cls.group_to_parameters
         self.group_to_conditions=self._cls.group_to_conditions
-        self.all_harmonics=self._cls._all_harmonics        
+        self.all_harmonics=self._cls._all_harmonics 
+        self.class_keys=self._cls.class_keys
+        self.results_array=results_array
+        self.pre_saved=pre_saved
+        self._all_parameters=self._cls._all_parameters
     def add_legend(self, ax, groupkey, target_cols=3):
         num_labels=len(self.group_to_class[groupkey])
         if num_labels<target_cols:
@@ -41,6 +55,9 @@ class PlotManager:
             kwargs["patheffects"]=None
         if "lw" not in kwargs:
             kwargs["lw"]=None
+        if "envelope" not in kwargs:
+            kwargs["envelope"]=False
+        
         current_len=0
         line_list=[]
         for i in range(0, len(data_list)):
@@ -49,7 +66,24 @@ class PlotManager:
                 label=kwargs["label_list"][i]
             else:
                 label=None
-            l1, =axis.plot(xaxis, data_list[i], label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], color=kwargs["colour"], lw=kwargs["lw"], path_effects=kwargs["patheffects"])
+            if kwargs["envelope"]==False:
+                l1, =axis.plot(xaxis, data_list[i], label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], 
+                                                                                        color=kwargs["colour"], 
+                                                                                        lw=kwargs["lw"], 
+                                                                                        path_effects=kwargs["patheffects"])
+            else:
+                y1, _=envelope(data_list[i], (10, None))
+                y2, _=envelope(data_list[i]*-1, (10, None))
+                l_1, =axis.plot(xaxis, y1, label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], 
+                                                                                        color=kwargs["colour"], 
+                                                                                        lw=kwargs["lw"], 
+                                                                                        path_effects=kwargs["patheffects"])
+                l2, =axis.plot(xaxis, y2*-1, label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], 
+                                                                                        color=l_1.get_color(), 
+                                                                                        lw=kwargs["lw"], 
+                                                                                        path_effects=kwargs["patheffects"])
+                l1=[l_1, l2]                                                                       
+                
             current_len+=len(data_list[i])
             line_list.append(l1)
         axis.set_xticks([])
@@ -134,7 +168,11 @@ class PlotManager:
         }
         #scaled data is returned as experiment -> harmonic -> plot
         return result
-    
+    def _check_results_loaded(self):
+        if hasattr(self._cls, "_results_array") is True and hasattr(self._cls, "_best_results") is True:
+            return True
+        else:
+            return False
     def plot_scaled_harmonics(self, axis, processed_data, **kwargs):
         """
         Plot scaled harmonics data.
@@ -253,17 +291,98 @@ class PlotManager:
         axis.set_xticks([])
         
         return axis, line_list
-    def results(self, input_list, **kwargs):
-        if "pre_saved" not in kwargs:
-            kwargs["pre_saved"]=False     
-        if kwargs["pre_saved"]==False:
-            if isinstance(input_list[0], list) is False:
-                input_list=[input_list]
+    def results(self,  **kwargs):
+        possible_args=set(["parameters", "pareto_index", "best"])
+        kwargset=set(kwargs.keys())
+        intersect=possible_args-kwargset
+        if len(intersect)!=2:
+            raise ValueError("Only one of ({0}) allowed as arg - found {1}".format(possible_args, intersect))
         else:
-            if isinstance(input_list, dict) is True:
-                input_list=[input_list]
-        self.plot_results(self.process_simulation_dict(input_list, pre_saved=kwargs["pre_saved"]), **kwargs)  
-    def process_simulation_dict(self, input_list, pre_saved):
+            arg=list(kwargset.intersection(possible_args))[0]
+        total_all_simulations=[]
+        
+        if arg=="parameters":
+            param_values=np.array(kwargs[arg])
+            simulate_all=True
+        else:
+            if self._check_results_loaded() is True:
+                if arg in ["pareto_index", "best"]:
+                    if arg=="best" and kwargs[arg]=="all":
+                        kwargs[arg]=list(range(0, len(self.grouping_keys)))
+                    elif isinstance(kwargs[arg], int):
+                        kwargs[arg]=[kwargs[arg]]
+                    simulate_all=True
+                    for i in range(0, len(kwargs[arg])):
+                        element=self._cls._results_array[kwargs[arg][i]]
+                        if "saved_simulation" in element:
+                            simulate_all=False
+                        else:
+                            if simulate_all==False:
+                                raise ValueError("Saved simulation not found")
+                    if simulate_all==True:
+                        param_values=[]
+                        for i in range(0, len(kwargs[arg])):
+                            element=self._cls._results_array[kwargs[arg][i]]
+                            param_values.append([element["parameters"][x] for x in self._cls.all_parameters])
+            else:
+                raise ValueError("For {0} argument results have to be loaded through `BaseMultiExperiment.results_loader()`".format(arg))
+        if simulate_all==True:
+            dims=param_values.shape
+            if len(dims)==1:
+                param_values=np.array([param_values])
+                dims=param_values.shape
+            for i in range(0, dims[0]):
+                values=param_values[i,:]
+                if all([x>=0 and x<=1 for x in values]) != self._cls._internal_options.normalise: 
+                    print("Warning - are values correctly normalised? Loaded class has normalised set to {0}".format(self._cls._internal_options.normalise))
+                total_all_simulations.append(self._cls.evaluate(values))
+        elif simulate_all==False:
+            for i in range(0, len(kwargs[arg])):
+                    simulations={}
+                    element=self._cls._results_array[kwargs[arg][i]]
+                    for classkey in self._cls.class_keys:
+                        vals=np.loadtxt(element["saved_simulation"][classkey]["address"])
+                        simulations[classkey]=vals[:,element["saved_simulation"][classkey]["col"]]
+                    total_all_simulations.append(simulations)
+        scaled_simulations=[]
+        for j in range(0, len(total_all_simulations)):
+            groupsims={}
+            for i in range(0, len(self.grouping_keys)):
+                groupkey=self.grouping_keys[i]
+                groupsims[groupkey]=[self._cls.scale(copy.deepcopy(total_all_simulations[j][x]), groupkey, x) for x in self.group_to_class[groupkey]]
+            scaled_simulations.append(groupsims)
+
+        #case1 range of parameters
+        #case2 index to pareto
+        #case3 just "best"
+        #sequential or not>>>>
+        if "sequential" not in kwargs:
+            kwargs["sequential"]=False
+        if "savename" not in kwargs:
+            kwargs["savename"]=None
+        if kwargs["sequential"]==True:
+            for i in range(0, len(scaled_simulations)):
+                if kwargs["savename"] is not None:
+                    if kwargs["savename"].split(".")[-1]=="png":
+                        raise ValueError("Dont put .png at the end of savename ({0})".format(kwargs["savename"]))
+                    if arg=="best":
+                        savename=kwargs["savename"]+"_"+self.grouping_keys[i]
+                    else:
+                        savename=kwargs["savename"]+"_index_"+str(i)
+                else:
+                    savename=None
+
+                oldsavename=kwargs["savename"]
+                kwargs["savename"]=savename
+                if arg=="best":
+                    kwargs["target_key"]=[self.grouping_keys[i]]
+                
+                self.plot_results([scaled_simulations[i]], **kwargs)  
+                kwargs["savename"]=oldsavename
+
+        else:
+            self.plot_results(scaled_simulations, **kwargs)
+    def process_simulation_dict(self, input_list):
         total_all_simulations=[]
         for p in input_list:
             if pre_saved==False:
@@ -276,6 +395,108 @@ class PlotManager:
                 groupsims[groupkey]=[self._cls.scale(simulation_vals[x], groupkey, x) for x in self.group_to_class[groupkey]]
         total_all_simulations.append(groupsims)
         return total_all_simulations
+   
+    def _configure_plot_axis(self):
+        if len(self.grouping_keys)%2!=0:
+            num_cols=(len(self.grouping_keys)+1)/2
+            fig,axes=plt.subplots(2, int(num_cols))
+            axes[1, -1].set_axis_off()
+        else:
+            num_cols=len(self.grouping_keys)/2
+            fig,axes=plt.subplots(2, int(num_cols))
+        return fig,axes
+    def master_harmonics_plotter(self, all_data, all_simulations, all_times, ax, 
+                              label_list, plot_colours, linestyles, path_effects, 
+                              **kwargs):
+        """
+        Process harmonics for data and simulations, then plot them.
+        
+        Parameters:
+        -----------
+        all_data : list
+            List of experimental data arrays
+        all_simulations : list
+            List of simulation data arrays
+        all_times : list
+            List of time arrays corresponding to data/simulations
+        ax : matplotlib axis
+            Axis object for plotting
+        label_list : list
+            List of labels for the plots
+        plot_colours : list
+            List of colors for plotting
+        linestyles : list
+            List of line styles
+        path_effects : list
+            Path effects for styling
+        **kwargs : dict
+            Additional keyword arguments (must contain "sim_plot_options")
+        
+        Returns:
+        --------
+        axis : matplotlib axis
+            The axis object with plotted harmonics
+        line_list : list
+            List of line objects from the plot
+        """
+        
+        num_experiments = len(all_data)
+        num_simulations = len(all_simulations) + 1  # +1 for the data
+        
+        # Initialize harmonics_list with proper dimensions (m×n×o)
+        # m = num_simulations, n = num_experiments, o = length of harmonics
+        harmonics_list = []
+        
+        # First, calculate harmonics for the actual data
+        data_harmonics = [
+            np.array(np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics)))
+            for t, i in zip(all_times, all_data)
+        ]
+        harmonics_list.append(data_harmonics)
+        
+        # Then calculate harmonics for each simulation
+        for q in range(0, len(all_simulations)):
+            sim = all_simulations[q]
+            sim_harmonics = [
+                np.array(np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics)))
+                for t, i in zip(all_times, sim)
+            ]
+            harmonics_list.append(sim_harmonics)
+        
+        plot_harmonics = harmonics_list
+        
+        # Create lists for styling parameters
+        alphas = [1] + [0.75] * len(all_simulations)
+        line_styles = ["-"] + [linestyles[l % len(linestyles)] for l in range(0, len(all_simulations))]
+        
+        if kwargs["sim_plot_options"] == "simple":
+            colors = [None] + ["black"] * len(all_simulations)
+            patheffects = [None] * (len(all_simulations) + 1)
+        else:
+            if len(plot_colours)!=(num_simulations):
+                colors = [None]
+                patheffects = [None]
+                for r in range(0, len(plot_colours)):
+                    colors += [plot_colours[r]]
+                    patheffects += [path_effects]
+            else:
+                colors=plot_colours
+                patheffects = [None] + [path_effects]*(num_simulations-1)
+            
+                
+        
+        dmax = np.max([np.max(x, axis=None) for x in data_harmonics])
+        scaled_harmonics = self.process_harmonics(plot_harmonics, additional_maximum=dmax)
+        
+        axis, line_list = self.plot_scaled_harmonics(ax, scaled_harmonics,
+                                                alpha=alphas,
+                                                linestyle=line_styles,
+                                                colour=colors,
+                                                label_list=label_list,
+                                                scale=True,
+                                                patheffects=patheffects)
+        
+        return axis, line_list
     def plot_results(self, simulation_values, **kwargs):
         linestyles=[ "dashed", "dashdot","dotted",]
         if "target_key" not in kwargs:
@@ -293,14 +514,10 @@ class PlotManager:
             kwargs["savename"]=None
         if "show_legend" not in kwargs:
             kwargs["show_legend"]=False
-        if "axes" not in kwargs:
-            if len(self.grouping_keys)%2!=0:
-                num_cols=(len(self.grouping_keys)+1)/2
-                fig,axes=plt.subplots(2, int(num_cols))
-                axes[1, -1].set_axis_off()
-            else:
-                num_cols=len(self.grouping_keys)/2
-                fig,axes=plt.subplots(2, int(num_cols))
+        if "envelope" not in kwargs:
+            kwargs["envelope"]=False
+        if "axes" not in kwargs or kwargs["axes"] is None:
+            fig,axes=self._configure_plot_axis()
         else:
             axes=kwargs["axes"]
         self.plot_line_dict={}
@@ -328,7 +545,7 @@ class PlotManager:
             )
             path_effects=[pe.Stroke(linewidth=kwargs["sim_plot_options"]["strokewidth"], foreground=kwargs["sim_plot_options"]["foreground"]), pe.Normal()]
         else:
-            path_effects=None      
+            path_effects=None 
         if "interactive_mode" not in kwargs:
             kwargs["interactive_mode"]=False
         if kwargs["interactive_mode"]==True:
@@ -353,63 +570,28 @@ class PlotManager:
                     
                 
                 if "type:ft" not in groupkey:
+                    
                     self.plot_stacked_time(ax, all_data, label_list=label_list)
                     for q in range(0, len(all_simulations)):
+                        
+
                         if kwargs["sim_plot_options"]=="simple":
-                            axis, time_lines=self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour="black")
+                            axis, time_lines=self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%3], colour="black", envelope=kwargs["envelope"])
                         else:
-                            axis, time_lines=self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour=plot_colours[q], patheffects=path_effects, lw=kwargs["sim_plot_options"]["lw"])
+                            axis, time_lines=self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%3], colour=plot_colours[q], patheffects=path_effects, lw=kwargs["sim_plot_options"]["lw"], envelope=kwargs["envelope"])
                         if kwargs["interactive_mode"]==True:
                             self.simulation_plots[groupkey]=time_lines
+                        
+                
                 else:
-                    num_experiments = len(all_data)
-                    num_simulations = len(all_simulations) + 1  # +1 for the data
-                    
-                    # Initialize harmonics_list with proper dimensions (m×n×o)
-                    # m = num_simulations, n = num_experiments, o = length of harmonics
-                    harmonics_list = []
-                    
-                    # First, calculate harmonics for the actual data
-                    data_harmonics = [
-                        np.array(np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics)))
-                        for t, i in zip(all_times, all_data)
-                    ]
-                    harmonics_list.append(data_harmonics)
-                    
-                    # Then calculate harmonics for each simulation
-                    for q in range(0, len(all_simulations)):
-                        sim = all_simulations[q]
-                        sim_harmonics = [
-                            np.array(np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics)))
-                            for t, i in zip(all_times, sim)
-                        ]
-                        harmonics_list.append(sim_harmonics)
-                    
-                    
-                    plot_harmonics = harmonics_list
-                    
-                    # Create lists for styling parameters
-                    alphas = [1] + [0.75] * len(all_simulations)
-                    
-                    line_styles = ["-"] + [linestyles[l % len(linestyles)] for l in range(0, len(all_simulations))]
                     if kwargs["sim_plot_options"]=="simple":
-                        colors = [None] + ["black"] * len(all_simulations)#
-                        patheffects=[None]*(len(all_simulations)+1)
-                    else:
-                        colors=[None]
-                        patheffects=[None]
-                        for r in range(0, len(plot_colours)):
-                            colors+=[plot_colours[r]]
-                            patheffects+=[path_effects]
-                    dmax=np.max([np.max(x, axis=None) for x in data_harmonics], )        
-                    scaled_harmonics=self.process_harmonics(plot_harmonics, additional_maximum=dmax)
-                    axis, line_list=self.plot_scaled_harmonics(ax, scaled_harmonics,
-                                                alpha=alphas, 
-                                                linestyle=line_styles, 
-                                                colour=colors, 
-                                                label_list=label_list,
-                                                scale=True,
-                                                patheffects=patheffects)
+                        plot_colours=None
+                    
+                    self.master_harmonics_plotter(
+                        all_data, all_simulations, all_times, ax, 
+                              label_list, plot_colours, linestyles, path_effects, 
+                              **kwargs
+                    )
                     if kwargs["interactive_mode"]==True:
                         self.simulation_plots[groupkey]=line_list#lines are stored columnwise per plot and rowise per harmonics
                         self.simulation_plots["maxima"][groupkey]=dmax
@@ -434,9 +616,376 @@ class PlotManager:
 
         plt.tight_layout()
         plt.subplots_adjust(hspace=0.3)
+        if "return_axes" not in kwargs:
+            kwargs["return_axes"]=False
+        if kwargs["return_axes"]==True:
+            return fig, dict(zip(self.grouping_keys,[ axes[x//2, x%2] for x in range(0, len(self.grouping_keys))]))
         if kwargs["interactive_mode"]==False:
             if kwargs["savename"] is not None:
+                if kwargs["savename"].split(".")[-1]!=".png":
+                    kwargs["savename"]+=".png"
                 fig.savefig(kwargs["savename"], dpi=500)
                 plt.close()
             else:
                 plt.show()
+    def plot_2d_pareto(self,**kwargs):
+        if "address" not in kwargs:
+            address=None
+        else:
+            address=kwargs["address"]
+        if "ax" not in kwargs:
+            kwargs["ax"]=None
+        else:
+            axis=kwargs["ax"]
+        if "size" not in kwargs:
+            kwargs["size"]=50
+        if "keylabel" not in kwargs:
+            kwargs["keylabel"]=True
+        if kwargs["keylabel"]==True:
+            letterdict=dict(zip(self.grouping_keys, ascii_uppercase[:len(self.grouping_keys)]))
+            legend_dict={key:"{0} : {1}".format(letterdict[key], key) for key in self.grouping_keys}
+            if "keylabel_legend" not in kwargs:
+                kwargs["keylabel_legend"]=True
+        if "envelope_threshold" not in kwargs:
+            kwargs["envelope_threshold"]=0.1
+        if "show_envelope" not in kwargs:
+            kwargs["show_envelope"]=False
+        
+        if address is None:
+            if self._check_results_loaded() is False:
+                raise ValueError("No `address` argument provided and results not loaded through directory")
+            else:
+                if kwargs["ax"] is None:
+                    fig,axis=plt.subplots(len(self.grouping_keys), len(self.grouping_keys))
+                for j in range(0, len(self.grouping_keys)):
+                    keyy=self.grouping_keys[j]
+                   
+                    for k in range(0, len(self.grouping_keys)):
+                        ax=axis[j,k]
+                        keyx=self.grouping_keys[k]
+                        xscores=[x["scores"][keyx] for x in self._cls._results_array]
+                        yscores=[y["scores"][keyy] for y in self._cls._results_array]
+
+                        if j<k:
+                            ax.set_axis_off()
+                        
+                        if j==k:
+                            ax.hist(xscores, density=True)
+                            
+                                
+                        if j>k:
+                            ax.scatter(xscores, yscores)
+                            if kwargs["show_envelope"]==True:
+                                idx=self._get_2d_neighours(xscores, yscores, threshold=kwargs["envelope_threshold"])
+                                xplot=[xscores[x] for x in idx]
+                                yplot=[yscores[x] for x in idx]
+                                ax.scatter(xplot, yplot, c="red")
+                num_metrics=len(self.grouping_keys)
+                for i in range(0, num_metrics):
+                    for j in range(0, num_metrics):
+                      
+                        if i==num_metrics-1:
+                            if kwargs["keylabel"]==True:
+                                xlabel=letterdict[self.grouping_keys[j]]
+                            else:
+                                xlabel=self.grouping_keys[j]
+                            axis[i,j].set_xlabel(xlabel)
+                        if j==0:
+                            if kwargs["keylabel"]==True:
+                                ylabel=letterdict[self.grouping_keys[i]]
+                            else:
+                                ylabel=self.grouping_keys[i]
+                            if i==0:
+                                ax.set_ylabel("Count")
+                            else:
+                                axis[i,j].set_ylabel(ylabel)
+                if kwargs["keylabel"]==True:
+                    for i in range(0, num_metrics):
+                        axis[0,-1].plot(0, 0, label=legend_dict[self.grouping_keys[i]])
+                if kwargs["keylabel_legend"]==True:
+                    axis[0,-1].legend(loc="center", handlelength=0)
+                return axis
+        else:
+            raise NotImplementedError("Manual `address` loading currently not implemented")
+    def _un_normalise_parameters(self,):
+        if self._check_results_loaded() is False:
+            raise ValueError("Need to load results through `sci.BaseMultiExperiment.resuls_loader()`")
+        return_array=np.zeros((len(self._cls._results_array),len(self._cls._all_parameters),))
+        for i in range(0, len(self._cls._all_parameters)):
+            norm_param=self._cls._all_parameters[i]
+            if norm_param not in self._cls.boundaries.keys():
+                norm_param="_".join(self._cls._all_parameters[i].split("_")[:-1])
+            return_array[:,i]=[sci._utils.un_normalise(y["parameters"][self._cls._all_parameters[i]], self._cls.boundaries[norm_param]) for y in self._cls._results_array]
+        return return_array
+    def _get_2d_neighours(self,xscores, yscores, **kwargs):
+            points = np.column_stack([xscores, yscores])
+            hull = ConvexHull(points).vertices
+            hull_pairs=np.array([points[x,:] for x in hull])
+            sorted_x=np.argsort(hull_pairs[:,0])
+            sorted_y=np.argsort(hull_pairs[:,1])
+            terminal_x=np.where(hull_pairs[:,0]==hull_pairs[sorted_x[0],0])[0][0]
+            current_y=hull_pairs[sorted_x[0],[1]]
+            end=False
+            lower_envelope=[hull_pairs[terminal_x,:]]
+            for i in range(terminal_x, len(sorted_x)):
+                if hull_pairs[i,1]*0.9>current_y:
+                    end=True
+                if end==True:
+                    break
+                lower_envelope.append(hull_pairs[i,:])
+                current_y=hull_pairs[i,1]
+            if end==False:
+                for i in range(0, len(sorted_x)):
+                    if hull_pairs[i,1]*0.9>current_y:
+                        end=True
+                    if end==True:
+                        break
+                    lower_envelope.append(hull_pairs[i,:])
+                    current_y=hull_pairs[i,1]
+            lower_envelope=np.array(lower_envelope)
+            new_array = [tuple(row) for row in lower_envelope]
+            lower_envelope = np.unique(new_array, axis=0)
+            
+            #ax.plot(lower_envelope[:,0], lower_envelope[:,1], color="green")
+            
+            xrange=np.linspace(lower_envelope[0,0], lower_envelope[-1, 0], 1000)
+            yrange=np.interp(xrange, lower_envelope[:,0], lower_envelope[:,1])
+            boundary=np.column_stack((xrange, yrange))
+            points=np.column_stack((xscores, yscores))
+            tree = BallTree(points)
+            std_devs = np.std(points, axis=0)
+            absolute_threshold = kwargs["threshold"] * np.mean(std_devs)
+            indices_list = tree.query_radius(boundary, r=absolute_threshold).ravel()
+            empty_array=[]
+            for elem in indices_list:
+                empty_array+=list(elem)
+            indices_list=np.unique(empty_array)
+            return indices_list
+    def pareto_parameter_plot(self, **kwargs):
+        if self._check_results_loaded() is False:
+            raise ValueError("No `address` argument provided and results not loaded through directory")
+        if "axes" not in kwargs:
+            fig,ax=plt.subplots(len(self._all_parameters), len(self._all_parameters))
+        else:
+            ax=kwargs["axes"]
+        if "true_values" not in kwargs:
+            kwargs["true_values"]=None
+        if "size" not in kwargs:
+            kwargs["size"]=1
+        if "target_keys" not in kwargs:
+            kwargs["target_keys"]=None
+        if kwargs["target_keys"] is not None:
+            if len(kwargs["target_keys"])!=2:
+                raise ValueError("`target_keys` argument must be of length 2!, not {}".format(len(kwargs["target_keys"])))
+            elif all([key in self.grouping_keys for key in kwargs["target_keys"]]) is False:
+                raise ValueError("`target_keys` need to be from `grouping_keys`")
+        if "envelope_threshold" not in kwargs:
+            kwargs["envelope_threshold"]=0
+        if "cmap" not in kwargs:
+            kwargs["cmap"]=mpl.colormaps["seismic"]
+        all_params=self._all_parameters
+        bounds=self._cls.boundaries
+        groups=self.grouping_keys
+        full_param_set=np.array([[y["parameters"][x] for x in all_params] for y in self._cls._results_array])
+        de_normalised_array=self._un_normalise_parameters()
+        #full_score_set=np.array([[y["scores"][x] for x in groups] for y in self._cls._results_array])
+        if kwargs["target_keys"] is not None:
+            xscores=[y["scores"][kwargs["target_keys"][0]] for y in self._cls._results_array]
+            yscores=[y["scores"][kwargs["target_keys"][1]] for y in self._cls._results_array]
+            score_array=np.zeros((len(xscores), 2))
+            scores=np.column_stack((xscores, yscores))
+            colorax=[0.6, ax[0,0].get_position().bounds[1], 0.3, ax[0,0].get_position().bounds[3]]
+            for i in range(0, 2):
+                score_array[:,i]=np.min(scores[:,i])/scores[:,i]
+            colour_array=score_array[:,0]/score_array[:,1]
+            
+            table_width=0.15
+            colour_ax=fig.add_axes(colorax)
+            left_table_ax=fig.add_axes([colorax[0]-table_width/2, colorax[1]-0.03, table_width, 0.01])
+            right_table_ax=fig.add_axes([colorax[0]+colorax[2]-table_width/2, colorax[1]-0.03, table_width, 0.01])
+            colour_ax.imshow(np.vstack((np.linspace(0,1,256),np.linspace(0,1,256))), aspect='auto', cmap=kwargs["cmap"])
+            xlim=colour_ax.get_xlim()
+            colour_ax.set_xticks([xlim[0], np.mean(xlim), xlim[1]], ["Better fit to:", "Equally good fit", "Better fit to:"])
+            colour_ax.set_yticks([])
+            minc=min(colour_array)
+            maxc=max(colour_array)
+            labeldict={"experiment":"Experiment", "type":"Domain"}
+            labelval={"Experiment":lambda x:x, "Domain":lambda x, returndict={"ts":"Time", "ft":"Frequency"}:returndict.get(x)}
+            unitdict={"Hz":"Frequency (Hz)", "mV":"Amplitude (mV)", "V":"Amplitude (V)"}
+            equalitydict={"lesser":"< ", "equals":"", "geq":r"$\geq$"}
+            pattern = r"\d+(?:\.\d+)?"
+            tableaxes=[left_table_ax, right_table_ax]
+            for i in range(0, len(kwargs["target_keys"])):
+                table=[]
+                split1=kwargs["target_keys"][i].split("-")
+                split2=[x.split(":") for x in split1]
+                for j in range(0, len(split2)):
+                    if split2[j][0] in labeldict:
+                        arg1=labeldict[split2[j][0]]
+                        units=False
+                    else:
+                        units=True
+                        key=[key for key in unitdict.keys() if key in split2[j][1]][0]
+                        arg1=unitdict[key]
+                    if units==False:
+                        arg2=labelval[arg1](split2[j][1])
+                    else:
+                        
+                        match = re.search(pattern, split2[j][1])
+                        arg2="{0}{1}".format(equalitydict[split2[j][0]], match.group(0))
+                    table.append([arg1, arg2])
+                tab=tableaxes[1-i].table(cellText=table, cellLoc="left")
+                tab.auto_set_font_size(False)
+                tab.set_fontsize(10)
+                #tab.scale(1.5, 1.5)
+                tableaxes[1-i].set_axis_off()
+        if kwargs["envelope_threshold"]!=0 and kwargs["target_keys"] is not None:
+            score_idx=self._get_2d_neighours(xscores, yscores, threshold=kwargs["envelope_threshold"])
+        
+        for i in range(0, len(all_params)):
+            for j in range(0, len(all_params)):
+                if i>=j:
+                    plot_axis=[]
+                    
+                    for x in [j,i]:
+                       
+                        plot_axis.append(de_normalised_array[:,x])
+                        
+                if i>j:  
+                    if kwargs["true_values"] is not None:
+                        xparam=all_params[j]
+                        yparam=all_params[i]
+                        if xparam in kwargs["true_values"]:
+                            ax[i,j].axvline(kwargs["true_values"][xparam], color="black", linestyle="--")
+                        if yparam in kwargs["true_values"]:
+                            ax[i,j].axhline(kwargs["true_values"][yparam], color="black", linestyle="--")
+                        if xparam not in kwargs["true_values"]:
+                            for key in kwargs["true_values"].keys():
+                                norm_param="_".join(key.split("_")[:-1])
+                                if norm_param==xparam:
+                                    ax[i,j].axvline(kwargs["true_values"][key], color="black", linestyle="--")
+                        if yparam not in kwargs["true_values"]:
+                            for key in kwargs["true_values"].keys():
+                                norm_param="_".join(key.split("_")[:-1])
+                                if norm_param==yparam:
+                                    ax[i,j].axhline(kwargs["true_values"][key], color="black", linestyle="--")
+                    if kwargs["envelope_threshold"]!=0:
+                        alpha_vals=[0.2 if x not in score_idx else 1 for x in range(0, len(plot_axis[0]))]
+
+                    else:
+                        alpha_vals=1
+                    ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], c=colour_array, cmap=kwargs["cmap"], alpha=alpha_vals)#
+                    if j==0:
+                        ax[i,j].set_ylabel(all_params[i])
+                        if abs(np.mean(plot_axis[1]))<1e-2:
+                            ax[i,j].yaxis.set_major_formatter(FuncFormatter(lambda x, _: '{:.1e}'.format(x)))
+                    else:
+                        ax[i,j].set_yticks([])
+                
+                elif i==j:  
+                    xaxis=plot_axis[0]
+                    n, bin_edges, patches=ax[i,j].hist(xaxis, edgecolor='black',bins=25, density=True)
+                    if j!=0:
+                        ax[i,j].set_yticks([])
+                    #hist,bin_edges = np.histogram(xaxis, 25)
+                    
+                    colours=np.zeros(len(n))
+                    for m in range(1, len(bin_edges)):
+                        location=np.where((xaxis>bin_edges[m-1]) & (xaxis<bin_edges[m]))
+                        colours[m-1]=np.mean(colour_array[location])
+                    
+                    colours=[kwargs["cmap"](sci._utils.normalise(x, [minc, maxc])) for x in colours]
+                    for c, p in zip(colours, patches):
+                        plt.setp(p, 'facecolor', c)
+                    if i+j!=0:
+                        ax[i,j].set_yticks([])
+                    
+
+                else:
+                    ax[i,j].set_axis_off()
+                
+                if i==len(all_params)-1:
+                    ax[i,j].set_xlabel(all_params[j])
+                    ax[i,j].tick_params(axis='x', labelrotation=35)
+                    if abs(np.mean(plot_axis[0]))<1e-2:
+                        ax[i,j].xaxis.set_major_formatter(FuncFormatter(lambda x, _: '{:.1e}'.format(x)))
+                else:
+                    ax[i,j].set_xticks([])
+                    
+        ax[0,0].set_ylabel("Density")
+        fig.set_size_inches(16, 11)
+        plt.subplots_adjust(top=0.985,
+        bottom=0.088,
+        left=0.053,
+        right=0.992,
+        hspace=0.307,
+        wspace=0.202)
+        if "savename" not in kwargs:
+            kwargs["savename"]=None
+        if kwargs["savename"] is not None:
+            fig.savefig(kwargs["savename"], dpi=500)
+        return fig,ax
+    def show_pareto_range(self,**kwargs):
+        if self._check_results_loaded() is False:
+            raise ValueError("Need to load results through `sci.BaseMultiExperiment.results_loader()`")
+        if "envelope" not in kwargs:
+            kwargs["envelope"]=False
+        fig,axes=self._configure_plot_axis()
+        load_dict={key:[] for key in self.class_keys }
+        all_scores=np.array([[x["scores"][y] for y in self.grouping_keys] for x in self._cls._results_array]) #column is the score, row is the entry
+        scored_argsorts=np.argsort(all_scores, axis=0)
+
+        results=self._cls._results_array
+        #fig, axes=self.plot_results([], return_axes=True)
+        for i in range(0, len(self.class_keys)):
+            classkey=self.class_keys[i]
+            for z in [0,-1]:#first is best, second is worst
+                idx=scored_argsorts[z,i]
+                vals=np.loadtxt(results[idx]["saved_simulation"][classkey]["address"])
+                load_dict[classkey].append(vals[:,results[idx]["saved_simulation"][classkey]["col"]])
+        plot_dict={key:{} for key in self.grouping_keys}
+        for i in range(0, len(self.grouping_keys)):
+            gkey=self.grouping_keys[i]
+            for j in range(0, len(self.group_to_class[gkey])):
+                ckey=self.group_to_class[gkey][j]
+                if ckey not in plot_dict[gkey]:
+                    plot_dict[gkey][ckey]=[]
+                for m in range(0, len(load_dict[ckey])):
+                    plot_dict[gkey][ckey].append(self._cls.scale(copy.deepcopy(load_dict[ckey][m]), gkey, ckey))
+
+        for i in range(0, len(self.grouping_keys)):
+            gkey=self.grouping_keys[i]
+            ax=axes[i%2, i//2]
+            simulations=[
+                    [plot_dict[gkey][ckey][x] for ckey in self.group_to_class[gkey]]
+                    for x in range(0, 2)
+                ]
+            data=[self._cls.scale(copy.deepcopy(self._cls.classes[ckey]["data"]), gkey, ckey) for ckey in self.group_to_class[gkey]]
+            
+            plotting=simulations
+           
+            if "type:ft" not in gkey:
+                
+                colours=["#0099ff","red"]
+                means=[np.mean([np.mean(np.abs(y)) for y in x]) for x in plotting]
+
+                idx=np.flip(np.argsort(means))
+                
+                for q in range(0, len(idx)):
+                    
+                    self.plot_stacked_time(ax, plotting[idx[q]], colour=colours[idx[q]], envelope=kwargs["envelope"])
+                self.plot_stacked_time(ax, data, colour="black", alpha=0.5,envelope=kwargs["envelope"])
+            else:
+                colours=["red", "#0099ff"]
+                all_times=[self._cls.classes[x]["times"] for x in self.group_to_class[gkey]]
+                self.master_harmonics_plotter(
+                        data, simulations, all_times, ax, 
+                              None, ["black"]+colours, "-", None,sim_plot_options="complex" 
+                    )
+        return fig,axes
+
+            
+                    
+                    
+                            
+                            

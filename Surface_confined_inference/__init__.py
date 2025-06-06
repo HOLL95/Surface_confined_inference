@@ -8,7 +8,7 @@ from ._core._MultiExperiment._BaseMultiExperiment import BaseMultiExperiment
 from ._core._Voltammetry import SingleExperiment
 from ._core._MultiExperiment._MultiExperiment import MultiExperiment
 from ._core._MultiExperiment._AxInterface import AxInterface
-from ._core._MultiExperiment.AxParetoFuncs import pool_pareto
+from ._core._MultiExperiment.AxParetoFuncs import pool_pareto, exclude_copies
 from ._HPCInterface._Slurm import SingleSlurmSetup
 from ._core._SWVStepwise import SWVStepwise
 from ._core._PintsFunctions import (FourierGaussianLogLikelihood, 

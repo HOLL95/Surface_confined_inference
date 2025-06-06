@@ -25,7 +25,7 @@ class AxInterface(sci.OptionsAwareMixin):
         for i in range(0, self._internal_options.num_iterations):
             parameters, trial_index = self.ax_client.get_next_trial()
             self.ax_client.complete_trial(trial_index=trial_index, raw_data=cls.optimise_simple_score(parameters))
-            self.ax_client.save_to_json_file(filepath=os.path.join(self._internal_options.results_directory, "clients", "ax_client_run_{0}.npy".format(job_number)))
+            self.ax_client.save_to_json_file(filepath=os.path.join(self._internal_options.results_directory, "clients", "ax_client_run_{0}.json".format(job_number)))
     def init_sim_executor(self, name, timeout=None, dependency=None):
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         if timeout is None:
@@ -65,6 +65,8 @@ class AxInterface(sci.OptionsAwareMixin):
         if self._internal_options.in_cluster==True:
             if os.path.isdir(self._internal_options.results_directory) and len(os.listdir(self._internal_options.results_directory))!=0:
                 raise ValueError(f"Results directory '{self._internal_options.results_directory}' must be empty")
+            with open(os.path.join(self._internal_options.results_directory, "decimation.txt"), "w") as f:
+                f.write(str(self._internal_options.front_decimation))
             exp_job_ids=self.run_inference()
             pool_job=self.pool_inference_results(dependency=exp_job_ids)
             if self._internal_options.simulate_front==True:
@@ -189,7 +191,8 @@ class AxInterface(sci.OptionsAwareMixin):
             param_values = np.loadtxt(f, skiprows=1)
             f.seek(0)
             params = f.readline().strip().split()[1:]
-        dec_factor=13
+        dec_factor=self._internal_options.front_decimation
+
         save_dict={}
         for classkey in cls.class_keys:
             if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:

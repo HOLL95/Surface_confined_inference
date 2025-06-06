@@ -93,6 +93,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         self.group_list
         self._internal_options.seperated_parameters=seperation_dict
         self.group_to_parameters, self._all_parameters=self._manager.initialise_simulation_parameters(seperation_dict)
+    
     def evaluate(self, parameters):
         simulation_params_dict=self._manager.parse_input(parameters)
         simulation_values_dict={}
@@ -164,6 +165,20 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
             json.dump(multi_dict, f)
     def check_grouping(self,):
         self._plot_manager.plot_results([], savename=None, show_legend=True)
+    def results(self, **kwargs):
+        defaults={"show_legend":True,
+                "savename":None,
+                "target_key":[None],
+                "sim_plot_options":"simple",
+                "axes":None}
+        for key in defaults.keys():
+            if key not in kwargs:
+                kwargs[key]=defaults[key]
+        self._plot_manager.results(**kwargs)
+    def plot_2d_pareto(self, **kwargs):
+        self._plot_manager.plot_2d_pareto(**kwargs)
+    def pareto_parameter_plot(self, **kwargs):
+        self._plot_manager.pareto_parameter_plot(**kwargs)
             
    #TODO Need to make the individual class options, optimisation lists immutable
     
