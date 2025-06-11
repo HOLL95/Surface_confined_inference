@@ -114,11 +114,11 @@ class BaseMultiExperiment:
             for classkey in instance.class_keys:
                 if instance.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
                     with open(os.path.join(directory_path, "decimation.txt"), "r") as f:
-                        dec_amount=loadtxt(f)
+                        dec_amount=int(loadtxt(f))
                     time=instance.classes[classkey]["times"]
                     current=instance.classes[classkey]["data"]
-                    instance.classes[classkey]["times"]=decimate(time, 13)
-                    instance.classes[classkey]["data"]=decimate(current, 13)
+                    instance.classes[classkey]["times"]=decimate(time, dec_amount)
+                    instance.classes[classkey]["data"]=decimate(current, dec_amount)
         for j in range(0 ,len(results_array)):
             for groupkey in instance.grouping_keys:
                 putative=results_array[j]

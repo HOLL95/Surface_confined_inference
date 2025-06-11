@@ -142,7 +142,8 @@ class PlotManager:
             for i in range(num_harmonics):
                 harmonic_data = []
                 # Calculate maximum for current harmonic across all plots
-                current_maximum = np.max(np.array([arrayed[x][m][i,:] for x in range(num_plots)]), axis=None)
+                temp_currents=[arrayed[x][m][i,:] for x in range(num_plots)]
+                current_maximum = np.max(np.array([max(x) for x in temp_currents]), axis=None)
                 # Calculate offset for stacking
                 offset = (num_harmonics - i) * 1.1 * maximum
                 # Calculate scaling ratio

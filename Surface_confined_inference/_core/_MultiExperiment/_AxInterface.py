@@ -46,7 +46,15 @@ class AxInterface(sci.OptionsAwareMixin):
             executor.update_parameters(slurm_mail_user=self._internal_options.email)
             executor.update_parameters(slurm_mail_type="END, FAIL")
         return executor
-    def init_process_executor(self, name, timeout=20, dependency=None):
+    def init_process_executor(self, name, **kwargs):
+        if "timeout" not in kwargs:
+            kwargs["timeout"]=20
+        if "dependency" not in kwargs:
+            kwargs["dependency"]=None
+        if "criteria" not in kwargs:
+            kwargs["criteria"]="afterok"
+        timeout=kwargs["timeout"]
+        dependency=kwargs["dependency"]
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         executor.update_parameters(
             cpus_per_task=4,
@@ -63,7 +71,7 @@ class AxInterface(sci.OptionsAwareMixin):
             )
         if dependency is not None:
             executor.update_parameters(slurm_additional_parameters={
-                            "dependency": f"afterok:{':'.join(dependency)}"
+                            "dependency": f"{kwargs["criteria"]}:{':'.join(dependency)}"
                             })
         return executor
     def experiment(self,):
@@ -76,7 +84,7 @@ class AxInterface(sci.OptionsAwareMixin):
             with open(os.path.join(self._internal_options.results_directory, "decimation.txt"), "w") as f:
                 f.write(str(self._internal_options.front_decimation))
             exp_job_ids=self.run_inference()
-            pool_job=self.pool_inference_results(dependency=exp_job_ids)
+            pool_job=self.pool_inference_results(dependency=exp_job_ids, criteria="afterany")
             if self._internal_options.simulate_front==True:
                 submitted_sim_job=self.simulate_fronts(dependency=pool_job)
             if self._internal_options.rclone_directory!="":
@@ -101,8 +109,8 @@ class AxInterface(sci.OptionsAwareMixin):
         run_experiment=exp_exectutor.map_array(self.run, range(0, self._internal_options.independent_runs))
         exp_job_ids = [job.job_id for job in run_experiment]
         return exp_job_ids
-    def pool_inference_results(self,dependency=None):
-        pool_handler=self.init_process_executor("pool", timeout=30, dependency=dependency)
+    def pool_inference_results(self,dependency=None, criteria="afterok"):
+        pool_handler=self.init_process_executor("pool", timeout=30, dependency=dependency, criteria=criteria)
         job=pool_handler.submit(pool_pareto, 
                                 os.path.join(self._internal_options.results_directory, "clients"), 
                                 self._cls.grouping_keys, 
