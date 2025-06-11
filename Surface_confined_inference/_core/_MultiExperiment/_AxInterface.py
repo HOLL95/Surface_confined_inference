@@ -12,13 +12,18 @@ from .AxParetoFuncs import pool_pareto
 import time
 from scipy.signal import decimate
 import subprocess
+import torch
 class AxInterface(sci.OptionsAwareMixin):
     def __init__(self,**kwargs):
         self._internal_options = sci.AxInterfaceOptions(**kwargs)
         dirs=["clients","evaluator","pareto_points"]
         for dir in dirs:
             Path(os.path.join(self._internal_options.results_directory, dir)).mkdir(exist_ok=True)
-        
+        optimal_threads = min(8, self._internal_options.num_cpu)
+        torch.set_num_threads(optimal_threads)
+        os.environ['OMP_NUM_THREADS'] = str(optimal_threads)
+        os.environ['MKL_NUM_THREADS'] = str(optimal_threads)
+        os.environ['OPENBLAS_NUM_THREADS'] = str(optimal_threads)
 
     def run(self,job_number):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
