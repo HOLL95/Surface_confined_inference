@@ -55,6 +55,7 @@ class AxInterface(sci.OptionsAwareMixin):
             kwargs["criteria"]="afterok"
         timeout=kwargs["timeout"]
         dependency=kwargs["dependency"]
+        criteria=kwargs["criteria"]
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         executor.update_parameters(
             cpus_per_task=4,
@@ -71,7 +72,7 @@ class AxInterface(sci.OptionsAwareMixin):
             )
         if dependency is not None:
             executor.update_parameters(slurm_additional_parameters={
-                            "dependency": f"{kwargs["criteria"]}:{':'.join(dependency)}"
+                            "dependency": f"{criteria}:{':'.join(dependency)}"
                             })
         return executor
     def experiment(self,):
