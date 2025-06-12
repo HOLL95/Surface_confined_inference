@@ -10,6 +10,7 @@ from sklearn.neighbors import NearestNeighbors, BallTree
 from scipy.spatial.distance import cdist
 from matplotlib.ticker import FuncFormatter
 import matplotlib.cm as cm
+from depth.model.DepthEucl import DepthEucl 
 import re
 from scipy.signal import envelope
 class PlotManager:
@@ -377,11 +378,14 @@ class PlotManager:
                 kwargs["savename"]=savename
                 if arg=="best":
                     kwargs["target_key"]=[self.grouping_keys[i]]
-                
+                if "best" in kwargs:
+                    kwargs["target_key"]=self.grouping_keys[kwargs["best"][i]]
                 self.plot_results([scaled_simulations[i]], **kwargs)  
                 kwargs["savename"]=oldsavename
 
         else:
+            if "best" in kwargs:
+                    kwargs["target_key"]=[self.grouping_keys[x] for x in kwargs["best"]]
             self.plot_results(scaled_simulations, **kwargs)
     def process_simulation_dict(self, input_list):
         total_all_simulations=[]
@@ -771,10 +775,19 @@ class PlotManager:
             ax=kwargs["axes"]
         if "true_values" not in kwargs:
             kwargs["true_values"]=None
+        if "show_depths" not in kwargs:
+            kwargs["show_depths"]=False
+        
         if "size" not in kwargs:
             kwargs["size"]=1
         if "target_keys" not in kwargs:
             kwargs["target_keys"]=None
+        if kwargs["target_keys"] is not None and kwargs["show_depths"] is not False:
+            raise ValueError("Only one of `target_keys` and `show_depths` can be active at a time")
+        if kwargs["target_keys"] is not None or kwargs["show_depths"] is not False:
+            colorbar=True
+        else:
+            colorbar=False
         if kwargs["target_keys"] is not None:
             if len(kwargs["target_keys"])!=2:
                 raise ValueError("`target_keys` argument must be of length 2!, not {}".format(len(kwargs["target_keys"])))
@@ -790,24 +803,28 @@ class PlotManager:
         full_param_set=np.array([[y["parameters"][x] for x in all_params] for y in self._cls._results_array])
         de_normalised_array=self._un_normalise_parameters()
         #full_score_set=np.array([[y["scores"][x] for x in groups] for y in self._cls._results_array])
+        if colorbar==True:
+            colorax=[0.6, ax[0,0].get_position().bounds[1], 0.3, ax[0,0].get_position().bounds[3]]
+            colour_ax=fig.add_axes(colorax)
+            colour_ax.set_yticks([])
+            
         if kwargs["target_keys"] is not None:
             xscores=[y["scores"][kwargs["target_keys"][0]] for y in self._cls._results_array]
             yscores=[y["scores"][kwargs["target_keys"][1]] for y in self._cls._results_array]
             score_array=np.zeros((len(xscores), 2))
             scores=np.column_stack((xscores, yscores))
-            colorax=[0.6, ax[0,0].get_position().bounds[1], 0.3, ax[0,0].get_position().bounds[3]]
+           
             for i in range(0, 2):
                 score_array[:,i]=np.min(scores[:,i])/scores[:,i]
             colour_array=score_array[:,0]/score_array[:,1]
             
             table_width=0.15
-            colour_ax=fig.add_axes(colorax)
+            
             left_table_ax=fig.add_axes([colorax[0]-table_width/2, colorax[1]-0.03, table_width, 0.01])
             right_table_ax=fig.add_axes([colorax[0]+colorax[2]-table_width/2, colorax[1]-0.03, table_width, 0.01])
-            colour_ax.imshow(np.vstack((np.linspace(0,1,256),np.linspace(0,1,256))), aspect='auto', cmap=kwargs["cmap"])
             xlim=colour_ax.get_xlim()
             colour_ax.set_xticks([xlim[0], np.mean(xlim), xlim[1]], ["Better fit to:", "Equally good fit", "Better fit to:"])
-            colour_ax.set_yticks([])
+            colour_ax.imshow(np.vstack((np.linspace(0,1,256),np.linspace(0,1,256))), aspect='auto', cmap=kwargs["cmap"])
             minc=min(colour_array)
             maxc=max(colour_array)
             labeldict={"experiment":"Experiment", "type":"Domain"}
@@ -840,6 +857,25 @@ class PlotManager:
                 tab.set_fontsize(10)
                 #tab.scale(1.5, 1.5)
                 tableaxes[1-i].set_axis_off()
+        elif kwargs["show_depths"] is not False:
+            colour_ax.set_xlabel("Statistical depth")
+            score_array=np.array([[x["scores"][y] for y in self.grouping_keys] for x in self._cls._results_array])
+            model=DepthEucl().load_dataset(score_array)
+            depthDataset=model.spatial(evaluate_dataset=True)
+            xidx=np.argsort(depthDataset)
+            params=self._un_normalise_parameters()
+            for i in range(0, len(xidx)):
+                x=xidx[i]
+                print(depthDataset[x], list(params[x,:]))
+            plt.colorbar(mappable=cm.ScalarMappable(
+                norm=plt.Normalize(vmin=min(depthDataset), vmax=max(depthDataset)), 
+                cmap=kwargs["cmap"]), 
+                cax=colour_ax,
+                orientation="horizontal")
+            colour_ax.set_xlabel("Spatial depth")
+            #colour_ax.imshow(np.vstack((np.linspace(0,1,256),np.linspace(0,1,256))), aspect='auto', cmap=kwargs["cmap"])
+            colour_array=depthDataset
+            
         if kwargs["envelope_threshold"]!=0 and kwargs["target_keys"] is not None:
             score_idx=self._get_2d_neighours(xscores, yscores, threshold=kwargs["envelope_threshold"])
         
@@ -875,7 +911,11 @@ class PlotManager:
 
                     else:
                         alpha_vals=1
-                    ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], c=colour_array, cmap=kwargs["cmap"], alpha=alpha_vals)#
+                    if colorbar==True:
+                        plot_args=dict(c=colour_array, cmap=kwargs["cmap"], alpha=alpha_vals)
+                    else:
+                        plot_args=dict(alpha=alpha_vals)
+                    ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], **plot_args)#
                     if j==0:
                         ax[i,j].set_ylabel(all_params[i])
                         if abs(np.mean(plot_axis[1]))<1e-2:
@@ -889,15 +929,15 @@ class PlotManager:
                     if j!=0:
                         ax[i,j].set_yticks([])
                     #hist,bin_edges = np.histogram(xaxis, 25)
+                    if kwargs["target_keys"] is not None:
+                        colours=np.zeros(len(n))
+                        for m in range(1, len(bin_edges)):
+                            location=np.where((xaxis>bin_edges[m-1]) & (xaxis<bin_edges[m]))
+                            colours[m-1]=np.mean(colour_array[location])
                     
-                    colours=np.zeros(len(n))
-                    for m in range(1, len(bin_edges)):
-                        location=np.where((xaxis>bin_edges[m-1]) & (xaxis<bin_edges[m]))
-                        colours[m-1]=np.mean(colour_array[location])
-                    
-                    colours=[kwargs["cmap"](sci._utils.normalise(x, [minc, maxc])) for x in colours]
-                    for c, p in zip(colours, patches):
-                        plt.setp(p, 'facecolor', c)
+                            colours=[kwargs["cmap"](sci._utils.normalise(x, [minc, maxc])) for x in colours]
+                            for c, p in zip(colours, patches):
+                                plt.setp(p, 'facecolor', c)
                     if i+j!=0:
                         ax[i,j].set_yticks([])
                     
