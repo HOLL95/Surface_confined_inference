@@ -151,7 +151,7 @@ setup(
                     "pytest-cov",
                     "tabulate",
                     "torch",  
-                    "depth @ git+ https://github.com/data-depth/library",  
+                    "data-depth @ git+https://github.com/data-depth/library",  
                     "pints @ git+https://github.com/pints-team/pints"],
     python_requires=">=3.7",
 )
