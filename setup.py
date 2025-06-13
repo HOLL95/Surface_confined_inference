@@ -16,8 +16,20 @@ PLAT_TO_CMAKE = {
     "win-arm32": "ARM",
     "win-arm64": "ARM64",
 }
-
-
+packages=["numpy",
+                    "scipy", 
+                    "matplotlib", 
+                    "pandas", 
+                    "PyQt5", 
+                    "pytest", 
+                    "pytest-cov",
+                    "tabulate",
+                    "torch",  
+                    "pints @ git+https://github.com/pints-team/pints"]
+if  os.environ.get('IN_VIKING', '').lower() in ('true', '1', 'yes'):
+ pass
+else:
+ packages+=["data-depth @ git+https://github.com/data-depth/library"]
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.
 # If you need multiple extensions, see scikit-build.
@@ -142,16 +154,6 @@ setup(
     ),
     package_dir={"": package_dir},
     zip_safe=False,
-    install_requires=["numpy",
-                    "scipy", 
-                    "matplotlib", 
-                    "pandas", 
-                    "PyQt5", 
-                    "pytest", 
-                    "pytest-cov",
-                    "tabulate",
-                    "torch",  
-                    "data-depth @ git+https://github.com/data-depth/library",  
-                    "pints @ git+https://github.com/pints-team/pints"],
+    install_requires=packages,
     python_requires=">=3.7",
 )
