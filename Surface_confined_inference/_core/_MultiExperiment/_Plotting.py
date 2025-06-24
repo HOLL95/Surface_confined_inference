@@ -9,7 +9,9 @@ from scipy.interpolate import CubicSpline
 from sklearn.neighbors import NearestNeighbors, BallTree
 from scipy.spatial.distance import cdist
 from matplotlib.ticker import FuncFormatter
+import matplotlib.patches as mplpatches
 import matplotlib.cm as cm
+import matplotlib.colors as mcolours
 from depth.model.DepthEucl import DepthEucl 
 import re
 from scipy.signal import envelope
@@ -793,6 +795,13 @@ class PlotManager:
                 raise ValueError("`target_keys` argument must be of length 2!, not {}".format(len(kwargs["target_keys"])))
             elif all([key in self.grouping_keys for key in kwargs["target_keys"]]) is False:
                 raise ValueError("`target_keys` need to be from `grouping_keys`")
+        if "span_dict" not in kwargs:
+            kwargs["span_dict"]=None
+        if kwargs["span_dict"] is not None:
+            if "span_method" not in kwargs:
+                kwargs["span_method"]="per_plot"
+            if "show_non_converged" not in kwargs:
+                kwargs["show_non_converged"]=True
         if "envelope_threshold" not in kwargs:
             kwargs["envelope_threshold"]=0
         if "cmap" not in kwargs:
@@ -864,11 +873,131 @@ class PlotManager:
             depthDataset=model.spatial(evaluate_dataset=True)
             xidx=np.argsort(depthDataset)
             params=self._un_normalise_parameters()
-            for i in range(0, len(xidx)):
-                x=xidx[i]
-                print(depthDataset[x], list(params[x,:]))
+            minval=min(depthDataset)
+            maxval=max(depthDataset)
+            if kwargs["span_dict"] is not None:
+                if kwargs["span_method"]=="per_plot":
+                    idxs=[["" for x in all_params] for y in all_params]
+                    minval=2
+                    maxval=0
+                    alphaspan=np.linspace(0.2, 1, len(self.grouping_keys)+1)
+
+                    for i in range(0, len(all_params)):
+                        for j in range(0, len(all_params)):
+                            if i>j:     
+                                xparam=all_params[j]
+                                yparam=all_params[i]
+                                score_idx=[]
+                                uniques=set()
+                                alphas={key:[] for key in range(0, len(score_array))}
+                                for g in range(0, len(self.grouping_keys)):
+                                    gkey=self.grouping_keys[g]
+                                    if kwargs["span_dict"][gkey][xparam] is not None and kwargs["span_dict"][gkey][yparam] is not None:
+                                        #identify score array elements that are part of the span 
+                                        #score the data depth for all of those score array elements
+                                        #give it a transparency based on the consensus [or think of some other way to do it]
+                                        #mark the non-converged points as black
+                                        #make sure that the colourbar is indexed for all data depths
+                                        for z in range(0, len(score_array)):
+                                            srow=score_array[z,:]
+                                            prow=params[z,:]
+                                            #print(prow[j], kwargs["span_dict"][gkey][xparam], xparam)
+                                            #print(prow[i], kwargs["span_dict"][gkey][yparam], yparam)
+                                            in_xparam=prow[j]>=kwargs["span_dict"][gkey][xparam][0] and prow[j]<=kwargs["span_dict"][gkey][xparam][1]
+                                            in_yparam=prow[i]>=kwargs["span_dict"][gkey][yparam][0] and prow[i]<=kwargs["span_dict"][gkey][yparam][1]
+
+                                            if bool(in_xparam) is True and bool(in_yparam) is True:    
+                                                if z not in score_idx:
+                                                    score_idx.append(z)
+                                                alphas[z].append(g)
+                                                uniques = uniques | set([g])
+                                if len(uniques)>1:        
+                                    
+                                    plot_score_array=np.array([[score_array[x,y] for y in uniques ]for x in score_idx])
+
+                                    model=DepthEucl().load_dataset(plot_score_array)
+                                    depthDataset=model.spatial(evaluate_dataset=True)
+                                    minval=min(minval, min(depthDataset))
+                                    maxval=max(maxval, max(depthDataset))
+                                    
+                                    plotalphas=[alphaspan[len(alphas[x])] for x in score_idx]
+                                 
+                                elif len(uniques)==1:
+                                    
+                                    depthDataset="lightslategray"
+                                    plotalphas=1
+                                        
+                                else:
+                                    depthDataset=[]
+                                    plotalphas=1
+                                log_dict={
+                                    "coloured_alphas":plotalphas,
+                                    "coloured":[[params[x,j] for x in score_idx], [params[x,i] for x in score_idx]],
+                                    "colours":depthDataset,
+                                    "black":[[params[y,j] for y in range(0, len(params)) if y not in score_idx], [params[y,i] for y in range(0, len(params)) if y not in score_idx]]
+                                }
+                                idxs[i][j]=log_dict
+                num_points=len(self.grouping_keys)
+                coloured_cmaps=[kwargs["cmap"] for x in range(0, num_points-1)]
+                cmaps=["lightslategrey"]+coloured_cmaps
+
+                if kwargs["show_non_converged"]==True:
+                    num_points+=1
+                    cmaps=["black"]+cmaps
+                height=0.05
+                total_width=0.3
+                step=(total_width-(height*num_points))/(num_points-1)
+                radius=122
+                for m in range(0, num_points):
+                    
+                    spot_ax=[0.6+m*(height+step),(ax[0,0].get_position().bounds[1])-0.15, height, height]
+                    spotax=fig.add_axes(spot_ax)
+                    
+                    if isinstance(cmaps[m], str):
+                        color_data = np.ones((256, 256, 3))  # RGB array
+                        color_rgb = mcolours.to_rgb(cmaps[m])  # Convert color to RGB
+                        color_data[:, :] = color_rgb
+                        im=spotax.imshow(color_data, aspect='equal')
+                    else:
+                        color_data = np.vstack([np.linspace(0,1,256)] * 256)
+                        im=spotax.imshow(color_data, 
+                                                    aspect='equal', cmap=cmaps[m])
+                    patch = mplpatches.Circle((128, 128), radius=radius, transform=spotax.transData)
+                    im.set_clip_path(patch)
+                    if (m-num_points)>=-len(coloured_cmaps):
+                        im.set_alpha(alphaspan[m-num_points])
+                        
+
+                      
+                    border_circle = mplpatches.Circle((128, 128), radius=radius, 
+                                 fill=False, edgecolor='black', 
+                                 linewidth=1, transform=spotax.transData)
+                    spotax.add_patch(border_circle)
+                    
+                    spotax.set_xticks([])
+                    spotax.set_yticks([])
+                    spotax.spines['top'].set_visible(False)
+                    spotax.spines['right'].set_visible(False)
+                    spotax.spines['bottom'].set_visible(False)
+                    spotax.spines['left'].set_visible(False)
+                    if kwargs["show_non_converged"]==False:
+                        xlabel=m+1
+                    else:
+                        xlabel=m
+                    spotax.set_xlabel(xlabel)
+                label_ax=fig.add_axes([0.6,(ax[0,0].get_position().bounds[1])-0.175, 0.3, 0.001])
+               
+                label_ax.set_xticks([])
+                label_ax.set_yticks([])
+                label_ax.spines['top'].set_visible(False)
+                label_ax.spines['right'].set_visible(False)
+                #label_ax.spines['bottom'].set_visible(False)
+                label_ax.spines['left'].set_visible(False)
+                label_ax.set_xlabel("Number of objectives where parameters converged with $\\uparrow$ score")
+
+            norm=plt.Normalize(vmin=minval, vmax=maxval)                 
             plt.colorbar(mappable=cm.ScalarMappable(
-                norm=plt.Normalize(vmin=min(depthDataset), vmax=max(depthDataset)), 
+                norm=norm,
                 cmap=kwargs["cmap"]), 
                 cax=colour_ax,
                 orientation="horizontal")
@@ -911,11 +1040,21 @@ class PlotManager:
 
                     else:
                         alpha_vals=1
-                    if colorbar==True:
-                        plot_args=dict(c=colour_array, cmap=kwargs["cmap"], alpha=alpha_vals)
+                    if kwargs["span_dict"] is not None:
+                        if kwargs["span_method"]=="per_plot":
+                            
+                            ax[i,j].scatter(idxs[i][j]["coloured"][0], idxs[i][j]["coloured"][1], 
+                            kwargs["size"], cmap=kwargs["cmap"], norm=norm, 
+                            c=idxs[i][j]["colours"],edgecolor="black",alpha=idxs[i][j]["coloured_alphas"]
+                            )#
+                            if kwargs["show_non_converged"] is True:
+                                ax[i,j].scatter(idxs[i][j]["black"][0], idxs[i][j]["black"][1], kwargs["size"], c="black")
                     else:
-                        plot_args=dict(alpha=alpha_vals)
-                    ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], **plot_args)#
+                        if colorbar==True:
+                            plot_args=dict(c=colour_array, cmap=kwargs["cmap"], alpha=alpha_vals)
+                        else:
+                            plot_args=dict(alpha=alpha_vals)
+                        ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], **plot_args)#
                     if j==0:
                         ax[i,j].set_ylabel(all_params[i])
                         if abs(np.mean(plot_axis[1]))<1e-2:

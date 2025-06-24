@@ -26,9 +26,12 @@ packages=["numpy",
                     "tabulate",
                     "torch",  
                     "pints @ git+https://github.com/pints-team/pints"]
-if  os.environ.get('IN_VIKING', '').lower() in ('true', '1', 'yes'):
- pass
-else:
+environs=["IN_ARC", "IN_VIKING"]
+in_cluster=False
+for environ in environs:
+    if  os.environ.get(environ, '').lower() in ('true', '1', 'yes'):
+        in_cluster=True
+if in_cluster==False:
  packages+=["data-depth @ git+https://github.com/data-depth/library"]
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.

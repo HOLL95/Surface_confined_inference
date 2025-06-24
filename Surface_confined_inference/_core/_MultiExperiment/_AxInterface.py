@@ -24,6 +24,34 @@ class AxInterface(sci.OptionsAwareMixin):
         os.environ['OMP_NUM_THREADS'] = str(optimal_threads)
         os.environ['MKL_NUM_THREADS'] = str(optimal_threads)
         os.environ['OPENBLAS_NUM_THREADS'] = str(optimal_threads)
+        environs=["IN_ARC", "IN_VIKING"]
+        self._environ=None
+        for environ in environs:
+            if  os.environ.get(environ, '').lower() in ('true', '1', 'yes'):
+                self._environ=environ
+        if self._environ is not None:
+            if self._environ=="IN_VIKING":
+                self._environ_args={
+                    "cpus_per_task": "cpus_per_task",
+                    "slurm_partition": "slurm_partition", 
+                    "slurm_job_name": "slurm_job_name",
+                    "slurm_account": "slurm_account",
+                    "mem_gb": "mem_gb",
+                    "timeout_min": "timeout_min",
+                    "slurm_mail_user": "slurm_mail_user",
+                    "slurm_mail_type": "slurm_mail_type"
+                }
+            elif self._environ=="IN_ARC":
+                self._environ_args={
+                    "cpus_per_task": "ntasks_per_node",
+                    "slurm_partition": "slurm_partition", 
+                    "slurm_job_name": "slurm_job_name",
+                    "slurm_account": "slurm_account",
+                    "mem_gb": "mem_gb",
+                    "timeout_min": "timeout_min",
+                    "slurm_mail_user": "slurm_mail_user",
+                    "slurm_mail_type": "slurm_mail_type"
+                }
 
     def run(self,job_number):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
@@ -35,16 +63,26 @@ class AxInterface(sci.OptionsAwareMixin):
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         if timeout is None:
             timeout=self._internal_options.max_run_time*60
-        executor.update_parameters(timeout_min=self._internal_options.max_run_time*60) 
-
-        executor.update_parameters(cpus_per_task=self._internal_options.num_cpu)
-        executor.update_parameters(slurm_partition="nodes")
-        executor.update_parameters(slurm_job_name=self._internal_options.name+"_"+"name")
-        executor.update_parameters(slurm_account=self._internal_options.project)
-        executor.update_parameters(mem_gb=self._internal_options.GB_ram)
+        arg_dict = {
+            self._environ_args["timeout_min"]: self._internal_options.max_run_time*60,
+            self._environ_args["cpus_per_task"]: self._internal_options.num_cpu,
+            self._environ_args["slurm_partition"]: "nodes",
+            self._environ_args["slurm_job_name"]: self._internal_options.name+"_"+"name",
+            self._environ_args["slurm_account"]: self._internal_options.project,
+            self._environ_args["mem_gb"]: self._internal_options.GB_ram,
+        }
+        if self._environ=="IN_ARC":
+            if self._environ_args["timeout_min"]<12*60:
+                self._environ_args["slurm_partition"]="short"
+            if self._environ_args["timeout_min"]<48*60:
+                self._environ_args["slurm_partition"]="medium"
+            else:
+                self._environ_args["slurm_partition"]="long"
         if self._internal_options.email != "":
-            executor.update_parameters(slurm_mail_user=self._internal_options.email)
-            executor.update_parameters(slurm_mail_type="END, FAIL")
+            arg_dict.update({
+                self._environ_args["slurm_mail_user"]: self._internal_options.email,
+                self._environ_args["slurm_mail_type"]: "END, FAIL"
+            })
         return executor
     def init_process_executor(self, name, **kwargs):
         if "timeout" not in kwargs:
@@ -57,19 +95,22 @@ class AxInterface(sci.OptionsAwareMixin):
         dependency=kwargs["dependency"]
         criteria=kwargs["criteria"]
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
-        executor.update_parameters(
-            cpus_per_task=4,
-            slurm_partition="nodes",
-            slurm_job_name=self._internal_options.name+"_"+name,
-            slurm_account=self._internal_options.project,
-            mem_gb=self._internal_options.GB_ram,
-            timeout_min=timeout,
-            )
+        arg_dict = {
+            self._environ_args["cpus_per_task"]: 1,
+            self._environ_args["slurm_partition"]: "nodes",
+            self._environ_args["slurm_job_name"]: self._internal_options.name + "_" + name,
+            self._environ_args["slurm_account"]: self._internal_options.project,
+            self._environ_args["mem_gb"]: self._internal_options.GB_ram,
+            self._environ_args["timeout_min"]: timeout,
+        }
+        if self._environ=="IN_ARC":
+            self._environ_args["slurm_partition"]: "short"
         if self._internal_options.email != "":
-            executor.update_parameters(
-                slurm_mail_user=self._internal_options.email,
-                slurm_mail_type="END, FAIL"
-            )
+            arg_dict.update({
+                self._environ_args["slurm_mail_user"]: self._internal_options.email,
+                self._environ_args["slurm_mail_type"]: "END, FAIL"
+            })
+        executor.update_parameters(**arg_dict)
         if dependency is not None:
             executor.update_parameters(slurm_additional_parameters={
                             "dependency": f"{criteria}:{':'.join(dependency)}"
