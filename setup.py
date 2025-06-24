@@ -23,6 +23,7 @@ packages=["numpy",
                     "PyQt5", 
                     "pytest", 
                     "pytest-cov",
+                    "submitit",
                     "tabulate",
                     "torch",  
                     "pints @ git+https://github.com/pints-team/pints"]

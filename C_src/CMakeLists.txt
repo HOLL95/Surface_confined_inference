@@ -23,8 +23,8 @@ endforeach()
 foreach(CLUSTER ${CLUSTER_LIST})
   if (DEFINED ENV{${CLUSTER}})
     set(${CLUSTER} $ENV{${CLUSTER}})
-    break()  # Stop after finding the first one
   endif()
+endforeach()
 
 if (IN_VIKING STREQUAL "true")
   set(SUNDIALS_DIR /opt/apps/eb/software/SUNDIALS/6.6.0-foss-2023a//lib64/cmake/sundials/)
@@ -40,7 +40,7 @@ elseif (IN_ARC STREQUAL "true")
 else()
   add_subdirectory("../lib/pybind11" pybind11)
   include_directories("../lib")
-
+endif()
   # Specify the path to SUNDIALSConfig.cmake
   if (DEFINED ENV{CVODE_PATH})
     set(SUNDIALS_DIR $ENV{CVODE_PATH})
@@ -48,10 +48,6 @@ else()
     set(SUNDIALS_DIR /path/to/env)
   endif()
 
-  find_package(SUNDIALS REQUIRED PATHS ${SUNDIALS_DIR})#
- 
-endif()
-message(SUNDIALS VERSION "${SUNDIALS_VERSION}")
 if(${SUNDIALS_VERSION} VERSION_GREATER_EQUAL "7.0.0")
     add_definitions(-DSUNDIALS_VERSION_7)
 endif()
