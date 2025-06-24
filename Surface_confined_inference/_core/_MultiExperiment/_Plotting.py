@@ -6,13 +6,11 @@ import copy
 from string import ascii_uppercase
 from scipy.spatial import ConvexHull
 from scipy.interpolate import CubicSpline
-from sklearn.neighbors import NearestNeighbors, BallTree
 from scipy.spatial.distance import cdist
 from matplotlib.ticker import FuncFormatter
 import matplotlib.patches as mplpatches
 import matplotlib.cm as cm
 import matplotlib.colors as mcolours
-from depth.model.DepthEucl import DepthEucl 
 import re
 from scipy.signal import envelope
 class PlotManager:
@@ -27,6 +25,7 @@ class PlotManager:
         self.results_array=results_array
         self.pre_saved=pre_saved
         self._all_parameters=self._cls._all_parameters
+        from depth.model.DepthEucl import DepthEucl 
     def add_legend(self, ax, groupkey, target_cols=3):
         num_labels=len(self.group_to_class[groupkey])
         if num_labels<target_cols:
@@ -725,6 +724,7 @@ class PlotManager:
             return_array[:,i]=[sci._utils.un_normalise(y["parameters"][self._cls._all_parameters[i]], self._cls.boundaries[norm_param]) for y in self._cls._results_array]
         return return_array
     def _get_2d_neighours(self,xscores, yscores, **kwargs):
+            from sklearn.neighbors import NearestNeighbors, BallTree
             points = np.column_stack([xscores, yscores])
             hull = ConvexHull(points).vertices
             hull_pairs=np.array([points[x,:] for x in hull])
