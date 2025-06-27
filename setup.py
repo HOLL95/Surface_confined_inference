@@ -25,7 +25,7 @@ packages=["numpy",
                     "pytest-cov",
                     "submitit",
                     "tabulate",
-                    "torch",  
+                    "ax-platform",  
                     "pints @ git+https://github.com/pints-team/pints"]
 environs=["IN_ARC", "IN_VIKING"]
 in_cluster=False

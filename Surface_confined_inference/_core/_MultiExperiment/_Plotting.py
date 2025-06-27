@@ -12,7 +12,6 @@ import matplotlib.patches as mplpatches
 import matplotlib.cm as cm
 import matplotlib.colors as mcolours
 import re
-from scipy.signal import envelope
 class PlotManager:
     def __init__(self, composed_class, results_array=None, pre_saved=False):
         self._cls=composed_class
@@ -25,7 +24,7 @@ class PlotManager:
         self.results_array=results_array
         self.pre_saved=pre_saved
         self._all_parameters=self._cls._all_parameters
-        from depth.model.DepthEucl import DepthEucl 
+        
     def add_legend(self, ax, groupkey, target_cols=3):
         num_labels=len(self.group_to_class[groupkey])
         if num_labels<target_cols:
@@ -45,6 +44,7 @@ class PlotManager:
                 
 
     def plot_stacked_time(self, axis, data_list, **kwargs):
+        from scipy.signal import envelope
         if "colour" not in kwargs:
             kwargs["colour"]=None
         if "linestyle" not in kwargs:
@@ -769,6 +769,7 @@ class PlotManager:
             indices_list=np.unique(empty_array)
             return indices_list
     def pareto_parameter_plot(self, **kwargs):
+        from depth.model.DepthEucl import DepthEucl 
         if self._check_results_loaded() is False:
             raise ValueError("No `address` argument provided and results not loaded through directory")
         if "axes" not in kwargs:
