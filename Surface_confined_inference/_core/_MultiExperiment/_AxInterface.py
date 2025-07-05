@@ -30,7 +30,7 @@ class AxInterface(sci.OptionsAwareMixin):
             if  os.environ.get(environ, '').lower() in ('true', '1', 'yes'):
                 self._environ=environ
         if self._environ is not None:
-            if self._environ=="IN_VIKING":
+            if self._environ=="IN_VIKING" or self._environ=="IN_ARC":
                 self._environ_args={
                     "cpus_per_task": "cpus_per_task",
                     "slurm_partition": "slurm_partition", 
@@ -41,17 +41,8 @@ class AxInterface(sci.OptionsAwareMixin):
                     "slurm_mail_user": "slurm_mail_user",
                     "slurm_mail_type": "slurm_mail_type"
                 }
-            elif self._environ=="IN_ARC":
-                self._environ_args={
-                    "cpus_per_task": "ntasks_per_node",
-                    "slurm_partition": "slurm_partition", 
-                    "slurm_job_name": "slurm_job_name",
-                    "slurm_account": "slurm_account",
-                    "mem_gb": "mem_gb",
-                    "timeout_min": "timeout_min",
-                    "slurm_mail_user": "slurm_mail_user",
-                    "slurm_mail_type": "slurm_mail_type"
-                }
+            if self._environ=="IN_ARC":
+             self._environ_args["mem_gb"]="mem_per_cpu"
 
     def run(self,job_number):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
@@ -72,18 +63,21 @@ class AxInterface(sci.OptionsAwareMixin):
             self._environ_args["mem_gb"]: self._internal_options.GB_ram,
         }
         if self._environ=="IN_ARC":
-            if self._environ_args["timeout_min"]<12*60:
-                self._environ_args["slurm_partition"]="short"
-            if self._environ_args["timeout_min"]<48*60:
-                self._environ_args["slurm_partition"]="medium"
+            if arg_dict[self._environ_args["timeout_min"]]<12*60:
+                arg_dict[self._environ_args["slurm_partition"]]="short"
+            if arg_dict[self._environ_args["timeout_min"]]<48*60:
+                arg_dict[self._environ_args["slurm_partition"]]="medium"
             else:
-                self._environ_args["slurm_partition"]="long"
+                arg_dict[self._environ_args["slurm_partition"]]="long"
+            arg_dict[self._environ_args["mem_gb"]]=int((self._internal_options.GB_ram * 1024) // self._internal_options.num_cpu)
         if self._internal_options.email != "":
             arg_dict.update({
                 self._environ_args["slurm_mail_user"]: self._internal_options.email,
                 self._environ_args["slurm_mail_type"]: "END, FAIL"
             })
+        executor.update_parameters(**arg_dict)
         return executor
+
     def init_process_executor(self, name, **kwargs):
         if "timeout" not in kwargs:
             kwargs["timeout"]=20
@@ -104,7 +98,7 @@ class AxInterface(sci.OptionsAwareMixin):
             self._environ_args["timeout_min"]: timeout,
         }
         if self._environ=="IN_ARC":
-            self._environ_args["slurm_partition"]: "short"
+            arg_dict[self._environ_args["slurm_partition"]]= "short"
         if self._internal_options.email != "":
             arg_dict.update({
                 self._environ_args["slurm_mail_user"]: self._internal_options.email,
