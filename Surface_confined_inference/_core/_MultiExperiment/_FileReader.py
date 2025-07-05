@@ -27,13 +27,13 @@ def _process_data(addresses, class_list, class_keys):
                 data = np.loadtxt(file)
         except:
             raise
-
-        if cls.experiment_type != "SquareWave":
-            class_list[experiment_key]=_process_ftacv_data(experiment_key, data,loc)
-        else:  # SWV
-            class_list[experiment_key]=_process_swv_data(experiment_key, data,loc)
+        process_dict={"FTACV":_process_ts_data,"DCV":_process_ts_data,"PSV":_process_ts_data, "SWV":_process_swv_data, "SquareWave":_process_swv_data}     
+        if cls.experiment_type not in process_dict:
+            raise KeyError("Experiment {0} needs to contain one of {1}".format(experiment_key, process_dict.keys()))
+        else:
+            class_list[experiment_key]=process_dict[cls.experiment_type](experiment_key, data,loc)
     return class_list
-def _process_ftacv_data(experiment_key, data,  loc):
+def _process_ts_data(experiment_key, data,  loc):
         """
         Process FTACV data.
         
@@ -147,3 +147,4 @@ def _process_swv_data(experiment_key, data, loc):
         loc["times"] = times
         loc["zero_sim"]=np.zeros(len(current))
         loc["zero_point"] = sci._utils.RMSE(np.zeros(len(current)), loc["data"])
+        return loc
