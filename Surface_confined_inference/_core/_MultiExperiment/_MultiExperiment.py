@@ -139,11 +139,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         for element in ["classes", "data"]:
             Path(os.path.join(indv_class_path, element)).mkdir(parents=True, exist_ok=True)
         for classkey in self.class_keys:
-            try:
-             self.classes[classkey]["class"].save_class(os.path.join(indv_class_path, "classes",classkey))
-            except:
-             print(classkey)
-             raise
+            self.classes[classkey]["class"].save_class(os.path.join(indv_class_path, "classes",classkey))
             Path(os.path.join(indv_class_path, "data", classkey)).mkdir(parents=True, exist_ok=True)
             data_dict={}
             data_path=os.path.join(indv_class_path, "data", classkey)
