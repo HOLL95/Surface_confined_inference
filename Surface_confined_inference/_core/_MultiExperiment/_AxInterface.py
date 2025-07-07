@@ -42,9 +42,9 @@ class AxInterface(sci.OptionsAwareMixin):
                     "slurm_mail_type": "slurm_mail_type"
                 }
             if self._environ=="IN_ARC":
-             self._environ_args["mem_gb"]="mem_per_cpu"
+             self._environ_args["mem_gb"]="slurm_mem_per_cpu"
     def set_memory(self, memory):
-        if self._enivron=="IN_VIKING":
+        if self._environ=="IN_VIKING":
             return memory
         elif self._environ=="IN_ARC":
             return int((memory * 1024) // self._internal_options.num_cpu)
@@ -255,7 +255,7 @@ class AxInterface(sci.OptionsAwareMixin):
             if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
                 dec_time=decimate(copy.deepcopy(cls.classes[classkey]["times"]), dec_factor)
             else:
-                dec_time=cls.classes[classkey]["times"]
+                dec_time=list(range(0, len(simulation_dict[classkey])))
             size=chunk_size+1
             save_dict[classkey]=np.zeros((len(dec_time), size))
             save_dict[classkey][:,0]=dec_time
@@ -272,6 +272,7 @@ class AxInterface(sci.OptionsAwareMixin):
                     dec_current=decimate(simulation_dict[classkey], dec_factor)
                 else:
                     dec_current=simulation_dict[classkey]
+                
                 save_dict[classkey][:,counter]=dec_current
             counter+=1
         for classkey in cls.class_keys:
