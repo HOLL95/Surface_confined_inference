@@ -43,7 +43,11 @@ class AxInterface(sci.OptionsAwareMixin):
                 }
             if self._environ=="IN_ARC":
              self._environ_args["mem_gb"]="mem_per_cpu"
-
+    def set_memory(self, memory):
+        if self._enivron=="IN_VIKING":
+            return memory
+        elif self._environ=="IN_ARC":
+            return int((memory * 1024) // self._internal_options.num_cpu)
     def run(self,job_number):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
         for i in range(0, self._internal_options.num_iterations):
@@ -60,7 +64,8 @@ class AxInterface(sci.OptionsAwareMixin):
             self._environ_args["slurm_partition"]: "nodes",
             self._environ_args["slurm_job_name"]: self._internal_options.name+"_"+"name",
             self._environ_args["slurm_account"]: self._internal_options.project,
-            self._environ_args["mem_gb"]: self._internal_options.GB_ram,
+            self._environ_args["mem_gb"]: self.set_memory(self._internal_options.GB_ram)
+            
         }
         if self._environ=="IN_ARC":
             if arg_dict[self._environ_args["timeout_min"]]<12*60:
@@ -69,7 +74,7 @@ class AxInterface(sci.OptionsAwareMixin):
                 arg_dict[self._environ_args["slurm_partition"]]="medium"
             else:
                 arg_dict[self._environ_args["slurm_partition"]]="long"
-            arg_dict[self._environ_args["mem_gb"]]=int((self._internal_options.GB_ram * 1024) // self._internal_options.num_cpu)
+            
         if self._internal_options.email != "":
             arg_dict.update({
                 self._environ_args["slurm_mail_user"]: self._internal_options.email,
@@ -94,7 +99,7 @@ class AxInterface(sci.OptionsAwareMixin):
             self._environ_args["slurm_partition"]: "nodes",
             self._environ_args["slurm_job_name"]: self._internal_options.name + "_" + name,
             self._environ_args["slurm_account"]: self._internal_options.project,
-            self._environ_args["mem_gb"]: self._internal_options.GB_ram,
+            self._environ_args["mem_gb"]: self.set_memory(self._internal_options.GB_ram),
             self._environ_args["timeout_min"]: timeout,
         }
         if self._environ=="IN_ARC":
