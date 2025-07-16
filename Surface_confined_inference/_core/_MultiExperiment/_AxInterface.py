@@ -1,5 +1,6 @@
 from ax.service.ax_client import AxClient
 from ax.service.utils.instantiation import ObjectiveProperties
+import logging
 import copy
 from submitit import AutoExecutor
 import numpy as np
@@ -139,12 +140,24 @@ class AxInterface(sci.OptionsAwareMixin):
         if start_point not in valid_start_points:
             raise ValueError("{0} not in allowed restart point ({1})".format(start_point, valid_start_points))
         dependency=None
-        if start_point == "pool":
+        logging.basicConfig(filename='restart.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+        try:
+         logging.info("Starting the experiment.")
+         if start_point == "pool":
             dependency = self.pool_inference_results(dependency=dependency)
-        if start_point in ["pool", "simulate"] and self._internal_options.simulate_front is True:
+         if start_point in ["pool", "simulate"] and self._internal_options.simulate_front is True:
             dependency = self.simulate_fronts(dependency=dependency)
-        if self._internal_options.rclone_directory != "":
+         if self._internal_options.rclone_directory != "":
             self.rclone_results(dependency=dependency)
+         logging.info("Experiment finished successfully.")
+
+        except Exception as e:
+         logging.error("An unhandled exception occurred!", exc_info=True)
+         print(f"FATAL ERROR: {e}. Check job_debug.log for details.", file=sys.stderr)
+         sys.exit(1) # Exit with a non-zero status code to indicate failure
+
+
     def run_inference(self, ):
         exp_exectutor=self.init_sim_executor("experiment")
         run_experiment=exp_exectutor.map_array(self.run, range(0, self._internal_options.independent_runs))
@@ -254,11 +267,12 @@ class AxInterface(sci.OptionsAwareMixin):
         for classkey in cls.class_keys:
             if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
                 dec_time=decimate(copy.deepcopy(cls.classes[classkey]["times"]), dec_factor)
+                size=chunk_size+1
+                save_dict[classkey]=np.zeros((len(dec_time), size))
+                save_dict[classkey][:,0]=dec_time
             else:
-                dec_time=list(range(0, len(simulation_dict[classkey])))
-            size=chunk_size+1
-            save_dict[classkey]=np.zeros((len(dec_time), size))
-            save_dict[classkey][:,0]=dec_time
+                save_dict[classkey]=None
+
         counter=1
 
         for i in range(index*chunk_size, ((index+1)*chunk_size)):
@@ -270,10 +284,14 @@ class AxInterface(sci.OptionsAwareMixin):
             for classkey in cls.class_keys:
                 if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
                     dec_current=decimate(simulation_dict[classkey], dec_factor)
-                else:
+                else:                 
                     dec_current=simulation_dict[classkey]
-                
-                save_dict[classkey][:,counter]=dec_current
+                if save_dict[classkey] is not None:
+                 save_dict[classkey][:,counter]=dec_current
+                else:
+                 save_dict[classkey]=np.zeros((len(dec_current), chunk_size+1))
+                 save_dict[classkey][:,0]=list(range(0, len(dec_current)))
+                 save_dict[classkey][:,counter]=dec_current
             counter+=1
         for classkey in cls.class_keys:
             filepath=os.path.join(self._internal_options.results_directory, "simulations", classkey, "simulations_%d_%d.txt" % (index*chunk_size, ((index+1)*chunk_size)))
