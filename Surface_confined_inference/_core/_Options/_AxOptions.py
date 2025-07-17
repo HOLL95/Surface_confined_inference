@@ -59,5 +59,9 @@ class AxInterfaceOptions(OptionsManager):
     front_decimation=NumberOption("front_decimation",
                                     default=8,
                                     doc="Amount to decimate front by for simulating")
+    GPU=StringOption("GPU", 
+                default="none",
+                foc="Argument to be submitted to SLURM for GPU acceleration in ax"
+                )
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

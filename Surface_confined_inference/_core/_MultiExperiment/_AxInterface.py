@@ -20,11 +20,15 @@ class AxInterface(sci.OptionsAwareMixin):
         dirs=["clients","evaluator","pareto_points"]
         for dir in dirs:
             Path(os.path.join(self._internal_options.results_directory, dir)).mkdir(exist_ok=True)
-        optimal_threads = min(8, self._internal_options.num_cpu)
-        torch.set_num_threads(optimal_threads)
-        os.environ['OMP_NUM_THREADS'] = str(optimal_threads)
-        os.environ['MKL_NUM_THREADS'] = str(optimal_threads)
-        os.environ['OPENBLAS_NUM_THREADS'] = str(optimal_threads)
+        if self._internal_options.GPU is not "none":
+            optimal_threads = min(8, self._internal_options.num_cpu)
+            torch.set_num_threads(optimal_threads)
+            os.environ['OMP_NUM_THREADS'] = str(optimal_threads)
+            os.environ['MKL_NUM_THREADS'] = str(optimal_threads)
+            os.environ['OPENBLAS_NUM_THREADS'] = str(optimal_threads)
+            if self._internal_options.simulate_front==True:
+                raise ValueError("Simulate front not compatible with GPU acceleration, needs to be done manually with `restart()`")
+            
         environs=["IN_ARC", "IN_VIKING"]
         self._environ=None
         for environ in environs:
@@ -66,8 +70,8 @@ class AxInterface(sci.OptionsAwareMixin):
             self._environ_args["slurm_job_name"]: self._internal_options.name+"_"+"name",
             self._environ_args["slurm_account"]: self._internal_options.project,
             self._environ_args["mem_gb"]: self.set_memory(self._internal_options.GB_ram)
-            
         }
+
         if self._environ=="IN_ARC":
             if arg_dict[self._environ_args["timeout_min"]]<12*60:
                 arg_dict[self._environ_args["slurm_partition"]]="short"
@@ -81,6 +85,7 @@ class AxInterface(sci.OptionsAwareMixin):
                 self._environ_args["slurm_mail_user"]: self._internal_options.email,
                 self._environ_args["slurm_mail_type"]: "END, FAIL"
             })
+        
         executor.update_parameters(**arg_dict)
         return executor
 
@@ -160,6 +165,8 @@ class AxInterface(sci.OptionsAwareMixin):
 
     def run_inference(self, ):
         exp_exectutor=self.init_sim_executor("experiment")
+        if self._internal_options.GPU is not "none":
+            exp_exectutor.update_parameters(slurm_gres=self._internal_options.GPU)
         run_experiment=exp_exectutor.map_array(self.run, range(0, self._internal_options.independent_runs))
         exp_job_ids = [job.job_id for job in run_experiment]
         return exp_job_ids
@@ -197,7 +204,11 @@ class AxInterface(sci.OptionsAwareMixin):
                 max_cpu=max(max_cpu, cls._internal_options.num_cpu)
         self._internal_options.num_cpu=max_cpu
         thresholds=self.get_zero_point_scores()
-        self.ax_client=AxClient()
+        if self._internal_options.GPU is not "none":
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+             self.ax_client=AxClient(torch_device=torch.device("cuda"))
+        else:
+            self.ax_client=AxClient()
         param_arg=[
                     {
                         "name": x,
