@@ -205,8 +205,8 @@ class AxInterface(sci.OptionsAwareMixin):
         self._internal_options.num_cpu=max_cpu
         thresholds=self.get_zero_point_scores()
         if self._internal_options.GPU is not "none":
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-             self.ax_client=AxClient(torch_device=torch.device("cuda"))
+         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+         self.ax_client=AxClient(torch_device=torch.device("cuda"))
         else:
             self.ax_client=AxClient()
         param_arg=[
