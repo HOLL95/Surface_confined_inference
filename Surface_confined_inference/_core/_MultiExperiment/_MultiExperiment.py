@@ -149,8 +149,22 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                         with open(os.path.join(data_path, "{0}.txt".format(attr)), "w") as f:
                             if isinstance(self.classes[classkey][attr], Number):
                                 f.write(str(self.classes[classkey][attr]))
+                            elif isinstance(self.classes[classkey][attr], np.ndarray):
+                                if self.classes[classkey][attr].ndim==0:
+                                    f.write(str(self.classes[classkey][attr]))
+                                else:
+                                    np.savetxt(f, self.classes[classkey][attr])
+                            elif isinstance(self.classes[classkey][attr], str):
+                                try:
+                                    write_arg=float(self.classes[classkey][attr])
+                                    f.write(str(write_arg))
+                                except Exception as e:
+                                    raise TypeError(f"Not castable to number when saving class:{classkey} element:{attr}, item:{self.classes[classkey][attr]}, type:{type(self.classes[classkey][attr])}")
                             else:
-                                np.savetxt(f, self.classes[classkey][attr])
+                                try:
+                                    np.savetxt(f, self.classes[classkey][attr])
+                                except Exception as e:
+                                    raise TypeError(f"Not castable to number when saving class:{classkey} element:{attr}, item:{self.classes[classkey][attr]}, type:{type(self.classes[classkey][attr])}")
             if "Zero_params" in self.classes[classkey]:
                 with open(os.path.join(data_path, "Zero_params.json"), "w") as f:
                     json.dump(self.classes[classkey]["Zero_params"], f)
