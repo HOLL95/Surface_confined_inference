@@ -51,25 +51,18 @@ class BaseMultiExperiment:
                 
                 try:
                     files=os.listdir(data_loc)
-                    print(f"Processing class: {classname}")
-                    print(f"Data location: {data_loc}")
-                    print(f"Files found: {files}")
                     
                     for file in files:
                         if ".txt" in file:
                             file_path = os.path.join(data_loc, file)
-                            print(f"Loading file: {file_path}")
                             
                             try:
                                 # Check file size first
                                 file_size = os.path.getsize(file_path)
-                                print(f"File size: {file_size} bytes")
-                                
                                 # Load with timeout protection
                                 values = loadtxt(file_path)
                                 file_key = file[:file.find(".txt")]
                                 instance.classes[classname][file_key] = values
-                                print(f"Successfully loaded {file} for class {classname}")
                                 
                             except Exception as file_error:
                                 error_msg = (
@@ -105,21 +98,17 @@ class BaseMultiExperiment:
     @classmethod
     def results_loader(cls, directory_path):
         try:
-            print(f"Loading results from: {directory_path}")
             instance=sci.BaseMultiExperiment.from_directory(os.path.join(directory_path, "evaluator"))
             results_array=[]
             
             for filename in ["parameters.txt", "scores.txt"]:
                 file_path = os.path.join(directory_path, "pareto_points", filename)
-                print(f"Loading results file: {file_path}")
                 
                 try:
                     with open(file_path, "r") as f:
                         file=loadtxt(f, skiprows=1)
                         f.seek(0)
                         header = f.readline().strip().split()[1:]
-                    print(f"Successfully loaded {filename}")
-                    
                 except Exception as file_error:
                     error_msg = (
                         f"FAILED TO LOAD RESULTS FILE: {file_path}\n"

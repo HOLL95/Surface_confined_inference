@@ -115,7 +115,6 @@ def det_subplots( value):
             return int(rows[idx_0[0][-1]]), int(value/rows[idx_0[0][-1]])
         value+=1
 def get_titles(titles, **kwargs):
-
     if "units" not in kwargs:
         kwargs["units"]=True
     if "positions" not in kwargs:
@@ -123,8 +122,10 @@ def get_titles(titles, **kwargs):
     params=["" for x in kwargs["positions"]]
     plot_units={}
     for i in range(0, len(kwargs["positions"])):
+        
         z=kwargs["positions"][i]
         if titles[z] in sci._utils.fancy_names:
+           
             plot_units[titles[z]]=sci._utils.unit_dict[titles[z]]
             if kwargs["units"]==True and sci._utils.unit_dict[titles[z]]!="":
                 

@@ -20,7 +20,7 @@ class AxInterface(sci.OptionsAwareMixin):
         dirs=["clients","evaluator","pareto_points"]
         for dir in dirs:
             Path(os.path.join(self._internal_options.results_directory, dir)).mkdir(exist_ok=True)
-        if self._internal_options.GPU is not "none":
+        if self._internal_options.GPU !="none":
             optimal_threads = min(8, self._internal_options.num_cpu)
             torch.set_num_threads(optimal_threads)
             os.environ['OMP_NUM_THREADS'] = str(optimal_threads)
@@ -165,7 +165,7 @@ class AxInterface(sci.OptionsAwareMixin):
 
     def run_inference(self, ):
         exp_exectutor=self.init_sim_executor("experiment")
-        if self._internal_options.GPU is not "none":
+        if self._internal_options.GPU !="none":
             exp_exectutor.update_parameters(slurm_gres=self._internal_options.GPU)
         run_experiment=exp_exectutor.map_array(self.run, range(0, self._internal_options.independent_runs))
         exp_job_ids = [job.job_id for job in run_experiment]
@@ -204,7 +204,7 @@ class AxInterface(sci.OptionsAwareMixin):
                 max_cpu=max(max_cpu, cls._internal_options.num_cpu)
         self._internal_options.num_cpu=max_cpu
         thresholds=self.get_zero_point_scores()
-        if self._internal_options.GPU is not "none":
+        if self._internal_options.GPU !="none":
          device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
          self.ax_client=AxClient(torch_device=torch.device("cuda"))
         else:
