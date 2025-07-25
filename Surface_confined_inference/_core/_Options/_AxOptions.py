@@ -63,5 +63,12 @@ class AxInterfaceOptions(OptionsManager):
                 default="none",
                 doc="Argument to be submitted to SLURM for GPU acceleration in ax"
                 )
+    QOS=StringOption("QOS", 
+                default="none",
+                doc="Argument to be submitted to SLURM for priority"
+                )
+    """debug=BoolOption("Debug",
+                    default=False,
+                    doc="Flag for printing debug statements when loading process executors")"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

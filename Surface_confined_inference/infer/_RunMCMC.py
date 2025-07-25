@@ -174,10 +174,15 @@ class ParallelSimulator(sci.SingleExperiment,sci.OptionsAwareMixin):
             tuple([params, times, weight]) 
             for params, weight in zip(dictionaries, weights)
         ]
-        with mp.Pool(processes=self.num_cpu) as pool:
-            results=pool.starmap(para_func, iterable)
-        
-        np_results=np.array(results)
+        pool = None
+        try:
+            pool = mp.Pool(processes=self.num_cpu)
+            results = pool.starmap(para_func, iterable)
+            np_results = np.array(results)
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
         #if any([x==0 for x in np.sum(results, axis=1)]):
         #    return np.zeros(np_results.shape[1])
         return np.sum(np_results, axis=0)

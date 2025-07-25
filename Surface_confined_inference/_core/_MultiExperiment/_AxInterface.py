@@ -26,8 +26,6 @@ class AxInterface(sci.OptionsAwareMixin):
             os.environ['OMP_NUM_THREADS'] = str(optimal_threads)
             os.environ['MKL_NUM_THREADS'] = str(optimal_threads)
             os.environ['OPENBLAS_NUM_THREADS'] = str(optimal_threads)
-            if self._internal_options.simulate_front==True:
-                raise ValueError("Simulate front not compatible with GPU acceleration, needs to be done manually with `restart()`")
             
         environs=["IN_ARC", "IN_VIKING"]
         self._environ=None
@@ -44,7 +42,8 @@ class AxInterface(sci.OptionsAwareMixin):
                     "mem_gb": "mem_gb",
                     "timeout_min": "timeout_min",
                     "slurm_mail_user": "slurm_mail_user",
-                    "slurm_mail_type": "slurm_mail_type"
+                    "slurm_mail_type": "slurm_mail_type",
+                    "slurm_qos":"slurm_QOS"
                 }
             if self._environ=="IN_ARC":
              self._environ_args["mem_gb"]="slurm_mem_per_cpu"
@@ -71,7 +70,8 @@ class AxInterface(sci.OptionsAwareMixin):
             self._environ_args["slurm_account"]: self._internal_options.project,
             self._environ_args["mem_gb"]: self.set_memory(self._internal_options.GB_ram)
         }
-
+        if _self._internal_options.QOS !="none":
+            arg_dict[self._environ_args["slurm_qos"]]=_self._internal_options.QOS
         if self._environ=="IN_ARC":
             if arg_dict[self._environ_args["timeout_min"]]<12*60:
                 arg_dict[self._environ_args["slurm_partition"]]="short"
@@ -79,7 +79,9 @@ class AxInterface(sci.OptionsAwareMixin):
                 arg_dict[self._environ_args["slurm_partition"]]="medium"
             else:
                 arg_dict[self._environ_args["slurm_partition"]]="long"
-            
+            if arg_dict[self._environ_args["slurm_qos"]]=="schmidt":
+                arg_dict["slurm_cluster"]="htc"
+
         if self._internal_options.email != "":
             arg_dict.update({
                 self._environ_args["slurm_mail_user"]: self._internal_options.email,
@@ -160,7 +162,7 @@ class AxInterface(sci.OptionsAwareMixin):
         except Exception as e:
          logging.error("An unhandled exception occurred!", exc_info=True)
          print(f"FATAL ERROR: {e}. Check job_debug.log for details.", file=sys.stderr)
-         sys.exit(1) # Exit with a non-zero status code to indicate failure
+         sys.exit(1) 
 
 
     def run_inference(self, ):
