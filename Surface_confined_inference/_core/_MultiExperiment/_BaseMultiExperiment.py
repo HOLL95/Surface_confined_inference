@@ -41,7 +41,7 @@ class BaseMultiExperiment:
             
             total_experiment_dict=sci.construct_experimental_dictionary(total_experiment_dict, experiment_dict, *keys)
         instance=sci.MultiExperiment(total_experiment_dict)
-        excluded_options=["common", "include_data"]
+        excluded_options=["common", "include_data","seperated_parameters"]
         if global_options["include_data"]==True:
             excluded_options+=["file_list"]
             for json_file in jsons:
@@ -88,11 +88,15 @@ class BaseMultiExperiment:
                     print(error_msg)
                     raise RuntimeError(error_msg) from class_error
                     
-        instance.group_list=global_options["group_list"]
+        temp_group_list=global_options["group_list"]
         global_options.pop("group_list")
         for key in global_options:
             if key not in excluded_options:
                 setattr(instance, key, global_options[key])
+            
+        instance.group_list=temp_group_list
+        if "seperated_parameters" in global_options:
+            setattr(instance, "seperated_parameters", global_options["seperated_parameters"])
         return instance
     
     @classmethod
