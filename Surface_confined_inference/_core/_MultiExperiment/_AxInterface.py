@@ -246,8 +246,9 @@ class AxInterface(sci.OptionsAwareMixin):
             zero_dict[classkey]=self._cls.classes[classkey]["zero_sim"]
         return self._cls.simple_score(zero_dict)
     def spawn_bulk_simulation(self, ):
+        print("spawn1")
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
-        
+        print("spawn2")
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt"), "r") as f:
             num_points=int(f.readline())
         node_chunks=min(num_points, 300)
@@ -267,6 +268,7 @@ class AxInterface(sci.OptionsAwareMixin):
             f.write(":".join(job_ids))
 
     def run_bulk_simulation(self, index, chunk_size):
+        print("spawn3")
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "parameters.txt"), "r") as f:
             param_values = np.loadtxt(f, skiprows=1)
