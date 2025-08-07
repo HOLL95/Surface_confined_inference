@@ -96,12 +96,14 @@ class AxInterface(sci.OptionsAwareMixin):
             kwargs["dependency"]=None
         if "criteria" not in kwargs:
             kwargs["criteria"]="afterok"
+        if "cpu_count" not in kwargs:
+            kwargs["cpu_count"]=1
         timeout=kwargs["timeout"]
         dependency=kwargs["dependency"]
         criteria=kwargs["criteria"]
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         arg_dict = {
-            self._environ_args["cpus_per_task"]: 1,
+            self._environ_args["cpus_per_task"]: kwargs["cpu_count"],
             self._environ_args["slurm_partition"]: "nodes",
             self._environ_args["slurm_job_name"]: self._internal_options.name + "_" + name,
             self._environ_args["slurm_account"]: self._internal_options.project,
@@ -179,7 +181,7 @@ class AxInterface(sci.OptionsAwareMixin):
                                 os.path.join(self._internal_options.results_directory, "pareto_points"))
         return [job.job_id]
     def simulate_fronts(self, dependency=None):
-        spawn_handler=self.init_process_executor("spawn_simulations", timeout=2, dependency=dependency)
+        spawn_handler=self.init_process_executor("spawn_simulations", timeout=10, dependency=dependency, cpu_count=self._internal_options.num_cpu)
         submitted_sim_job=spawn_handler.submit(self.spawn_bulk_simulation)
         return [submitted_sim_job.job_id]
     def rclone_results(self, dependency=None):
@@ -246,9 +248,7 @@ class AxInterface(sci.OptionsAwareMixin):
             zero_dict[classkey]=self._cls.classes[classkey]["zero_sim"]
         return self._cls.simple_score(zero_dict)
     def spawn_bulk_simulation(self, ):
-        print("spawn1")
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
-        print("spawn2")
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt"), "r") as f:
             num_points=int(f.readline())
         node_chunks=min(num_points, 300)
