@@ -53,7 +53,12 @@ static int check_retval(void* returnvalue, const char* funcname, int opt);
 
 
 py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string, double> params){
-    #define NEQ   2               /* number of equations  */
+    int NEQ=2;
+    //mode=0 for single E
+    //mode =1 for square scheme
+    if (params["mode"]==1){
+        NEQ=9;
+    }
     #define RTOL  SUN_RCONST(1.0e-6) /* scalar relative tolerance            */
     #define ATOL1 SUN_RCONST(1.0e-6) /* vector absolute tolerance components */
     #define ATOL2 SUN_RCONST(1.0e-6)
@@ -96,20 +101,22 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     Ith(y, 1)=params["Cdl"]*mono_dE(params, 0, params["phase"]);
     
     Ith(y, 2)=params["theta"];
-   
-    for (int j=2; j<NEQ;j++){
-        Ith(y, j+1) = params["theta"];
-    }
-    
-    
-
-    /* Set the vector absolute tolerance */
+     /* Set the vector absolute tolerance */
     abstol = N_VNew_Serial(NEQ, sunctx);
     if (check_retval((void*)abstol, "N_VNew_Serial", 0)) { return (return_val); }
 
     Ith(abstol, 1) = ATOL1;
     Ith(abstol, 2) = ATOL2;
     Ith(abstol, 3) = ATOL3;
+   
+    for (int j=2; j<NEQ;j++){
+        Ith(y, j+1) = 0;
+        Ith(abstol, j+1)=ATOL3;
+    }
+    
+    
+
+   
 
     /* Call CVodeCreate to create the solver memory and specify the
     * Backward Differentiation Formula */
@@ -119,7 +126,12 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     /* Call CVodeInit to initialize the integrator memory and specify the
     * user's right hand side function in y'=f(t,y), the initial time T0, and
     * the initial dependent variable vector y. */
-    retval = CVodeInit(cvode_mem, single_e, 0, y);
+    if (params["mode"]==1){
+         retval = CVodeInit(cvode_mem, multi_e, 0, y);
+    }else{
+        retval = CVodeInit(cvode_mem, single_e, 0, y);
+    }
+        
     if (check_retval(&retval, "CVodeInit", 1)) { return (return_val); }
     CVodeSetUserData(cvode_mem, &params);
     /* Call CVodeSVtolerances to specify the scalar relative tolerance
@@ -142,7 +154,12 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     if (check_retval(&retval, "CVodeSetLinearSolver", 1)) { return (return_val); }
 
     /* Set the user-supplied Jacobian routine Jac */
-    retval = CVodeSetJacFn(cvode_mem, Jac);
+     if (params["mode"]==1){
+         retval = CVodeSetJacFn(cvode_mem, Jac_multi_e);
+    }else{
+        retval = CVodeSetJacFn(cvode_mem, Jac);
+    }
+    
     if (check_retval(&retval, "CVodeSetJacFn", 1)) { return (return_val); }
     N_Vector ydot = N_VNew_Serial(NEQ, sunctx);
     try {
@@ -163,6 +180,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
             
             for (int j=3; j<NEQ;j++){
                 state_variables[j][iout]=Ith(y, j+1);
+                state_variables[2][iout] = params["gamma"] * Ith(ydot, j+1);
             }
         }
     } catch (const std::exception& e) {

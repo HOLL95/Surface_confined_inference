@@ -12,6 +12,7 @@ import matplotlib.patches as mplpatches
 import matplotlib.cm as cm
 import matplotlib.colors as mcolours
 import re
+import itertools
 class PlotManager:
     def __init__(self, composed_class, results_array=None, pre_saved=False):
         self._cls=composed_class
@@ -326,7 +327,7 @@ class PlotManager:
                         param_values=[]
                         for i in range(0, len(kwargs[arg])):
                             element=self._cls._results_array[kwargs[arg][i]]
-                            param_values.append([element["parameters"][x] for x in self._cls.all_parameters])
+                            param_values.append([element["parameters"][x] for x in self._cls._all_parameters])
             else:
                 raise ValueError("For {0} argument results have to be loaded through `BaseMultiExperiment.results_loader()`".format(arg))
         if simulate_all==True:
@@ -338,7 +339,9 @@ class PlotManager:
                 values=param_values[i,:]
                 if all([x>=0 and x<=1 for x in values]) != self._cls._internal_options.normalise: 
                     print("Warning - are values correctly normalised? Loaded class has normalised set to {0}".format(self._cls._internal_options.normalise))
+                print("here")
                 total_all_simulations.append(self._cls.evaluate(values))
+                
         elif simulate_all==False:
             for i in range(0, len(kwargs[arg])):
                     simulations={}
@@ -719,9 +722,13 @@ class PlotManager:
         return_array=np.zeros((len(self._cls._results_array),len(self._cls._all_parameters),))
         for i in range(0, len(self._cls._all_parameters)):
             norm_param=self._cls._all_parameters[i]
-            if norm_param not in self._cls.boundaries.keys():
-                norm_param="_".join(self._cls._all_parameters[i].split("_")[:-1])
-            return_array[:,i]=[sci._utils.un_normalise(y["parameters"][self._cls._all_parameters[i]], self._cls.boundaries[norm_param]) for y in self._cls._results_array]
+            if "_offset" in norm_param:
+                assign=[y["parameters"][norm_param] for y in self._cls._results_array]
+            else:
+                if norm_param not in self._cls.boundaries.keys():
+                    norm_param="_".join(self._cls._all_parameters[i].split("_")[:-1])
+                assign=[sci._utils.un_normalise(y["parameters"][self._cls._all_parameters[i]], self._cls.boundaries[norm_param]) for y in self._cls._results_array]
+            return_array[:,i]=assign
         return return_array
     def _get_2d_neighours(self,xscores, yscores, **kwargs):
             from sklearn.neighbors import NearestNeighbors, BallTree
@@ -768,6 +775,36 @@ class PlotManager:
                 empty_array+=list(elem)
             indices_list=np.unique(empty_array)
             return indices_list
+    def depths_from_dict(self, infodict, score_array):
+        from depth.model.DepthEucl import DepthEucl 
+        combinations=list(itertools.combinations(self._all_parameters,2))
+        joined_keys=[f"{x[0]}&{x[1]}" for x in combinations]
+        combinations_dict={x:{} for x in joined_keys}
+        setlist=[]
+        for m in range(0, len(combinations)):
+            informative=[]
+            for cparam in combinations[m]:
+                informative.append([x for x in range(0, len(self.grouping_keys)) if self.grouping_keys[x] in infodict[cparam]])
+            informative_union=set(informative[0]).union(set(informative[1]))
+            unique=True
+            for existing_set in setlist:
+                if existing_set==informative_union:
+                    unique=False
+                    break
+            if unique==True:
+                setlist.append(informative_union)
+            combo_key=f"{combinations[m][0]}&{combinations[m][1]}"
+            combinations_dict[combo_key]["setid"]=informative_union
+        depth_lists=[]
+        for m in range(0, len(setlist)):
+            if len(setlist[m])<2:
+                depth_lists.append(None)
+            else:
+                new_score_array=np.column_stack(([score_array[:,x] for x in setlist[m]]))
+                model=DepthEucl().load_dataset(new_score_array)
+                depthDataset=model.spatial(evaluate_dataset=True)
+                depth_lists.append(depthDataset)
+        return depth_lists, combinations_dict, setlist
     def pareto_parameter_plot(self, **kwargs):
         from depth.model.DepthEucl import DepthEucl 
         if self._check_results_loaded() is False:
@@ -776,11 +813,18 @@ class PlotManager:
             fig,ax=plt.subplots(len(self._all_parameters), len(self._all_parameters))
         else:
             ax=kwargs["axes"]
+        
         if "true_values" not in kwargs:
             kwargs["true_values"]=None
         if "show_depths" not in kwargs:
             kwargs["show_depths"]=False
-        
+        if kwargs["show_depths"]==False:
+            kwargs["order_by_depth"]=False
+        else:
+            if "order_by_depth" not in kwargs:
+                kwargs["order_by_depth"]=True
+        if "edgecolour" not in kwargs:
+            kwargs["edgecolour"]=None
         if "size" not in kwargs:
             kwargs["size"]=1
         if "target_keys" not in kwargs:
@@ -796,15 +840,14 @@ class PlotManager:
                 raise ValueError("`target_keys` argument must be of length 2!, not {}".format(len(kwargs["target_keys"])))
             elif all([key in self.grouping_keys for key in kwargs["target_keys"]]) is False:
                 raise ValueError("`target_keys` need to be from `grouping_keys`")
-        if "span_dict" not in kwargs:
-            kwargs["span_dict"]=None
-        if kwargs["span_dict"] is not None:
-            if "span_method" not in kwargs:
-                kwargs["span_method"]="per_plot"
-            if "show_non_converged" not in kwargs:
-                kwargs["show_non_converged"]=True
-        if "envelope_threshold" not in kwargs:
-            kwargs["envelope_threshold"]=0
+        if "information_score" not in kwargs:
+            kwargs["information_score"]=None
+
+        if kwargs["information_score"] is not None:
+            if "show_non_info" not in kwargs:
+                kwargs["show_non_info"]=True 
+            if "common_scale" not in kwargs:
+                kwargs["common_scale"]=True
         if "cmap" not in kwargs:
             kwargs["cmap"]=mpl.colormaps["seismic"]
         all_params=self._all_parameters
@@ -870,132 +913,53 @@ class PlotManager:
         elif kwargs["show_depths"] is not False:
             colour_ax.set_xlabel("Statistical depth")
             score_array=np.array([[x["scores"][y] for y in self.grouping_keys] for x in self._cls._results_array])
+            if kwargs["information_score"] is not None:
+                depth_lists, combinations_dict, setlist=self.depths_from_dict(kwargs["information_score"], score_array)
+                combinations=list(itertools.combinations(self._all_parameters,2))
+                joined_keys=list(combinations_dict.keys())
             model=DepthEucl().load_dataset(score_array)
             depthDataset=model.spatial(evaluate_dataset=True)
+            
             xidx=np.argsort(depthDataset)
-            params=self._un_normalise_parameters()
+            #params=self._un_normalise_parameters()
             minval=min(depthDataset)
             maxval=max(depthDataset)
-            if kwargs["span_dict"] is not None:
-                if kwargs["span_method"]=="per_plot":
-                    idxs=[["" for x in all_params] for y in all_params]
-                    minval=2
-                    maxval=0
-                    alphaspan=np.linspace(0.2, 1, len(self.grouping_keys)+1)
+            if kwargs["information_score"] is not None:
+                
+                idxs=[["" for x in all_params] for y in all_params]
+                minval=2
+                maxval=0
+                alphaspan=np.linspace(0.2, 1, len(self.grouping_keys)+1)
 
-                    for i in range(0, len(all_params)):
-                        for j in range(0, len(all_params)):
-                            if i>j:     
-                                xparam=all_params[j]
-                                yparam=all_params[i]
-                                score_idx=[]
-                                uniques=set()
-                                alphas={key:[] for key in range(0, len(score_array))}
-                                for g in range(0, len(self.grouping_keys)):
-                                    gkey=self.grouping_keys[g]
-                                    if kwargs["span_dict"][gkey][xparam] is not None and kwargs["span_dict"][gkey][yparam] is not None:
-                                        #identify score array elements that are part of the span 
-                                        #score the data depth for all of those score array elements
-                                        #give it a transparency based on the consensus [or think of some other way to do it]
-                                        #mark the non-converged points as black
-                                        #make sure that the colourbar is indexed for all data depths
-                                        for z in range(0, len(score_array)):
-                                            srow=score_array[z,:]
-                                            prow=params[z,:]
-                                            #print(prow[j], kwargs["span_dict"][gkey][xparam], xparam)
-                                            #print(prow[i], kwargs["span_dict"][gkey][yparam], yparam)
-                                            in_xparam=prow[j]>=kwargs["span_dict"][gkey][xparam][0] and prow[j]<=kwargs["span_dict"][gkey][xparam][1]
-                                            in_yparam=prow[i]>=kwargs["span_dict"][gkey][yparam][0] and prow[i]<=kwargs["span_dict"][gkey][yparam][1]
-
-                                            if bool(in_xparam) is True and bool(in_yparam) is True:    
-                                                if z not in score_idx:
-                                                    score_idx.append(z)
-                                                alphas[z].append(g)
-                                                uniques = uniques | set([g])
-                                if len(uniques)>1:        
+                for i in range(0, len(all_params)):
+                    for j in range(0, len(all_params)):
+                        if i>j:     
+                            xparam=all_params[j]
+                            yparam=all_params[i]
+                            for m in range(0, len(combinations)):
+                                splitkey=combinations[m]
+                                joinkey=joined_keys[m]
+                                if xparam in splitkey and yparam in splitkey:
+                                    setid=combinations_dict[joinkey]["setid"]
+                                    setidx=[x for x in range(0, len(setlist)) if setlist[x]==setid][0]
+                                    depthDataset=depth_lists[setidx]
+                                    if depthDataset is not None:
+                                        minval=min(minval, min(depthDataset))
+                                        maxval=max(maxval, max(depthDataset))
+                                    else:
+                                        depthDataset="lightslategray"
                                     
-                                    plot_score_array=np.array([[score_array[x,y] for y in uniques ]for x in score_idx])
-
-                                    model=DepthEucl().load_dataset(plot_score_array)
-                                    depthDataset=model.spatial(evaluate_dataset=True)
-                                    minval=min(minval, min(depthDataset))
-                                    maxval=max(maxval, max(depthDataset))
-                                    
-                                    plotalphas=[alphaspan[len(alphas[x])] for x in score_idx]
-                                 
-                                elif len(uniques)==1:
-                                    
-                                    depthDataset="lightslategray"
-                                    plotalphas=1
-                                        
-                                else:
-                                    depthDataset=[]
-                                    plotalphas=1
-                                log_dict={
-                                    "coloured_alphas":plotalphas,
-                                    "coloured":[[params[x,j] for x in score_idx], [params[x,i] for x in score_idx]],
-                                    "colours":depthDataset,
-                                    "black":[[params[y,j] for y in range(0, len(params)) if y not in score_idx], [params[y,i] for y in range(0, len(params)) if y not in score_idx]]
-                                }
-                                idxs[i][j]=log_dict
+                                
+                                
+                            
+                            log_dict={
+                                #"coloured_alphas":plotalphas,
+                                #"coloured":[[params[x,j] for x in score_idx], [params[x,i] for x in score_idx]],
+                                "colours":depthDataset,
+                                #"black":[[params[y,j] for y in range(0, len(params)) if y not in score_idx], [params[y,i] for y in range(0, len(params)) if y not in score_idx]]
+                            }
+                            idxs[i][j]=log_dict
                 num_points=len(self.grouping_keys)
-                coloured_cmaps=[kwargs["cmap"] for x in range(0, num_points-1)]
-                cmaps=["lightslategrey"]+coloured_cmaps
-
-                if kwargs["show_non_converged"]==True:
-                    num_points+=1
-                    cmaps=["black"]+cmaps
-                height=0.05
-                total_width=0.3
-                step=(total_width-(height*num_points))/(num_points-1)
-                radius=122
-                for m in range(0, num_points):
-                    
-                    spot_ax=[0.6+m*(height+step),(ax[0,0].get_position().bounds[1])-0.15, height, height]
-                    spotax=fig.add_axes(spot_ax)
-                    
-                    if isinstance(cmaps[m], str):
-                        color_data = np.ones((256, 256, 3))  # RGB array
-                        color_rgb = mcolours.to_rgb(cmaps[m])  # Convert color to RGB
-                        color_data[:, :] = color_rgb
-                        im=spotax.imshow(color_data, aspect='equal')
-                    else:
-                        color_data = np.vstack([np.linspace(0,1,256)] * 256)
-                        im=spotax.imshow(color_data, 
-                                                    aspect='equal', cmap=cmaps[m])
-                    patch = mplpatches.Circle((128, 128), radius=radius, transform=spotax.transData)
-                    im.set_clip_path(patch)
-                    if (m-num_points)>=-len(coloured_cmaps):
-                        im.set_alpha(alphaspan[m-num_points])
-                        
-
-                      
-                    border_circle = mplpatches.Circle((128, 128), radius=radius, 
-                                 fill=False, edgecolor='black', 
-                                 linewidth=1, transform=spotax.transData)
-                    spotax.add_patch(border_circle)
-                    
-                    spotax.set_xticks([])
-                    spotax.set_yticks([])
-                    spotax.spines['top'].set_visible(False)
-                    spotax.spines['right'].set_visible(False)
-                    spotax.spines['bottom'].set_visible(False)
-                    spotax.spines['left'].set_visible(False)
-                    if kwargs["show_non_converged"]==False:
-                        xlabel=m+1
-                    else:
-                        xlabel=m
-                    spotax.set_xlabel(xlabel)
-                label_ax=fig.add_axes([0.6,(ax[0,0].get_position().bounds[1])-0.175, 0.3, 0.001])
-               
-                label_ax.set_xticks([])
-                label_ax.set_yticks([])
-                label_ax.spines['top'].set_visible(False)
-                label_ax.spines['right'].set_visible(False)
-                #label_ax.spines['bottom'].set_visible(False)
-                label_ax.spines['left'].set_visible(False)
-                label_ax.set_xlabel("Number of objectives where parameters converged with $\\uparrow$ score")
-
             norm=plt.Normalize(vmin=minval, vmax=maxval)                 
             plt.colorbar(mappable=cm.ScalarMappable(
                 norm=norm,
@@ -1003,11 +967,13 @@ class PlotManager:
                 cax=colour_ax,
                 orientation="horizontal")
             colour_ax.set_xlabel("Spatial depth")
+            if kwargs["information_score"] is not None and kwargs["common_scale"]==False:
+                colour_ax.set_xticks([minval, maxval])
+                colour_ax.set_xticklabels(["min", "max"])
             #colour_ax.imshow(np.vstack((np.linspace(0,1,256),np.linspace(0,1,256))), aspect='auto', cmap=kwargs["cmap"])
             colour_array=depthDataset
             
-        if kwargs["envelope_threshold"]!=0 and kwargs["target_keys"] is not None:
-            score_idx=self._get_2d_neighours(xscores, yscores, threshold=kwargs["envelope_threshold"])
+      
         
         for i in range(0, len(all_params)):
             for j in range(0, len(all_params)):
@@ -1019,9 +985,11 @@ class PlotManager:
                         plot_axis.append(de_normalised_array[:,x])
                         
                 if i>j:  
+                    xparam=all_params[j]
+                    yparam=all_params[i]
                     if kwargs["true_values"] is not None:
-                        xparam=all_params[j]
-                        yparam=all_params[i]
+                        
+                       
                         if xparam in kwargs["true_values"]:
                             ax[i,j].axvline(kwargs["true_values"][xparam], color="black", linestyle="--")
                         if yparam in kwargs["true_values"]:
@@ -1036,25 +1004,32 @@ class PlotManager:
                                 norm_param="_".join(key.split("_")[:-1])
                                 if norm_param==yparam:
                                     ax[i,j].axhline(kwargs["true_values"][key], color="black", linestyle="--")
-                    if kwargs["envelope_threshold"]!=0:
-                        alpha_vals=[0.2 if x not in score_idx else 1 for x in range(0, len(plot_axis[0]))]
-
+                    if kwargs["information_score"] is not None:
+                        colour=idxs[i][j]["colours"]
                     else:
-                        alpha_vals=1
-                    if kwargs["span_dict"] is not None:
-                        if kwargs["span_method"]=="per_plot":
+                        colour=depthDataset
+                    if kwargs["order_by_depth"] ==True:
+                        if isinstance(colour, str) is False:
+                            cidx=np.argsort(colour)
+                            plot_axis[0]=[plot_axis[0][x] for x in cidx]
+                            plot_axis[1]=[plot_axis[1][x] for x in cidx]
+                            colour=sorted(colour)
+                    if kwargs["information_score"] is not None:
+                        if kwargs["common_scale"] is False:
+                            norm_arg=None
+                        else:
+                            norm_arg=norm
+                        ax[i,j].scatter(plot_axis[0], plot_axis[1], 
+                            kwargs["size"], cmap=kwargs["cmap"], norm=norm_arg, 
+                            c=colour,
+                            edgecolor=kwargs["edgecolour"],
+                            )
                             
-                            ax[i,j].scatter(idxs[i][j]["coloured"][0], idxs[i][j]["coloured"][1], 
-                            kwargs["size"], cmap=kwargs["cmap"], norm=norm, 
-                            c=idxs[i][j]["colours"],edgecolor="black",alpha=idxs[i][j]["coloured_alphas"]
-                            )#
-                            if kwargs["show_non_converged"] is True:
-                                ax[i,j].scatter(idxs[i][j]["black"][0], idxs[i][j]["black"][1], kwargs["size"], c="black")
                     else:
                         if colorbar==True:
-                            plot_args=dict(c=colour_array, cmap=kwargs["cmap"], alpha=alpha_vals)
+                            plot_args=dict(c=colour, cmap=kwargs["cmap"], alpha=1,edgecolor=kwargs["edgecolour"],)
                         else:
-                            plot_args=dict(alpha=alpha_vals)
+                            plot_args=dict(alpha=1)
                         ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], **plot_args)#
                     if j==0:
                         ax[i,j].set_ylabel(all_params[i])
@@ -1065,7 +1040,7 @@ class PlotManager:
                 
                 elif i==j:  
                     xaxis=plot_axis[0]
-                    n, bin_edges, patches=ax[i,j].hist(xaxis, edgecolor='black',bins=25, density=True)
+                    n, bin_edges, patches=ax[i,j].hist(xaxis, edgecolor=kwargs["edgecolour"],bins=25, density=True)
                     if j!=0:
                         ax[i,j].set_yticks([])
                     #hist,bin_edges = np.histogram(xaxis, 25)

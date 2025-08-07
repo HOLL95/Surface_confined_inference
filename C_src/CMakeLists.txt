@@ -1,11 +1,15 @@
 # Set the minimum required CMake version
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 
 # Specify project name and languages
 project(SurfaceODESolver)
 include(CMakePrintHelpers)
 
 # Set C++ compiler flags
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 20 )
+set(CMAKE_CXX_EXTENSIONS OFF)
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -42,11 +46,13 @@ else()
   include_directories("../lib")
 endif()
   # Specify the path to SUNDIALSConfig.cmake
-  if (DEFINED ENV{CVODE_PATH})
-    set(SUNDIALS_DIR $ENV{CVODE_PATH})
-  else()
-    set(SUNDIALS_DIR /path/to/env)
-  endif()
+if (DEFINED ENV{CVODE_PATH})
+  set(SUNDIALS_DIR $ENV{CVODE_PATH})
+  find_package(SUNDIALS REQUIRED PATHS ${SUNDIALS_DIR})
+else()
+  set(SUNDIALS_DIR /path/to/env)
+endif()
+
 
 if(${SUNDIALS_VERSION} VERSION_GREATER_EQUAL "7.0.0")
     add_definitions(-DSUNDIALS_VERSION_7)
@@ -55,7 +61,7 @@ endif()
 link_libraries(SUNDIALS::cvode SUNDIALS::nvecserial SUNDIALS::sunlinsoldense SUNDIALS::sunmatrixdense)
 
 # Add pybind11 module
-pybind11_add_module(SurfaceODESolver SHARED ODE_simulator_sundials.cpp headers/functions.cpp headers/SW_functions.cpp)
+pybind11_add_module(SurfaceODESolver SHARED ODE_simulator_sundials.cpp headers/functions.cpp headers/SW_functions.cpp headers/square_scheme.cpp)
 
 # Specify include directories
 target_include_directories(SurfaceODESolver PRIVATE ${INCLUDE_DIR})

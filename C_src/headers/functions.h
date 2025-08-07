@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cvode/cvode.h>            /* prototypes for CVODE fcts., consts.  */
 #include <nvector/nvector_serial.h> /* access to serial N_Vector            */
 #include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
@@ -10,6 +12,8 @@ using namespace std;
 extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data);
 void updateCdlp(std::unordered_map<std::string, double>& params, double Cdlp);
 extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
+extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data);
+extern "C" int Jac_multi_e(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J, void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
 template<typename PhaseFunc>
 double mono_E(const std::unordered_map<std::string, double>& params, double t, PhaseFunc phase_func){
 	double phase = phase_func(params, t);
