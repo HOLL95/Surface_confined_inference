@@ -7,11 +7,9 @@ import numbers
 from typing import List, Optional, Sequence
 
 from ._OptionsDescriptor import (
-    BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor
+    BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor, ExclusiveDictOption, ExclusiveSequenceOption
 )
 from ._OptionsMeta import OptionsManager, OptionsMeta
-
-
 
 
 class BaseExperimentOptions(OptionsManager):
@@ -81,7 +79,7 @@ class BaseExperimentOptions(OptionsManager):
         default=False,
         doc="Whether to return only the Faradaic component of the current."
     )
-
+    
 
 class FTACVOptions(BaseExperimentOptions):
     """Options specific to FTACV experiments."""
@@ -128,6 +126,12 @@ class FTACVOptions(BaseExperimentOptions):
         default=True,
         doc="Whether to fit the phase of the capacitance current as the same value as that of the phase of the Faradaic current."
     )
+    input_params=ExclusiveDictOption(
+        "input_params",
+        value_type=numbers.Number,
+        target=["E_start", "E_reverse","v", "omega", "phase", "delta_E",]+["area", "Temp", "N_elec", "Surface_coverage"],
+        doc="Necessary input params for FTACV"
+    )
 
 
 class PSVOptions(FTACVOptions):
@@ -145,7 +149,12 @@ class PSVOptions(FTACVOptions):
         min_value=1,
         doc="Number of peaks to simulate in PSV."
     )
-
+    input_params=ExclusiveDictOption(
+        "input_params",
+        value_type=numbers.Number,
+        target=["Edc","omega", "phase", "delta_E"]+["area", "Temp", "N_elec", "Surface_coverage"],
+        doc="Necessary input params for PSV"
+    )
 
 class DCVOptions(BaseExperimentOptions):
     """Options specific to DCV experiments."""
@@ -154,7 +163,12 @@ class DCVOptions(BaseExperimentOptions):
         # Set default experiment type
         kwargs.setdefault("experiment_type", "DCV")
         super().__init__(**kwargs)
-    
+    input_params=ExclusiveDictOption(
+        "input_params",
+        value_type=numbers.Number,
+        target=["E_start", "E_reverse","v"]+["area", "Temp", "N_elec", "Surface_coverage"],
+        doc="Necessary input params for DCV"
+    )
     # Add DCV-specific options here
 
 
@@ -173,7 +187,20 @@ class SquareWaveOptions(BaseExperimentOptions):
         default="net",
         doc="Which component of the square wave response to return."
     )
-
+    input_params=ExclusiveDictOption(
+        "input_params",
+        value_type=numbers.Number,
+        target=[
+                "omega",
+                "E_start", 
+                "scan_increment",
+                "sampling_factor",
+                "delta_E",
+                "v",
+                "SW_amplitude",
+            ]+["area", "Temp", "N_elec", "Surface_coverage"],
+        doc="Necessary input params for DCV"
+    )
 
 class SingleExperimentOptions(BaseExperimentOptions):
     _experiment_classes = {

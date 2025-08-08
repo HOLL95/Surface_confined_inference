@@ -35,17 +35,11 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
     double QHminus = Ith(y, 8);
     double QH21plus = Ith(y, 9);
     double QH2=(-Q - Qminus - Q2minus - QH - QHplus - QHminus - QH21plus - QH22plus + 1);
-    if ((*params)["phase_flag"]==0){
-        Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t){return p.at("phase");})-I*(*params)["Ru"];
-        cap_Er=mono_E(*params, t,[](const std::unordered_map<std::string, double>& p, double t){return p.at("cap_phase");})-I*(*params)["Ru"];
-        cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
-    }
 
-    else if ((*params)["phase_flag"]==1){
-        Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t) { return p.at("phase")+p.at("phase_delta_E")*std::sin(p.at("phase_omega") * t + p.at("phase_phase")); })-I*(*params)["Ru"];
-        cap_Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>&p, double t) { return p.at("cap_phase")+p.at("cap_phase_delta_E")*std::sin(p.at("cap_phase_omega") * t + p.at("cap_phase_phase")); })-I*(*params)["Ru"];
-        cap_dE=mono_dE_sine_phase(*params, t);
-    }
+    Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t){return p.at("phase");})-I*(*params)["Ru"];
+    cap_Er=mono_E(*params, t,[](const std::unordered_map<std::string, double>& p, double t){return p.at("cap_phase");})-I*(*params)["Ru"];
+    cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
+
 
 
     for (int j = 1; j < 7; j++) {

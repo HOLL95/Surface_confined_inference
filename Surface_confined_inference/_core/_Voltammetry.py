@@ -32,54 +32,21 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             Exception: If the experiment string is not of accepted types
             Exception: The required experimental input parameters for each technique are not found
         """
-
-        all_experiments = ["FTACV", "PSV", "DCV", "SquareWave"]
-        accepted_arguments = {
-            key: [ "area", "Temp", "N_elec", "Surface_coverage"]
-            for i in range(0, len(all_experiments))
-            for key in all_experiments
-        }
-        extra_args = {
-            "FTACV": ["E_start", "E_reverse","v", "omega", "phase", "delta_E"],
-            "PSV": ["Edc","omega", "phase", "delta_E"],
-            "DCV": ["E_start", "E_reverse","v"],
-            "SquareWave": [
-                "omega",
-                "E_start", 
-                "scan_increment",
-                "sampling_factor",
-                "delta_E",
-                "v",
-                "SW_amplitude",
-            ],
-        }
-
         for key in extra_args.keys():
             accepted_arguments[key] += extra_args[key]
-        if experiment_type not in all_experiments:
-            raise Exception(
-                "'{0}' not in list of experiments. Simulated experiments are \n{1}".format(
-                    experiment_type, ", ".join(all_experiments)
-                )
-            )
         self._internal_memory = {
             "input_parameters": experiment_parameters,
             "boundaries": {},
             "fixed_parameters": {},
         }
         kwargs["experiment_type"] = experiment_type
+        kwargs["input_params"]=experiment_parameters
         if options_handler is None:
             options_handler=None
         self._options_handler=options_handler
         self._options_class = sci.SingleExperimentOptions(options_handler=options_handler,**kwargs)
-
         self._internal_options=self._options_class._experiment_options
         self.experiment_type=self._internal_options.experiment_type
-        sci.check_input_dict(
-            experiment_parameters,
-            accepted_arguments[self._internal_options.experiment_type],
-            optional_arguments=["phase_flag"]
-        )
         self._NDclass = sci.NDParams(
             self._internal_options.experiment_type, experiment_parameters
         )

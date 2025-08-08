@@ -25,18 +25,13 @@ extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_dat
   double kox, kred, dIdt, Cdlp;
   double Er, dE, cap_Er, cap_dE;
   
-  if ((*params)["phase_flag"]==0){
+
     
     Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t){return p.at("phase");})-I*(*params)["Ru"];
     cap_Er=mono_E(*params, t,[](const std::unordered_map<std::string, double>& p, double t){return p.at("cap_phase");})-I*(*params)["Ru"];
     cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
-  }
-  
-  else if ((*params)["phase_flag"]==1){
-    Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t) { return p.at("phase")+p.at("phase_delta_E")*std::sin(p.at("phase_omega") * t + p.at("phase_phase")); })-I*(*params)["Ru"];
-    cap_Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>&p, double t) { return p.at("cap_phase")+p.at("cap_phase_delta_E")*std::sin(p.at("cap_phase_omega") * t + p.at("cap_phase_phase")); })-I*(*params)["Ru"];
-    cap_dE=mono_dE_sine_phase(*params, t);
-  }
+
+
   
   
   if ((*params)["Marcus_flag"]==1){
@@ -108,22 +103,6 @@ double E2 = mono_E(*params, t, [](const auto& p, double t) {
   
 ;*/
 
-double mono_dE_sine_phase(const std::unordered_map<std::string, double>& params, double t){ //
-	double E_dc;
-  double E_ac;
-
-
-	if (t < params.at("tr")){
-		 E_dc=params.at("v");
-	}else {
-		 E_dc=-params.at("v");
-	}
-  E_ac=params.at("delta_E")*((params.at("cap_phase_delta_E")*params.at("cap_phase_omega")*
-              std::cos(params.at("cap_phase_omega")*t+params.at("cap_phase_phase"))+params.at("omega")))*
-              std::cos(params.at("cap_phase_delta_E")*std::sin(params.at("cap_phase_omega")*t+params.at("cap_phase_phase"))+t*params.at("omega")+params.at("cap_phase"));
-
-	return E_dc+E_ac;
-}
 double mono_dE(const std::unordered_map<std::string, double>& params, double t, double phase){ //
 	double E_dc;
 	if (t < params.at("tr")){

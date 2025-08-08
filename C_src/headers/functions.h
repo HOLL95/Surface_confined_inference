@@ -33,7 +33,6 @@ double mono_E(const std::unordered_map<std::string, double>& params, double t, P
 
 std::vector<double> potential(const std::vector<double>& times,const std::unordered_map<std::string, double>& params);
 double mono_dE(const std::unordered_map<std::string, double>& params, double t, double phase);
-double mono_dE_sine_phase(const std::unordered_map<std::string, double>& params, double t);
 double Marcus_kinetics_oxidation(const std::unordered_map<std::string, double>& params, double Er);
 double Marcus_kinetics_reduction(const std::unordered_map<std::string, double>& params, double Er);
 double BV_oxidation(std::unordered_map<std::string, double>& params, double Er);

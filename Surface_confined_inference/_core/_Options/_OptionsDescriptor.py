@@ -11,7 +11,7 @@ from pathlib import Path
 class OptionDescriptor:
     """Base descriptor class for options with validation."""
     
-    def __init__(self, name: str, default: Any = None, doc: str = None):
+    def __init__(self, name: str, default: Any = None, doc: str = None, required: bool =False):
         self.name = name
         self.private_name = f"_{name}"
         self.default = default
@@ -122,7 +122,6 @@ class SequenceOption(TypedOption):
                 if not isinstance(item, self.item_type):
                     raise TypeError(f"Item {i} in {self.name} must be of type {self.item_type.__name__}, "
                                     f"got {type(item).__name__}")
-
 
 class StringOption(TypedOption):
     """Descriptor for string options."""
