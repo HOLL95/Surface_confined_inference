@@ -9,7 +9,7 @@ class ParmeterHandler:
                 if parameters[i] not in boundaries:
                     missing_parameters.append(parameters[i])
             if len(missing_parameters) > 0:
-                    raise Exception(
+                    raise ValueError(
                         "Need to define boundaries for:\n %s" % ", ".join(missing_parameters)
                     )
     
@@ -58,7 +58,7 @@ class ParmeterHandler:
             any(flag in param for flag in all_disp_flags) for param in all_parameters
         ]
         if any(disp_check):
-            self.options.dispersion = True
+            dispersion = True
 
             distribution_names = [
                 "normal",
@@ -114,12 +114,44 @@ class ParmeterHandler:
             else:
                 self._internal_memory["GH_values"] = None
             self.options.GH_quadrature = orig_GH_value
-            self._disp_class = sci.Dispersion(
+            disp_class = sci.Dispersion(
                 self.options.dispersion_bins,
                 dispersion_parameters,
                 dispersion_distributions,
                 all_parameters,
                 self.fixed_parameters,
             )
+            return dispersion, disp_class
         else:
-            self.options.dispersion = False
+            dispersion=False
+            return self.options.dispersion, None
+    def change_normalisation_group(self, parameters, method):
+        """
+        Args:
+            parameters (list): list of numbers
+            method (str): flag indicating if the value is to be normalised or un-normalised
+        Returns:
+            list: list of appropriately transformed values
+
+        Note - this convenience method assumes the values are the parameters associated with the current parameters in optim_list
+        """
+        normed_params = copy.deepcopy(parameters)
+        if method == "un_norm":
+            for i in range(0, len(parameters)):
+                normed_params[i] = sci.un_normalise(
+                    normed_params[i],
+                    [
+                        self.boundaries[self._optim_list[i]][0],
+                        self.boundaries[self._optim_list[i]][1],
+                    ],
+                )
+        elif method == "norm":
+            for i in range(0, len(parameters)):
+                normed_params[i] = sci.normalise(
+                    normed_params[i],
+                    [
+                        self.boundaries[self._optim_list[i]][0],
+                        self.boundaries[self._optim_list[i]][1],
+                    ],
+                )
+        return normed_params
