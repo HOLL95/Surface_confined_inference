@@ -328,9 +328,11 @@ class PlotManager:
                         for i in range(0, len(kwargs[arg])):
                             element=self._cls._results_array[kwargs[arg][i]]
                             param_values.append([element["parameters"][x] for x in self._cls._all_parameters])
+                        param_values=np.array(param_values)
             else:
                 raise ValueError("For {0} argument results have to be loaded through `BaseMultiExperiment.results_loader()`".format(arg))
         if simulate_all==True:
+            kwargs["deced"]=False
             dims=param_values.shape
             if len(dims)==1:
                 param_values=np.array([param_values])
@@ -339,10 +341,13 @@ class PlotManager:
                 values=param_values[i,:]
                 if all([x>=0 and x<=1 for x in values]) != self._cls._internal_options.normalise: 
                     print("Warning - are values correctly normalised? Loaded class has normalised set to {0}".format(self._cls._internal_options.normalise))
-                print("here")
-                total_all_simulations.append(self._cls.evaluate(values))
+                #print("here")
+                vals=self._cls.evaluate(values)
+                total_all_simulations.append(vals)
+                
                 
         elif simulate_all==False:
+            kwargs["deced"]=True
             for i in range(0, len(kwargs[arg])):
                     simulations={}
                     element=self._cls._results_array[kwargs[arg][i]]
@@ -571,8 +576,12 @@ class PlotManager:
                         ax.spines[axis].set_linewidth(4)
                         ax.tick_params(width=4)
                 ax.set_title(groupkey, fontsize=8)
-                all_data=[self._cls.scale(self._cls.classes[x]["data"], groupkey, x) for x in self.group_to_class[groupkey]]
-                all_times=[self._cls.classes[x]["times"] for x in self.group_to_class[groupkey]]
+                if kwargs["deced"]==True:
+                    data_key="deced_"
+                else:
+                    data_key=""
+                all_data=[self._cls.scale(self._cls.classes[x][data_key+"data"], groupkey, x) for x in self.group_to_class[groupkey]]
+                all_times=[self._cls.classes[x][data_key+"times"] for x in self.group_to_class[groupkey]]
                 label_list=[",".join(x.split("-")[1:]) for x in self.group_to_class[groupkey]]
                 all_simulations=[x[groupkey] for x in simulation_values]
                 

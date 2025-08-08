@@ -168,8 +168,11 @@ class BaseMultiExperiment:
                             dec_amount=int(loadtxt(f))
                         time=instance.classes[classkey]["times"]
                         current=instance.classes[classkey]["data"]
-                        instance.classes[classkey]["times"]=decimate(time, dec_amount)
-                        instance.classes[classkey]["data"]=decimate(current, dec_amount)
+                        instance.classes[classkey]["deced_times"]=decimate(time, dec_amount)
+                        instance.classes[classkey]["deced_data"]=decimate(current, dec_amount)
+                    else:
+                        instance.classes[classkey]["deced_times"]=instance.classes[classkey]["times"]
+                        instance.classes[classkey]["deced_data"]=instance.classes[classkey]["data"]
             for j in range(0 ,len(results_array)):
                 for groupkey in instance.grouping_keys:
                     putative=results_array[j]
