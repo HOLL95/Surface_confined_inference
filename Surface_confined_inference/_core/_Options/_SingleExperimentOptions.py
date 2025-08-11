@@ -79,6 +79,13 @@ class BaseExperimentOptions(OptionsManager):
         default=False,
         doc="Whether to return only the Faradaic component of the current."
     )
+    Parallel_cpu = NumberOption(
+        "Parallel_cpu",
+        default=len(os.sched_getaffinity(0)),
+        doc="Number of CPUs for parallel simulations for dispersion"
+    )
+
+    
     
 
 class FTACVOptions(BaseExperimentOptions):

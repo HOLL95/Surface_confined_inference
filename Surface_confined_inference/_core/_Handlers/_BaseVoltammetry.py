@@ -5,41 +5,45 @@ import SurfaceODESolver as sos
 #parameter handling
 #dispersion handling
 class BaseHandler:
-    def __init__(self, options, cls):
+    def __init__(self, options):
         self.options=options
-        self.cls=cls
-    def simulate(self, parameters, times):
+    def simulate(self, nd_dict, times):
+        "To be overridden"
+        return 
+    def dispersion_simulator(self, solver, nd_dict, times):
         """
         Args:
-            times (list): list of times to pass to the solver
-            parameters (list): list of parameters to be passed to the solver - needs to be the same length as _optim_list, will throw an error if not. The variable `_optim_list` needs to be intiialised
-            before this function is called to allow for various santity checks to take place.
+            Solver (function): function that takes time (list) and simualtion_params (dictionary) arguemnts and returns a current
+            times (list): list of time points for the solver
+            sim_params (dict): dictionary of simulation parameters, with the same keys as _optim_list
         Returns:
-            list: A list of current values at the times passed to the `simulate` function
-        Raises:
-            Exception: If `_optim_list` and the arg `parameters` are not of the same length
-            Exception: if the variable `_optim_list` has not been set then no checking of the parameters has occured, and so an error is thrown.
+            list: list of current values at times
+
+        Initially passes `sim_params` to the `nondimensionalise` function so all parameters are correctly represented in `_internal_memory["simulation_dict"]`,
+        then caluclates bin values and associated weights by calling `disp_class.generic_dispersion`
+        This returns a list of parameter values of size b^n (n dispersed parameters, b bins) and a list of weights, which is b^n tuples each of length n.
+        For each weight, the `simulation_dict` is updated with the correct parameters, nondimensionalised and the resulting dictionary passed to the solver
+        The resulting current is multiplied by the product of the appropriate weight tuple, and added to the dispersed current
+        This dispersed current is then returned
 
         """
-        if self.options._optim_list is None:
-            raise Exception(
-                "optim_list variable needs to be set, even if it is an empty list"
+        
+        disp_params, self._values, self._weights = self._disp_class.generic_dispersion(
+            self._internal_memory["simulation_dict"], self._internal_memory["GH_values"]
+        )
+        time_series = np.zeros(len(times))
+        self._disp_test = []
+        for i in range(0, len(self._weights)):
+            for j in range(0, len(disp_params)):
+                self._internal_memory["simulation_dict"][disp_params[j]] = self._values[i][j]
+            nd_dict = self.nondimensionalise(sim_params)
+            time_series_current = solver(times, nd_dict)
+            if self._internal_options.dispersion_test == True:
+                self._disp_test.append(time_series_current)
+            time_series = np.add(
+                time_series, np.multiply(time_series_current, np.prod(self._weights[i]))
             )
-        if len(parameters) != len(self._optim_list):
-            raise Exception(
-                f"Parameters and optim_list need to be the same length, currently parameters={len(parameters)} and optim_list={len(self._optim_list)}"
-            )
-        if self.options.normalise_parameters == True:
-            sim_params = dict(
-                zip(
-                    self.options._optim_list,
-                    self.cls.change_normalisation_group(parameters, "un_norm"),
-                )
-            )
-        else:
-            sim_params = dict(zip(self._optim_list, parameters))
-        nd_dict = self.nondimensionalise(sim_params)
-        return nd_dict
+        return time_series
     def get_voltage(self, times, **kwargs):
         """
         Args:
@@ -84,10 +88,10 @@ class BaseHandler:
             voltages[-1]=voltages[-2]
         return voltages
 class ContinuousHandler(BaseHandler):
-    def __init__(self, options, cls):
-        super().__init__(options, cls)
-    def simulate(self, parameters, times):
-        nd_dict=super().simulate(parameters, times)
+    def __init__(self, options):
+        super().__init__(options)
+    def simulate(self, nd_dict, times):
+        
         if self.options.Faradaic_only==True:
             def solver(times, nd_dict):
                 return sos.ODEsimulate(times, nd_dict[2,:])
@@ -100,8 +104,8 @@ class ContinuousHandler(BaseHandler):
             solver(times, nd_dict)
         return current
 class SquareWaveHandler(BaseHandler):
-        def __init__(self, options, cls):
-            super().__init__(options, cls)
+        def __init__(self, options):
+            super().__init__(options)
             self.SW_sampling()
         
     def SW_sampling(self,**kwargs):
@@ -150,34 +154,36 @@ class SquareWaveHandler(BaseHandler):
             forwards=np.array([current[x-1] for x in self.SW_params["f_idx"]])
             backwards=np.array([current[int(x)-1] for x in self.SW_params["b_idx"]])
         return forwards, backwards, backwards-forwards, self.SW_params["E_p"]
-        def simulate(self, parameters, times):
-                nd_dict=super().simulate(parameters, times)
-                times=self.SW_params["sim_times"]
-                solver=sos.SW_current
-                
-                if self._internal_options.dispersion == True:
-                    current = self.dispersion_simulator(solver,  sim_params, t)
-                else:
-                    current = solver(t, nd_dict)
-                sw_dict={"total":current}
-                sw_dict["forwards"], sw_dict["backwards"], sw_dict["net"], E_p=self.SW_peak_extractor(current)
-                if self.options.square_wave_return!="total":
-                    polynomial_cap=nd_dict["Cdl"]*np.ones(len(E_p))
-                    keys=["CdlE1", "CdlE2", "CdlE3"]
-                    for i in range(0, len(keys)):
-                        cdl=keys[i]
-                        if nd_dict[cdl]!=0:
-                            ep_power=np.power(E_p, i+1)
-                            polynomial_cap=np.add(polynomial_cap, nd_dict[cdl]*ep_power)
-                    current=np.add(polynomial_cap, sw_dict[self._internal_options.square_wave_return])
+    def simulate(self, parameters, times):
+            nd_dict=super().simulate(parameters, times)
+            times=self.SW_params["sim_times"]
+            solver=sos.SW_current
+            
+            if self._internal_options.dispersion == True:
+                current = self.dispersion_simulator(solver,  sim_params, times)
+            else:
+                current = solver(times, nd_dict)
+            sw_dict={"total":current}
+            sw_dict["forwards"], sw_dict["backwards"], sw_dict["net"], E_p=self.SW_peak_extractor(current)
+            if self.options.square_wave_return!="total":
+                polynomial_cap=nd_dict["Cdl"]*np.ones(len(E_p))
+                keys=["CdlE1", "CdlE2", "CdlE3"]
+                for i in range(0, len(keys)):
+                    cdl=keys[i]
+                    if nd_dict[cdl]!=0:
+                        ep_power=np.power(E_p, i+1)
+                        polynomial_cap=np.add(polynomial_cap, nd_dict[cdl]*ep_power)
+                current=np.add(polynomial_cap, sw_dict[self._internal_options.square_wave_return])
         return current
 
 
 
 class ExperimentHandler:
     @staticmethod
-    def create(options, cls):
-        #Handle conditional initialisation here
-        pass
+    def create(options):
+        if options.experiment_type=="SquareWave":
+            return SquareWaveHandler(options)
+        else:
+            return ContinuousHandler(options)
 
-
+        

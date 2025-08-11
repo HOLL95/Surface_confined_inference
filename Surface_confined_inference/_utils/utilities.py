@@ -127,6 +127,19 @@ def construct_experimental_dictionary(existing_dictionary,terminal_entry, *args)
             existing_dictionary[args[0]]={}
         sci.construct_experimental_dictionary(existing_dictionary[args[0]], terminal_entry, *args[1:])
         return existing_dictionary
+def GH_setup(nodes):
+    """
+    Args:
+        dispersion_distributions: list - list of distributions involved in dispersion
+    Returns:
+        dict: dictionary of nodes, weights and normal weights required for calculating Gauss-Hermite quadrature
+    We assume here that for n>1 normally dispersed parameters then the order of the integral
+    will be the same for all
+    """
+    labels = ["nodes", "weights", "normal_weights"]
+    nodes, weights = np.polynomial.hermite.hermgauss(nodes)
+    normal_weights = np.multiply(1 / math.sqrt(math.pi), weights)
+    return dict(zip(labels, [nodes, weights, normal_weights]))
     
 
 

@@ -27,40 +27,39 @@ class NDParams:
         self.c_Gamma = input_parameters["Surface_coverage"]
         self.area = input_parameters["area"]
 
-    def construct_function_dict(self, dim_dict):
-
-        function_dict = {}
-        for key in dim_dict:
-            if key[0] == "E" or key == "delta_E":
-                function_dict[key] = self.e_nondim
-            elif key[0] == "k" and "scale" not in key:
-                function_dict[key] = self.t_nondim
-            elif key == "Ru":
-                function_dict[key] = self.Ru_nondim
-            elif key == "Cdl":
-                function_dict[key] = self.Cdl_nondim
-            elif key == "gamma":
-                function_dict[key] = self.gamma_nondim
-            elif key == "omega":
-                function_dict[key] = self.omega_nondim
-            elif key == "v":
-                function_dict[key] = self.v_nondim
-            else:
-                function_dict[key] = lambda x:x
-        function_dict["cap_phase"] = lambda x:x
-        self.function_dict = function_dict
-    def construct_function_dict_SW(self, dim_dict):
-
-        function_dict = {}
-        for key in dim_dict:
-            if key[0] == "k" and "scale" not in key:
-                function_dict[key] = self.t_nondim
-            elif key == "gamma":
-                function_dict[key] = self.gamma_nondim
-            else:
-                function_dict[key] = lambda x:x
-        function_dict["cap_phase"] = lambda x:x
-        self.function_dict = function_dict
+    def construct_function_dict(self, dim_dict, experiment_type):
+        if experiment_type !="SquareWave":
+            function_dict = {}
+            for key in dim_dict:
+                if key[0] == "E" or key == "delta_E":
+                    function_dict[key] = self.e_nondim
+                elif key[0] == "k" and "scale" not in key:
+                    function_dict[key] = self.t_nondim
+                elif key == "Ru":
+                    function_dict[key] = self.Ru_nondim
+                elif key == "Cdl":
+                    function_dict[key] = self.Cdl_nondim
+                elif key == "gamma":
+                    function_dict[key] = self.gamma_nondim
+                elif key == "omega":
+                    function_dict[key] = self.omega_nondim
+                elif key == "v":
+                    function_dict[key] = self.v_nondim
+                else:
+                    function_dict[key] = lambda x:x
+            function_dict["cap_phase"] = lambda x:x
+            
+        else:
+            function_dict = {}
+            for key in dim_dict:
+                if key[0] == "k" and "scale" not in key:
+                    function_dict[key] = self.t_nondim
+                elif key == "gamma":
+                    function_dict[key] = self.gamma_nondim
+                else:
+                    function_dict[key] = lambda x:x
+            function_dict["cap_phase"] = lambda x:x
+        self.function_dict=function_dict
     def redimensionalise(self, nondim_dict):
 
         dim_dict = {}
@@ -82,8 +81,6 @@ class NDParams:
             else:
                 dim_dict[key] = nondim_dict[key]
         return dim_dict
-       
-
     def e_nondim(self, value):
         return value / self.c_E0
 

@@ -122,6 +122,49 @@ class SequenceOption(TypedOption):
                 if not isinstance(item, self.item_type):
                     raise TypeError(f"Item {i} in {self.name} must be of type {self.item_type.__name__}, "
                                     f"got {type(item).__name__}")
+class ExclusiveSequenceOption(SequenceOption):
+     """Descriptor for sequence options where all values must be present."""
+    def __init__(self, name: str, default: Sequence = None, 
+                    target: Optional[Sequence]=[]
+                    doc: str = None):
+                    super().__init__(name, collections.abc.Sequence, default or [], doc)
+                    self.target=set(target)
+
+
+    def validate(self, value: Any) -> None:
+        super().validate(value)
+        if value is not None:
+            value_set=set(value)
+            missing=self.target.difference(value_set)
+            if len(missing)>0:
+                raise ValueError(f"In option {self.name} the following values are missing {" ".join(list(missing))}")
+            present=value_set.difference(self.target)
+            if len(present)>0:
+                raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
+class ExclusiveDictOption(ExclusiveSequenceOption):
+     """Descriptor for sequence options where all values must be present."""
+      def __init__(self, name: str, default: Dict = None, 
+                    target: Optional[Sequence]=[],
+                    value_type: Optional[Type] = None,
+                    doc: str = None):
+                    self.required=required
+                    self.target=set(target)
+                    self.value_type=value_type
+
+    def validate(self, value: Any) -> None:
+        super().validate(value)
+        if value is not None:
+            value_set=set(value.keys())
+            missing=self.target.difference(value_set)
+            if len(missing)>0:
+                raise ValueError(f"In option {self.name} the following values are missing {" ".join(list(missing))}")
+            present=value_set.difference(self.target)
+            if len(present)>0:
+                raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
+            if value_type is not None:
+                for key in value.keys():
+                    if isinstance(value[key], self.value_type) is False:
+                        raise TypeError(f"In {self.name}, element {key} is {type(value[key])}, and not the required {self.value_type}")
 
 class StringOption(TypedOption):
     """Descriptor for string options."""
