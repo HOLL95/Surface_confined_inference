@@ -32,7 +32,7 @@ class Dispersion:
         if type(self.bins) is not list:
             self.bins = [self.bins]
 
-    def generic_dispersion(self, dim_dict, GH_dict=None):
+    def generic_dispersion(self, dim_dict, GH_list=None):
         weight_arrays = []
         value_arrays = []
         for i in range(0, len(self.dispersion_parameters)):
@@ -48,12 +48,12 @@ class Dispersion:
             elif self.distributions[i] == "normal":
                 param_mean = dim_dict[self.dispersion_parameters[i] + "_mean"]
                 param_std = dim_dict[self.dispersion_parameters[i] + "_std"]
-                if type(GH_dict) is dict:
+                if GH_list is not None
                     param_vals = [
                         (param_std * math.sqrt(2) * node) + param_mean
-                        for node in GH_dict["nodes"]
+                        for node in GH_list[i]["nodes"]
                     ]
-                    param_weights = GH_dict["normal_weights"]
+                    param_weights = GH_list[i]["normal_weights"]
                 else:
                     min_val = norm.ppf(1e-4, loc=param_mean, scale=param_std)
                     max_val = norm.ppf(1 - 1e-4, loc=param_mean, scale=param_std)

@@ -2,7 +2,7 @@ import SurfaceODESolver as sos
 import Surface_confined_inference as sci
 from Surface_confined_inference._utils import RMSE
 from ._Handler._ParameterHandler import ParameterHandler
-from ._Handler._BaseVoltammetry import ExperimentHandler
+from ._Handler._BaseVoltammetry import ExperimentHandler, SolverContext
 from pathlib import Path
 import pints
 import collections.abc
@@ -17,7 +17,7 @@ import math
 import matplotlib.pyplot as plt
 import json
 class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
-     _change_options=["experiment_type", "GH_quadrature", "dispersion_bins", "phase_only"]
+     _change_options=["experiment_type", "GH_quadrature", "dispersion_bins", "phase_only", "square_wave_return"]
     def __init__(self, experiment_type, experiment_parameters, options_handler=None, **kwargs):
         """
         Initialize a SingleExperiment object, for use with a pints.ForwardProblem interface.
@@ -50,7 +50,6 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         self._NDclass = sci.NDParams(
             self._internal_options.experiment_type, experiment_parameters
         )
-        self._ExperimentHandler=ExperimentHandler.create(self._internal_options)
 
         if experiment_type!="SquareWave":
             self._essential_parameters = [
@@ -160,7 +159,13 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         self._phandler=ParameterHandler(**kwargs)
         self._internal_options.dispersion=self._phandler.options.dispersion
         self._ND_class.construct_function_dict(self._phandler.sim_dict, self._internal_options.experiment_type)
-    
+        self._SolverContext=SolverContext(self._ND_class.function_dict,
+                                                self._phandler.sim_dict
+                                                self._phandler.disp_class, 
+                                                self._phandler.GH_list,
+                                                self.optim_list
+                                                )
+        self._ExperimentHandler=ExperimentHandler(self._internal_options, self._SolverContext)
     def experiment_top_hat(self, times, current, **kwargs):
         Fourier_options=["Fourier_window", "Fourier_function", "top_hat_width", "Fourier_harmonics"]
         for key in Fourier_options:
@@ -182,24 +187,14 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
 
         """
         if self.optim_list is None:
-            raise Exception(
-                "optim_list variable needs to be set, even if it is an empty list"
-            )
+            raise ValueError("optim_list variable needs to be set, even if it is an empty list")
         if len(parameters) != len(self.optim_list):
-            raise Exception(
-                f"Parameters and optim_list need to be the same length, currently parameters={len(parameters)} and optim_list={len(self.optim_list)}"
-            )
+            raise ValueError(f"Parameters and optim_list need to be the same length, currently parameters={len(parameters)} and optim_list={len(self.optim_list)}")
         if self.options.normalise_parameters == True:
-            sim_params = dict(
-                zip(
-                    self.optim_list,
-                    self.cls.change_normalisation_group(parameters, "un_norm"),
-                )
-            )
+            sim_params = dict(zip(self.optim_list,self.cls.change_normalisation_group(parameters, "un_norm")))
         else:
             sim_params = dict(zip(self.optim_list, parameters))
-        nd_dict = self._phandler.nondimensionalise(sim_params, self._phandler.sim_dict, self._ND_class.function_dict)
-        return self._ExpperimentHandler.simulate(nd_dict, times)
+        return self._ExperimentHandler.simulate(sim_params, times)
         
     def save_class(self,path):
         save_dict={"Options":self._internal_options.as_dict(),}
@@ -222,7 +217,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             json.dump(save_dict, f)
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
-        if name in _core_options:
+        if name in self._change_options:
             self._intitialise_phandler(options=self._internal_options)
 
     

@@ -1,5 +1,4 @@
 from ._core._Options._SingleExperimentOptions import SingleExperimentOptions
-from ._core._Options._ParallelOptions import ParallelOptions
 from ._core._Options._OptionsMixin import OptionsAwareMixin
 from ._core._Options._MultiExperimentOptions import MultiExperimentOptions
 from ._core._Options._AxOptions import AxInterfaceOptions

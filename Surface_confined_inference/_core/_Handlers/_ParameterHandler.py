@@ -114,7 +114,7 @@ class ParmeterHandler:
             self.GH_values=None
             if self.options.GH_quadrature == True:
                 if len(normal)>0:
-                    self.GH_values=[sci._utils.GH_setup(dispersion_bins[x]) for x in normal]
+                    self.GH_values=[sci._utils.GH_setup(dispersion_bins[x]) if x in normal else None for x in range(0, len(dispersion_distributions))]
             self.disp_class = sci.Dispersion(
                 self.options.dispersion_bins,
                 dispersion_parameters,
@@ -127,6 +127,7 @@ class ParmeterHandler:
         else:
             dispersion=False
             self.dispersion_parameters=[]
+            self.disp_class=None
             return dispersion
     def change_normalisation_group(self, parameters, method):
         """
@@ -237,7 +238,9 @@ class ParmeterHandler:
                                 simulation_dict[param]=self.fixed_parameters[param]
                         
 
-
+        if self.options.phase_only==True:
+            simulation_dict["cap_phase"]=simulation_dict["phase"]
+            simulation_dict["phase"]=simulation_dict["cap_phase"]
         simulation_dict = self.validate_input_parameters(simulation_dict)
 
        
@@ -265,28 +268,3 @@ class ParmeterHandler:
             inputs["tr"] = -1
             inputs["v"] = 0
         return inputs
-    def nondimensionalise(self, sim_params, simulation_dict, function_dict):
-        """
-        Args:
-            sim_params (dict): dictionary of parameter values with the same keys as _optim_list
-        Modifies:
-            _internal_memory["simulation_dict"] with the values from sim_params
-        Returns:
-            dict: Dictionary of appropriately non-dimensionalised parameters
-        """
-        nd_dict = {}
-        for key in self._optim_list:
-            simulation_dict[key] = sim_params[key]
-        
-        for key in simulation_dict.keys():
-            nd_dict[key] = function_dict[key](
-                simulation_dict[key]
-            )
-        
-        if self.options.phase_only == True:
-            simulation_dict["cap_phase"] = (
-                simulation_dict["phase"]
-            )
-            nd_dict["cap_phase"] = simulation_dict["phase"]
-            
-        return nd_dict
