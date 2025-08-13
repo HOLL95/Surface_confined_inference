@@ -36,8 +36,8 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
     double QH21plus = Ith(y, 9);
     double QH2=(-Q - Qminus - Q2minus - QH - QHplus - QHminus - QH21plus - QH22plus + 1);
 
-    Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t){return p.at("phase");})-I*(*params)["Ru"];
-    cap_Er=mono_E(*params, t,[](const std::unordered_map<std::string, double>& p, double t){return p.at("cap_phase");})-I*(*params)["Ru"];
+    Er=mono_E(*params, t, (*params)["phase"])-I*(*params)["Ru"];
+    cap_Er=mono_E(*params, t,(*params)["cap_phase"])-I*(*params)["Ru"];
     cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
 
 

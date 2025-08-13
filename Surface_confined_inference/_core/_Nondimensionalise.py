@@ -45,6 +45,8 @@ class NDParams:
                     function_dict[key] = self.omega_nondim
                 elif key == "v":
                     function_dict[key] = self.v_nondim
+                elif key=="tr":
+                    function_dict[key] = self.t_nondim
                 else:
                     function_dict[key] = lambda x:x
             function_dict["cap_phase"] = lambda x:x

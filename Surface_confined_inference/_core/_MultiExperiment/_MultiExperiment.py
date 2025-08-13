@@ -54,7 +54,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                                                     common=self._internal_options.common, 
                                                     boundaries=self._internal_options.boundaries,
                                                     normalise=self._internal_options.normalise,
-                                                    sim_class=sci.ParallelSimulator)
+                                                    sim_class=sci.SingleExperiment)
         self.classes=initialised_classes.classes
         self.class_keys=initialised_classes.all_keys
         self._input_params=parameters

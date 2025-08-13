@@ -123,9 +123,9 @@ class SequenceOption(TypedOption):
                     raise TypeError(f"Item {i} in {self.name} must be of type {self.item_type.__name__}, "
                                     f"got {type(item).__name__}")
 class ExclusiveSequenceOption(SequenceOption):
-     """Descriptor for sequence options where all values must be present."""
+    """Descriptor for sequence options where all values must be present."""
     def __init__(self, name: str, default: Sequence = None, 
-                    target: Optional[Sequence]=[]
+                    target: Optional[Sequence]=[],
                     doc: str = None):
                     super().__init__(name, collections.abc.Sequence, default or [], doc)
                     self.target=set(target)
@@ -141,15 +141,15 @@ class ExclusiveSequenceOption(SequenceOption):
             present=value_set.difference(self.target)
             if len(present)>0:
                 raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
-class ExclusiveDictOption(ExclusiveSequenceOption):
-     """Descriptor for sequence options where all values must be present."""
-      def __init__(self, name: str, default: Dict = None, 
-                    target: Optional[Sequence]=[],
-                    value_type: Optional[Type] = None,
-                    doc: str = None):
-                    self.required=required
-                    self.target=set(target)
-                    self.value_type=value_type
+class ExclusiveDictOption(TypedOption):
+    """Descriptor for sequence options where all values must be present."""
+    def __init__(self, name: str, default: Dict = None, 
+                target: Optional[Sequence]=[],
+                value_type: Optional[Type] = None,
+                doc: str = None):
+                super().__init__(name, dict, default or {}, doc)
+                self.target=set(target)
+                self.value_type=value_type
 
     def validate(self, value: Any) -> None:
         super().validate(value)
@@ -161,7 +161,7 @@ class ExclusiveDictOption(ExclusiveSequenceOption):
             present=value_set.difference(self.target)
             if len(present)>0:
                 raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
-            if value_type is not None:
+            if self.value_type is not None:
                 for key in value.keys():
                     if isinstance(value[key], self.value_type) is False:
                         raise TypeError(f"In {self.name}, element {key} is {type(value[key])}, and not the required {self.value_type}")

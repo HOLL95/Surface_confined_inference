@@ -1,8 +1,8 @@
 import SurfaceODESolver as sos
 import Surface_confined_inference as sci
 from Surface_confined_inference._utils import RMSE
-from ._Handler._ParameterHandler import ParameterHandler
-from ._Handler._BaseVoltammetry import ExperimentHandler, SolverContext
+from ._Handlers._ParameterHandler import ParameterHandler
+from ._Handlers._BaseVoltammetry import ExperimentHandler, ParameterInterface
 from pathlib import Path
 import pints
 import collections.abc
@@ -17,7 +17,7 @@ import math
 import matplotlib.pyplot as plt
 import json
 class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
-     _change_options=["experiment_type", "GH_quadrature", "dispersion_bins", "phase_only", "square_wave_return"]
+    _change_options=["experiment_type", "GH_quadrature", "dispersion_bins", "phase_only", "square_wave_return", "input_params"]
     def __init__(self, experiment_type, experiment_parameters, options_handler=None, **kwargs):
         """
         Initialize a SingleExperiment object, for use with a pints.ForwardProblem interface.
@@ -34,58 +34,28 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             Exception: If the experiment string is not of accepted types
             Exception: The required experimental input parameters for each technique are not found
         """
-        for key in extra_args.keys():
-            accepted_arguments[key] += extra_args[key]
         kwargs["experiment_type"] = experiment_type
+        kwargs["input_params"]=experiment_parameters
         self._input_parameters=experiment_parameters
         if options_handler is None:
             options_handler=None
         self._options_handler=options_handler
+        
         self._options_class = sci.SingleExperimentOptions(options_handler=options_handler,**kwargs)
-        self._phandler=None
         self._internal_options=self._options_class._experiment_options
+        self._phandler=ParameterHandler(parameters=[], boundaries={}, options=self._internal_options, fixed_parameters={})
+        self._warning_raised=False
         self.experiment_type=self._internal_options.experiment_type
-        self._phandler=ParameterHandler([], {}, self._internal_options, {})
-        experiment_parameters=self._phandler.validate_input_parameters(experiment_parameters)
-        self._NDclass = sci.NDParams(
-            self._internal_options.experiment_type, experiment_parameters
-        )
-
-        if experiment_type!="SquareWave":
-            self._essential_parameters = [
-                "E0",
-                "k0",
-                "Cdl",
-                "gamma",
-                "CdlE1",
-                "CdlE2",
-                "CdlE3",
-                "alpha",
-                "Ru",
-                "phase",
-            ]
-        else:
-            self._essential_parameters=[
-                "E0",
-                "k0",
-                "gamma",
-                "alpha",
-                "Cdl",
-                "CdlE1",
-                "CdlE2",
-                "CdlE3",
-                "phase"
-            ]
-    def dim_i(self, current):return np.multiply(current, self._NDclass.c_I0)
-    def dim_e(self, potential):return np.multiply(potential, self._NDclass.c_E0)
-    def dim_t(self, time):return np.multiply(time, self._NDclass.c_T0)
-    def nondim_i(self, current):return np.divide(current, self._NDclass.c_I0)
-    def nondim_e(self, potential):return np.divide(potential, self._NDclass.c_E0)
-    def nondim_t(self, time):return np.divide(time, self._NDclass.c_T0)
+    def dim_i(self, current):return np.multiply(current, self._ND_class.c_I0)
+    def dim_e(self, potential):return np.multiply(potential, self._ND_class.c_E0)
+    def dim_t(self, time):return np.multiply(time, self._ND_class.c_T0)
+    def nondim_i(self, current):return np.divide(current, self._ND_class.c_I0)
+    def nondim_e(self, potential):return np.divide(potential, self._ND_class.c_E0)
+    def nondim_t(self, time):return np.divide(time, self._ND_class.c_T0)
     def n_parameters( self,):return len(self.optim_list)
     def n_outputs(self,):return 1
     def redimensionalise(self, nondim_dict):
-        return self._NDclass.redimensionalise(nondim_dict)
+        return self._ND_class.redimensionalise(nondim_dict)
 
     @property
     def optim_list(self):
@@ -93,7 +63,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         Returns:
             list: internal variable `_optim_list`
         """
-        return self._phandler._optim_list
+        return self._phandler.context.optim_list
 
     @optim_list.setter
     def optim_list(self, parameters):
@@ -112,7 +82,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         Returns:
             dict: internal variable _internal_memory["boundries"]
         """
-        return self._phandler.boundaries
+        return self._phandler.context.boundaries
     @boundaries.setter
     def boundaries(self, boundaries):
         """
@@ -132,7 +102,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             self._intitialise_phandler(boundaries=boundaries)
     @property
     def fixed_parameters(self):
-        return self._phandler.fixed_parameters
+        return self._phandler.context.fixed_parameters
 
     @fixed_parameters.setter
     def fixed_parameters(self, parameter_values):
@@ -145,34 +115,73 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         if isinstance(parameter_values, dict) is False:
             return TypeError("Argument needs to be a dictionary")
         else:
+            
             self._intitialise_phandler(fixed_parameters=parameter_values)
     def _intitialise_phandler(self, **kwargs):
         default={
-            "parameters":self._phandler.optim_list,
-            "boundaries":self._phandler.boundaries,
-            "fixed_parameters":self._phandler.fixed_parameters,
+            "parameters":self.optim_list,
+            "boundaries":self.boundaries,
+            "fixed_parameters":self.fixed_parameters,
             "options":self._internal_options
         }
         for key in default.keys():
             if key not in kwargs:
                 kwargs[key]=default[key]
         self._phandler=ParameterHandler(**kwargs)
-        self._internal_options.dispersion=self._phandler.options.dispersion
-        self._ND_class.construct_function_dict(self._phandler.sim_dict, self._internal_options.experiment_type)
-        self._SolverContext=SolverContext(self._ND_class.function_dict,
-                                                self._phandler.sim_dict
-                                                self._phandler.disp_class, 
-                                                self._phandler.GH_list,
-                                                self.optim_list
+        self._param_context=self._phandler.context
+        self._disp_context=self._phandler._disp_context
+        if self._disp_context.dispersion_warning !="":
+            if self._warning_raised==False:
+                print(ParameterHandler.create_warning(self._disp_context.dispersion_warning))
+                self._warning_raised=True
+        if self._warning_raised==True:
+            if self._disp_context.dispersion_warning=="":
+                print(ParameterHandler.create_warning("Parameters set correctly"))
+        self._ND_class=sci.NDParams(self._internal_options.experiment_type, self._internal_options.input_params)
+        self._internal_options.dispersion=self._disp_context.dispersion
+        self._ND_class.construct_function_dict(self._param_context.sim_dict, self._internal_options.experiment_type)
+        if self._internal_options.dispersion==True:
+            self._disp_class=sci.Dispersion(
+                                            self._internal_options.dispersion_bins,
+                                            self._disp_context.dispersion_parameters,
+                                            self._disp_context.dispersion_distributions,
+                                            self.optim_list,
+                                            self.fixed_parameters,
+                                        )
+            functor=self._disp_class.generic_dispersion
+        else:
+            functor=lambda d, l: (d, l)
+
+        self._param_interface=ParameterInterface(func_dict=self._ND_class.function_dict,
+                                                sim_dict=self._param_context.sim_dict,
+                                                disp_function=functor, 
+                                                gh_values=self._disp_context.GH_values,
+                                                optim_list=self.optim_list
                                                 )
-        self._ExperimentHandler=ExperimentHandler(self._internal_options, self._SolverContext)
+        self._ExperimentHandler=ExperimentHandler.create(self._internal_options, self._param_interface)
     def experiment_top_hat(self, times, current, **kwargs):
         Fourier_options=["Fourier_window", "Fourier_function", "top_hat_width", "Fourier_harmonics"]
         for key in Fourier_options:
             if key not in kwargs:
                 kwargs[key]=getattr(self, key)
         return sci.top_hat_filter(times, current, **kwargs)
-    def change_normalisation_group(self, parameters, mode): return self._phandler.change_normalisation_group(parameters, moder)
+    def change_normalisation_group(self, parameters, mode): return self._phandler.change_normalisation_group(parameters, mode)
+    def get_voltage(self, times, **kwargs):
+        if "input_parameters" not in kwargs:
+            params=self._input_parameters
+        else:
+            params=kwargs["input_parameters"]
+            kwargs.pop("input_parameters")
+        return self._ExperimentHandler.get_voltage(times, params, self._input_parameters,**kwargs)
+    def calculate_times(self, **kwargs):
+        if "input_parameters" not in kwargs:
+            kwargs["input_parameters"]=self._input_parameters
+        times=self._ExperimentHandler.calculate_times(kwargs["input_parameters"], **kwargs)
+        if "dimensional" not in kwargs:
+            return times
+        elif kwargs["dimensional"]==False and self._internal_options.experiment_type!="SquareWave":
+            return self.nondim_t(times)
+        
     def simulate(self, parameters, times):
         """
         Args:
@@ -190,7 +199,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             raise ValueError("optim_list variable needs to be set, even if it is an empty list")
         if len(parameters) != len(self.optim_list):
             raise ValueError(f"Parameters and optim_list need to be the same length, currently parameters={len(parameters)} and optim_list={len(self.optim_list)}")
-        if self.options.normalise_parameters == True:
+        if self._internal_options.normalise_parameters == True:
             sim_params = dict(zip(self.optim_list,self.cls.change_normalisation_group(parameters, "un_norm")))
         else:
             sim_params = dict(zip(self.optim_list, parameters))
@@ -206,19 +215,26 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             
         option_keys=self._internal_options.get_option_names()
 
-        
-        save_dict["Experiment_parameters"]=self._internal_memory["input_parameters"]
+        if "tr" in self._input_parameters:
+            self._input_parameters.pop("tr")
+        save_dict["Experiment_parameters"]=self._input_parameters
         save_dict["optim_list"]=self.optim_list
-        save_dict["fixed_parameters"]=self._internal_memory["fixed_parameters"]
-        save_dict["boundaries"]=self._internal_memory["boundaries"]
+        save_dict["fixed_parameters"]=self.fixed_parameters
+        save_dict["boundaries"]=self.boundaries
         if path[-5:]!=".json":
             path+=".json"
         with open(path, "w") as f:
             json.dump(save_dict, f)
     def __setattr__(self, name, value):
+        if name=="input_params":
+            value=ParameterHandler.validate_input_parameters(value, self._internal_options.experiment_type)
+        if name=="experiment_type" and hasattr(self._internal_options, "experiment_type"):
+            if value!=self._internal_options.experiment_type:
+                raise ValueError("Cannot switch experiment of existing class ({0}), please create a new one".format(self._internal_options.experiment_type))
         super().__setattr__(name, value)
         if name in self._change_options:
             self._intitialise_phandler(options=self._internal_options)
+        
 
     
    

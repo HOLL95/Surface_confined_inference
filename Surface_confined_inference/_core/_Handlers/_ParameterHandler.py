@@ -1,26 +1,25 @@
 import Surface_confined_inference as sci
-class ParmeterHandler:
-    def __init__(self, **kwargs):
-        
-        self.options=kwargs["options"]
-        self.fixed_parameters=kwargs["fixed_parameters"]
-        self.boundaries=kwargs["boundaries"]
-        parameters=kwargs["parameters"]
-        missing_parameters = []
-        if options.problem!="inverse":
-            for i in range(0, len(parameters)):
-                if parameters[i] not in boundaries:
-                    missing_parameters.append(parameters[i])
-            if len(missing_parameters) > 0:
-                    raise ValueError(
-                        "Need to define boundaries for:\n %s" % ", ".join(missing_parameters)
-                    )
+import copy
+import re
+import itertools
+from dataclasses import dataclass, field
+import os
+@dataclass(frozen=True)
+class DispersionContext:
+    dispersion: bool
+    dispersion_warning: str =""
+    dispersion_parameters: list = field(default_factory=list)  
+    dispersion_distributions: list = field(default_factory=list)  
+    all_parameters: list = field(default_factory=list)  
+    GH_values: list = field(default_factory=list)
 
-                
-        self.options.dispersion=self.dispersion_checking(parameters)
-        self.sim_dict=self.simulation_dict_construction(parameters)
-        self._optim_list = parameters       
-    def dispersion_checking(self, optim_list):
+@dataclass(frozen=True)
+class ParameterContext:
+    fixed_parameters: dict
+    boundaries: dict
+    optim_list: list 
+    sim_dict: dict
+def dispersion_checking( all_parameters, GH_quadrature, bins):
         """
 
         Function called when defining `_optim_list` variable, to check for the presence of dispersed parameters.
@@ -46,9 +45,7 @@ class ParmeterHandler:
         The required information is also initiliased for Gauss-Hermite quadratture, if required. If no normal distribution is found, then the GH_quadrature information is set to None
 
         """
-        all_parameters = list(
-            set(optim_list + list(self.fixed_parameters.keys()))
-        )
+        
         disp_flags = [
             ["mean", "std"],
             ["logmean", "logscale"],
@@ -105,30 +102,181 @@ class ParmeterHandler:
                     )
                 else:
                     dispersion_distributions.append(best_guess)
-            orig_GH_value = self.options.GH_quadrature
-            if len(dispersion_distributions)!=len(self.options.dispersion_bins):
-                raise ValueError("Need one bin for each of {0}, currently only have {1}".format(dispersion_distributions, self.options.dispersion_bins))
-            if "normal" not in dispersion_distributions:
-                self.options.GH_quadrature = False
-            normal=[x for x in range(0, len(dispersion_distributions)) if x=="normal"]
-            self.GH_values=None
-            if self.options.GH_quadrature == True:
+            if len(dispersion_distributions)!=len(bins):
+                raise ValueError("Need one bin for each of {0}, currently only have {1}".format(dispersion_distributions, bins))
+
+            normal=[x for x in range(0, len(dispersion_distributions)) if dispersion_distributions[x]=="normal"]
+            GH_values=[]
+            if GH_quadrature == True:
                 if len(normal)>0:
-                    self.GH_values=[sci._utils.GH_setup(dispersion_bins[x]) if x in normal else None for x in range(0, len(dispersion_distributions))]
-            self.disp_class = sci.Dispersion(
-                self.options.dispersion_bins,
-                dispersion_parameters,
-                dispersion_distributions,
-                all_parameters,
-                self.fixed_parameters,
+                    
+                    GH_values=[sci._utils.GH_setup(bins[x]) if x in normal else None for x in range(0, len(dispersion_distributions))]
+
+
+            _disp_context =DispersionContext(
+                dispersion_parameters=dispersion_parameters,
+                dispersion_distributions=dispersion_distributions,
+                all_parameters=all_parameters,
+                dispersion=True,
+                GH_values=GH_values
             )
-            self.dispersion_parameters=dispersion_parameters
-            return dispersion
+            
+            return _disp_context
         else:
-            dispersion=False
-            self.dispersion_parameters=[]
-            self.disp_class=None
-            return dispersion
+            _disp_context=DispersionContext(dispersion=False)
+            return _disp_context
+def validate_boundaries(parameters, boundaries):
+    missing_parameters = []
+
+    for i in range(0, len(parameters)):
+        if parameters[i] not in boundaries:
+            missing_parameters.append(parameters[i])
+    if len(missing_parameters) > 0:
+            raise ValueError(
+                "Need to define boundaries for:\n %s" % ", ".join(missing_parameters)
+            )
+def simulation_dict_construction(parameters, fixed_parameters, essential_parameters, dispersion_parameters, dispersion, simulation_dict, options):
+        """
+        Args:
+            parameters (list): passed when we set _optim_list, a list of str objects referring to parameter name
+        Initialises/modifies:
+            _internal_memory["simulation_dict"]
+        Raises:
+            Exception: If parameters set in `essential_parameters` are not found in either `_optim_list` or `fixed_parameters`
+        1) All parameters in `_optim_list` are set to `None`, as they will be changed on each simulation step
+        2) All parameter values in `fixed_parameters` are passed to `simulation_dict`
+        3) Checks to see if the parameters in _essential_parameters are present in `simulation_dict`
+            a) If dispersion is present, then the parameter will be set as part of the `dispersion_simulator` function, so it is set to 0
+            b) Else, if the missing parameter is one of the nonlinear capacitance parameters these are set to 0 for convenience
+            c) Else an error is thrown
+        4) Input parameters are fixed for each technique as appropriate using `validate_input_parameters`
+        5) Each parameter is then assigned its own nondimensionalisation function using `NDclass`
+
+        """
+        missing_parameters = []
+        all_parameters = list(
+            set(parameters + list(fixed_parameters.keys()))
+        )
+        for key in all_parameters:
+            if key in parameters:
+                simulation_dict[key] = None
+                if key in fixed_parameters:
+                    warn(
+                        "%s in both fixed_parameters and optimisation_list, the fixed parameter will be ignored!"
+                        % key
+                    )
+            elif key in fixed_parameters:
+                simulation_dict[key] = fixed_parameters[key]
+        for key in essential_parameters:
+            if key not in simulation_dict:
+                if dispersion == True:
+                    if key in dispersion_parameters:
+                        simulation_dict[key] = 0
+                        continue
+                if "CdlE" in key:
+                    simulation_dict[key] = 0
+                elif options.experiment_type in ["DCV", "SquareWave"] and "phase" in key:
+                    simulation_dict[key]=0
+                else:
+                    missing_parameters.append(key)
+        if len(missing_parameters) > 0:
+            raise Exception(
+                "The following parameters either need to be set in optim_list, or set at a value using the fixed_parameters variable\n{0}".format(
+                    ", ".join(missing_parameters)
+                )
+            )
+        options_and_requirements={
+            "kinetics":{"option_value":options.kinetics,
+                        "actions":["simulation_options"],
+                        "options":{"values":{"Marcus":1, "ButlerVolmer":0}, "flag":"Marcus_flag"}}
+        }
+        if "theta" not in simulation_dict:
+            simulation_dict["theta"]=0
+        for key in options_and_requirements.keys():
+            sub_dict=options_and_requirements[key]
+            option_value=sub_dict["option_value"]
+            for action in sub_dict["actions"]:
+                if action=="simulation_options":
+                    sim_dict_key=sub_dict["options"]["flag"]
+                    sim_dict_value=sub_dict["options"]["values"][option_value]
+                    simulation_dict[sim_dict_key]=sim_dict_value
+                elif action =="params":
+                    extra_required_params=sub_dict["params"][option_value]
+                    for param in extra_required_params:
+                        if param not in all_parameters:
+                            raise Exception("Because of option {0} being set to {1}, the following parameters need to be in either optim_list or fixed_parameters: {2}\n. Currently missing {3}".format(key, option_value, extra_required_params, param))
+                        else:
+                            if param in parameters:
+                                simulation_dict[param]=None
+                            else:
+                                simulation_dict[param]=fixed_parameters[param]
+                        
+
+        if options.phase_only==True:
+            simulation_dict["cap_phase"]=simulation_dict["phase"]
+            simulation_dict["phase"]=simulation_dict["cap_phase"]
+        simulation_dict = ParameterHandler.validate_input_parameters(simulation_dict, options.experiment_type)
+        return simulation_dict
+class ParameterHandler:
+    def __init__(self, **kwargs):
+        self.options=kwargs["options"]
+        self.fixed_parameters=kwargs["fixed_parameters"]
+        self.boundaries=kwargs["boundaries"]
+        if self.options.experiment_type!="SquareWave":
+            self._essential_parameters = ["E0","k0","Cdl","gamma","CdlE1","CdlE2","CdlE3","alpha","Ru","phase"]
+        else:
+            self._essential_parameters=["E0","k0","gamma","alpha","Cdl","CdlE1","CdlE2","CdlE3",]
+        parameters=kwargs["parameters"]
+        self._optim_list=parameters
+        if self.options.problem=="inverse":
+            validate_boundaries(self._optim_list, self.boundaries)
+        
+        num_params=len(parameters)       
+        num_fixed=len(list(self.fixed_parameters.values()))
+        sim_dict={}
+        all_parameters= list(set(self._optim_list + list(self.fixed_parameters.keys())))
+        if num_params+num_fixed==0:
+            self._disp_context=DispersionContext(dispersion=False)
+        elif num_params==0 or num_fixed==0:
+            if num_params==0:
+                elem="optim_list"
+            elif num_fixed==0:
+                elem="fixed_parameters"
+            try: 
+                self._disp_context=dispersion_checking(all_parameters, self.options.GH_quadrature, self.options.dispersion_bins)
+                sim_dict=sim_dict=simulation_dict_construction(parameters, 
+                                            self.fixed_parameters, 
+                                            self._essential_parameters, 
+                                            self._disp_context.dispersion_parameters, 
+                                            self._disp_context.dispersion, 
+                                            copy.deepcopy(self.options.input_params), 
+                                            self.options)
+            except Exception as e:
+                
+                
+                warning_str=f"Warning: {elem} not set, resulting in: \n {e} \n Simulations will not behave as expected"
+                self._disp_context=DispersionContext(dispersion=False, dispersion_warning=warning_str)
+                
+        else:   
+            self._disp_context=dispersion_checking(all_parameters, self.options.GH_quadrature, self.options.dispersion_bins)
+            sim_dict=simulation_dict_construction(parameters, 
+                                            self.fixed_parameters, 
+                                            self._essential_parameters, 
+                                            self._disp_context.dispersion_parameters, 
+                                            self._disp_context.dispersion, 
+                                            copy.deepcopy(self.options.input_params), 
+                                            self.options)
+        self.context=ParameterContext(
+            fixed_parameters=kwargs["fixed_parameters"],
+            boundaries=kwargs["boundaries"],
+            optim_list=kwargs["parameters"],
+            sim_dict=sim_dict
+        ) 
+    @staticmethod
+    def create_warning(warning_str):
+        term=os.get_terminal_size()[0]
+        return "#"*term+"\n"+warning_str+"\n"+"#"*(term-1)
+   
     def change_normalisation_group(self, parameters, method):
         """
         Args:
@@ -160,110 +308,24 @@ class ParmeterHandler:
                     ],
                 )
         return normed_params
-
-    def simulation_dict_construction(self, parameters, simulation_dict):
-        """
-        Args:
-            parameters (list): passed when we set _optim_list, a list of str objects referring to parameter name
-        Initialises/modifies:
-            _internal_memory["simulation_dict"]
-        Raises:
-            Exception: If parameters set in `essential_parameters` are not found in either `_optim_list` or `fixed_parameters`
-        1) All parameters in `_optim_list` are set to `None`, as they will be changed on each simulation step
-        2) All parameter values in `fixed_parameters` are passed to `simulation_dict`
-        3) Checks to see if the parameters in _essential_parameters are present in `simulation_dict`
-            a) If dispersion is present, then the parameter will be set as part of the `dispersion_simulator` function, so it is set to 0
-            b) Else, if the missing parameter is one of the nonlinear capacitance parameters these are set to 0 for convenience
-            c) Else an error is thrown
-        4) Input parameters are fixed for each technique as appropriate using `validate_input_parameters`
-        5) Each parameter is then assigned its own nondimensionalisation function using `NDclass`
-
-        """
-        missing_parameters = []
-        all_parameters = list(
-            set(parameters + list(self.fixed_parameters.keys()))
-        )
-        for key in all_parameters:
-            if key in parameters:
-                simulation_dict[key] = None
-                if key in self.fixed_parameters:
-                    warn(
-                        "%s in both fixed_parameters and optimisation_list, the fixed parameter will be ignored!"
-                        % key
-                    )
-            elif key in self.fixed_parameters:
-                simulation_dict[key] = self.fixed_parameters[key]
-        for key in self._essential_parameters:
-            if key not in simulation_dict:
-                if self.options.dispersion == True:
-                    if key in self.dispersion_parameters:
-                        simulation_dict[key] = 0
-                        continue
-                if "CdlE" in key:
-                    simulation_dict[key] = 0
-                elif self.options.experiment_type in ["DCV", "SquareWave"] and "phase" in key:
-                    simulation_dict[key]=0
-                else:
-                    missing_parameters.append(key)
-        if len(missing_parameters) > 0:
-            raise Exception(
-                "The following parameters either need to be set in optim_list, or set at a value using the fixed_parameters variable\n{0}".format(
-                    ", ".join(missing_parameters)
-                )
-            )
-        options_and_requirements={
-            "kinetics":{"option_value":self.options.kinetics,
-                        "actions":["simulation_options"],
-                        "options":{"values":{"Marcus":1, "ButlerVolmer":0}, "flag":"Marcus_flag"}}
-        }
-        if "theta" not in simulation_dict:
-            simulation_dict["theta"]=0
-        for key in options_and_requirements.keys():
-            sub_dict=options_and_requirements[key]
-            option_value=sub_dict["option_value"]
-            for action in sub_dict["actions"]:
-                if action=="simulation_options":
-                    sim_dict_key=sub_dict["options"]["flag"]
-                    sim_dict_value=sub_dict["options"]["values"][option_value]
-                    simulation_dict[sim_dict_key]=sim_dict_value
-                elif action =="params":
-                    extra_required_params=sub_dict["params"][option_value]
-                    for param in extra_required_params:
-                        if param not in all_parameters:
-                            raise Exception("Because of option {0} being set to {1}, the following parameters need to be in either optim_list or fixed_parameters: {2}\n. Currently missing {3}".format(key, option_value, extra_required_params, param))
-                        else:
-                            if param in parameters:
-                                simulation_dict[param]=None
-                            else:
-                                simulation_dict[param]=self.fixed_parameters[param]
-                        
-
-        if self.options.phase_only==True:
-            simulation_dict["cap_phase"]=simulation_dict["phase"]
-            simulation_dict["phase"]=simulation_dict["cap_phase"]
-        simulation_dict = self.validate_input_parameters(simulation_dict)
-
-       
-        return simulation_dict
-    def validate_input_parameters(self, inputs):
+    @staticmethod
+    def validate_input_parameters(inputs, exp_type):
         """
         Args:
             inputs (dict): Dictionary of parameters
         Returns:
             dict : modified dictionary of input parameters according to the method assigned to the class
         """
-        if self.options.experiment_type == "DCV":
-            inputs["tr"] = self.nondim_t(
-                abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
-            )
+        if exp_type == "DCV":
+            inputs["tr"] = abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
+            
             inputs["omega"] = 0
             inputs["delta_E"] = 0
             inputs["phase"]= 0
-        elif self.options.experiment_type == "FTACV":
-            inputs["tr"] =  self.nondim_t(
-                abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
-            )
-        elif self.options.experiment_type == "PSV":
+        elif exp_type == "FTACV":
+            inputs["tr"] =  abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
+            
+        elif exp_type == "PSV":
             inputs["E_reverse"]=inputs["Edc"]
             inputs["tr"] = -1
             inputs["v"] = 0

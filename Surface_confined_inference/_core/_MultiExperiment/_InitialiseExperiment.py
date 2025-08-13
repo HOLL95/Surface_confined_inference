@@ -32,7 +32,7 @@ class InitialiseMultiExperiment:
         if "normalise" not in kwargs:
             kwargs["normalise"]=False
         if "sim_class" not in kwargs:
-            kwargs["sim_class"]=sci.ParallelSimulator
+            kwargs["sim_class"]=sci.SingleExperiment
         if "file_list" not in kwargs:
             kwargs["file_list"]=None
         for key in kwargs.keys():

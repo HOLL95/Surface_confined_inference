@@ -6,11 +6,10 @@ import collections.abc
 import numbers
 from typing import List, Optional, Sequence
 
-from ._OptionsDescriptor import (
-    BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor, ExclusiveDictOption, ExclusiveSequenceOption
-)
-from ._OptionsMeta import OptionsManager, OptionsMeta
+from ._OptionsDescriptor import BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor, ExclusiveDictOption, ExclusiveSequenceOption
 
+from ._OptionsMeta import OptionsManager, OptionsMeta
+import os
 
 class BaseExperimentOptions(OptionsManager):
     """Base options common to all electrochemical experiments."""
@@ -79,7 +78,7 @@ class BaseExperimentOptions(OptionsManager):
         default=False,
         doc="Whether to return only the Faradaic component of the current."
     )
-    Parallel_cpu = NumberOption(
+    parallel_cpu = NumberOption(
         "Parallel_cpu",
         default=len(os.sched_getaffinity(0)),
         doc="Number of CPUs for parallel simulations for dispersion"
@@ -137,6 +136,7 @@ class FTACVOptions(BaseExperimentOptions):
         "input_params",
         value_type=numbers.Number,
         target=["E_start", "E_reverse","v", "omega", "phase", "delta_E",]+["area", "Temp", "N_elec", "Surface_coverage"],
+        default={},
         doc="Necessary input params for FTACV"
     )
 

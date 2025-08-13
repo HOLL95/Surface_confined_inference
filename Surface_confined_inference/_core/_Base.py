@@ -25,7 +25,7 @@ class BaseExperiment:
         else:
             module=importlib.import_module(data["Options_handler"]["module"])
             handler_arg=getattr(module, data["Options_handler"]["name"])
-        # Create instance
+        
         instance = experiment_class(
             experiment_type,
             data["Experiment_parameters"],
@@ -36,7 +36,4 @@ class BaseExperiment:
         for key in ["fixed_parameters", "boundaries", "optim_list"]:
             if key in data:
                 setattr(instance, key, data[key])
-        options_dict=instance._internal_options.as_dict()
-        for key in options_dict:
-             setattr(instance, key, options_dict[key])
         return instance

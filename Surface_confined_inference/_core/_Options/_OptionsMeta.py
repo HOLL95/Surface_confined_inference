@@ -42,14 +42,13 @@ class OptionsManager(metaclass=OptionsMeta):
         # Apply default values from descriptors
         for option_name in self._options:
             descriptor = self.__class__.__dict__.get(option_name)
-            if descriptor and isinstance(descriptor, OptionDescriptor):
+            if option_name in kwargs:
+                setattr(self, option_name, kwargs[option_name])
+            elif descriptor and isinstance(descriptor, OptionDescriptor):
                 setattr(self, option_name, descriptor.default)
-        
-        # Override with any provided values
+
         for key, value in kwargs.items():
-            if key in self._options:
-                setattr(self, key, value)
-            else:
+            if key not in self._options:
                 self._handle_unknown_option(key, value)
     
     def _handle_unknown_option(self, key: str, value: Any) -> None:

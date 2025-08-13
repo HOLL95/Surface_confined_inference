@@ -14,23 +14,7 @@ void updateCdlp(std::unordered_map<std::string, double>& params, double Cdlp);
 extern "C" int Jac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
 extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data);
 extern "C" int Jac_multi_e(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J, void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
-template<typename PhaseFunc>
-double mono_E(const std::unordered_map<std::string, double>& params, double t, PhaseFunc phase_func){
-	double phase = phase_func(params, t);
-	
-	double E_dc;
-	double E_t;
-	if (t<params.at("tr")){
-		E_dc=params.at("E_start")+(params.at("v")*t); 
-	}else {
-		E_dc=params.at("E_reverse")-(params.at("v")*(t-params.at("tr")));
-	}
-	E_t= E_dc+(params.at("delta_E")*(std::sin((params.at("omega")*t)+phase)));
-	//std::cout<<"headerE:"<<E_t<<"headert: "<<t<<" ";
-	return E_t;
-}
-
-
+double mono_E(const std::unordered_map<std::string, double>& params, double t, double phase);
 std::vector<double> potential(const std::vector<double>& times,const std::unordered_map<std::string, double>& params);
 double mono_dE(const std::unordered_map<std::string, double>& params, double t, double phase);
 double Marcus_kinetics_oxidation(const std::unordered_map<std::string, double>& params, double Er);

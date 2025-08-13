@@ -27,8 +27,8 @@ extern "C" int single_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_dat
   
 
     
-    Er=mono_E(*params, t, [](const std::unordered_map<std::string, double>& p, double t){return p.at("phase");})-I*(*params)["Ru"];
-    cap_Er=mono_E(*params, t,[](const std::unordered_map<std::string, double>& p, double t){return p.at("cap_phase");})-I*(*params)["Ru"];
+    Er=mono_E(*params, t, (*params)["phase"])-I*(*params)["Ru"];
+    cap_Er=mono_E(*params, t,(*params)["cap_phase"])-I*(*params)["Ru"];
     cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
 
 
@@ -112,21 +112,25 @@ double mono_dE(const std::unordered_map<std::string, double>& params, double t, 
 	}
 	return E_dc+(params.at("delta_E")*params.at("omega")*std::cos(params.at("omega")*t+phase));
 }
+double mono_E(const std::unordered_map<std::string, double>& params, double t, double phase){
+	double E_dc;
+	double E_t;
+	if (t<params.at("tr")){
+		E_dc=params.at("E_start")+(params.at("v")*t); 
+	}else {
+		E_dc=params.at("E_reverse")-(params.at("v")*(t-params.at("tr")));
+	}
+	E_t= E_dc+(params.at("delta_E")*(std::sin((params.at("omega")*t)+phase)));
+	//std::cout<<"headerE:"<<E_t<<"headert: "<<t<<" ";
+	return E_t;
+}
+
 std::vector<double> potential(const std::vector<double>& times,const std::unordered_map<std::string, double>& params){
   vector<double> potential_values;
   int num_times=times.size();
   potential_values.resize(num_times);
-  int captured_val=params.at("phase_flag");
-  
-  auto lambda = [captured_val](const std::unordered_map<std::string, double>& p, double t)-> double {
-        if (captured_val==0) {
-            return p.at("phase"); 
-        } else if (captured_val==1){
-            return p.at("phase")+p.at("phase_delta_E")*std::sin(p.at("phase_omega") * t + p.at("phase_phase"));
-        }
-    };
   for(int i=0; i<num_times; i++){
-    potential_values[i]=mono_E(params, times[i], lambda);
+    potential_values[i]=mono_E(params, times[i], params.at("phase"));
   }
 
 return potential_values;

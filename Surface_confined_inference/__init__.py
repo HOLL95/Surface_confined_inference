@@ -25,7 +25,6 @@ from ._core._InputChecking import (
     get_DC_component
 )
 from ._core._EIS import SimpleSurfaceCircuit, convert_to_bode
-from .infer._RunMCMC import ParallelSimulator
 from ._core._Nondimensionalise import NDParams
 from ._core._Dispersion import Dispersion
 from . import (infer, plot, _utils)

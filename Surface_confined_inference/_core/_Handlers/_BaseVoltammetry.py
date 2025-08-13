@@ -1,215 +1,282 @@
 import Surface_confined_inference as sci
 import SurfaceODESolver as sos
 import itertools
+import copy 
+import re
+import numpy as np
+import multiprocessing as mp
+from typing import Callable
+from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
+from ._ParameterHandler import ParameterHandler
+import matplotlib.pyplot as plt
 #context manager
 #options
 #parameter handling
 #dispersion handling
-def _parallel_ode_simulation(nd_dict, times, weight):
-    return weight * np.array(sos.ODEsimulate(times, nd_dict))[0, :]
+    
 
+
+def _parallel_ode_simulation(nd_dict, times, weight):
+    """
+    Execute ODE simulation for total current (Faradaic + capacitive) in parallel processing.
+    
+    Args:
+        nd_dict (dict): Non-dimensionalized parameters dictionary for simulation
+        times (array-like): Time points for simulation
+        weight (float): Weight factor to multiply the current by (for dispersion calculations)
+    
+    Returns:
+        numpy.ndarray: Weighted current array from index 0 (total current)
+    """
+    return weight * np.array(sos.ODEsimulate(times, nd_dict))[0, :]
 def _parallel_faradaic_simulation(nd_dict, times, weight):
     return weight * np.array(sos.ODEsimulate(times, nd_dict))[2, :]
-
 def _parallel_sw_simulation(nd_dict, times, weight):
     return weight * np.array(sos.SW_current(times, nd_dict))
-def _funcswitch(tuple_arg):
-    if tuple_arg[0]=="SquareWave":
+def _funcswitch(experiment_type, Faradaic_only):
+    """
+     Select appropriate parallel simulation function based on experiment type and current type.
+    """
+    if experiment_type=="SquareWave":
         return _parallel_sw_simulation
-    elif tuple_arg[1] is True:
+    elif Faradaic_only is True:
         return _parallel_faradaic_simulation
     else:
         return _parallel_ode_simulation
 
-FUNCTION_REGISTRY = {
-    {tuple(x):_funcswitch(x) for x in itertools.product(["FTACV", "PSV", "SWV", "SquareWave"], [True, False])}
-}
-
+@dataclass(frozen=True)
 class ParameterInterface:
-    def __init__(self,func_dict=None, simulation_dict=None, disp_class=None,  gh_values=None, self.optim_list=None):
-        self.sim_dict=simulation_dict
-        self.func_dict=func_dict
-        self.disp_class = disp_class
-        self.gh_values = gh_values
-        self.optim_list=optim_list
-     def nondimensionalise(self, sim_params, simulation_dict, function_dict):
+    """
+    Immutable interface for parameter handling and non-dimensionalization. Provides link to data from ParameterHandler.
+
+    Attributes:
+        disp_function (Callable): Function for handling parameter dispersion, member function of sci.Dispersion
+        sim_dict (dict): Dictionary of simulation parameters with values that will not be changed as part of the optimisation loop
+        func_dict (dict): Dictionary mapping parameter names to non-dimensionalisation functions
+        optim_list (list): List of parameters varied as part of optimisation loop
+        gh_values (list): Gauss-Hermite quadrature values for dispersion
+
+    Methods:
+        - nondimensionalise(sim_params)
+    """
+    disp_function: Callable[[dict, list], tuple]
+    sim_dict: dict = field(default_factory=dict)
+    func_dict: dict = field(default_factory=dict)
+    optim_list: list = field(default_factory=list)
+    gh_values: list = field(default_factory=list)
+   
+    def nondimensionalise(self, sim_params):
         """
+        Convert simulation parameters to non-dimensional form.
         Args:
-            sim_params (dict): dictionary of parameter values with the same keys as _optim_list
-        Modifies:
-            _internal_memory["simulation_dict"] with the values from sim_params
+            sim_params (dict): Dictionary of parameter values with same keys as optim_list (i.e. parameters changed as part of the optimisation loop)
         Returns:
-            dict: Dictionary of appropriately non-dimensionalised parameters
+            dict: Dictionary of appropriately non-dimensionalized parameters to be passed to a `simulate()` method. 
+        Behavior:
+            - Updates mutable copy of sim_dict with optimisation parmaeteers
+            - Applies non-dimensionalization functions from func_dict to each parameter
+            - Returns complete non-dimensionalized parameter dictionary
         """
+        mutable_dict=copy.deepcopy(self.sim_dict)
         nd_dict = {}
-        for key in self.optim_list:
-            self.sim_dict[key] = sim_params[key]
+        for key in sim_params.keys():
+            mutable_dict[key] = sim_params[key]
         for key in self.sim_dict.keys():
-            nd_dict[key] = self.func_dict[key](
-                self.sim_dict[key]
-            )
+            nd_dict[key] = self.func_dict[key](mutable_dict[key])
         return nd_dict
 
-class BaseSimulation:
-    """Base strategy for simulation execution"""
-    def __init__(self, options, param_interface):
-        self.options = options
-        self.param_interface = param_interface
     
-    def get_solver_function(self):
-        """Return the appropriate solver function"""
-        raise NotImplementedError
-    
-    def get_parallel_function(self):
-        """Return the appropriate parallel function for multiprocessing"""
-        raise NotImplementedError
-    
-    def simulate_single(self, solver, nd_dict, times):
-        """Execute single simulation"""
-        return solver(times, nd_dict)
-    
-    def simulate_parallel(self, sim_params, times):
-        """Execute parallel simulation with dispersion"""
-       
 
-
-class BaseHandler:
+class BaseHandler(ABC):
+    """
+    Abstract base class for experiment handlers.
+    
+    Attributes:
+        options: SingleExperiment options, provided from _Voltammetry
+        param_interface (ParameterInterface): immutable class to take data and methods from ParameterHandler
+    
+    Methods:
+        - simulate(sim_params, times)
+        - dispersion_simulator(sim_params, times)
+        - get_voltage(times, input_parameters, validation_parameters, **kwargs)
+        - calculate_times(params, **kwargs) [abstract]
+        - _get_parallel_function() [abstract]
+    """
     def __init__(self, options, param_interface):
         self.options=options
         self.param_interface=param_interface
     def simulate(self, sim_params, times):
+        """
+        Base simulation method common to all child experiment handlers, to be called using super(). 
+        Dispersion simulation is handled seperately. 
+        Args:
+            sim_params (dict): Dictionary of simulation parameters
+            times (array-like): Time points for simulation [ASSUMES NON-DIMENSIONAL STATE]
+        
+        Returns:
+            dict: Non-dimensionalised parameter dictionary
+        """
         nd_dict = self.param_interface.nondimensionalise(sim_params)
         return nd_dict
-    def dispersion_simulator(self, sim_params, times):#######################################Need to add parallel####################################
+    def dispersion_simulator(self, sim_params, times):
         """
+        Simulate a dispersed parameter set using numericla quadrature. 
+        
         Args:
-            Solver (function): function that takes time (list) and simualtion_params (dictionary) arguemnts and returns a current
-            times (list): list of time points for the solver
-            sim_params (dict): dictionary of simulation parameters, with the same keys as _optim_list
+            sim_params (dict): Dictionary of simulation parameters with same keys as optim_list
+            times (list): List of time points for the solver
+        
         Returns:
-            list: list of current values at times
-
-        Initially passes `sim_params` to the `nondimensionalise` function so all parameters are correctly represented in `_internal_memory["simulation_dict"]`,
-        then caluclates bin values and associated weights by calling `disp_class.generic_dispersion`
-        This returns a list of parameter values of size b^n (n dispersed parameters, b bins) and a list of weights, which is b^n tuples each of length n.
-        For each weight, the `simulation_dict` is updated with the correct parameters, nondimensionalised and the resulting dictionary passed to the solver
-        The resulting current is multiplied by the product of the appropriate weight tuple, and added to the dispersed current
-        This dispersed current is then returned
-
+            numpy.ndarray: Weighted sum of currents from all dispersed parameter combinations
+        
+        Behavior:
+            - Parameters associated with a distribution keyword (validated using ParameterHandler) are used to generate a list (parameters^bins) of values and appropriate weights
+            - Each parameter/weight combination is used to generate a non-dimensionlised dictionary 
+            - Simulation method is called using `_get_parallel_function()` from the child class to get around multiprocessing function pickling restrictions.
+            - Executes simulations in parallel (if parallel_cpu > 1) or sequentially. 
+            - Returns weighted sum of all simulation results
         """
-        
-        nd_dict = self.param_interface.nondimensionalise(sim_params)
-        
-        disp_params, values, weights = self.param_interface.disp_class.generic_dispersion(
-            self.param_interface.sim_dict, self.param_interface.gh_values
+      
+        mutable_dict=copy.deepcopy(self.param_interface.sim_dict)
+        for key in sim_params.keys():
+            mutable_dict[key]=sim_params[key]
+        disp_params, values, weights = self.param_interface.disp_function(
+            mutable_dict, self.param_interface.gh_values
         )
+
         dictionaries = []
         weight_products = []
         
         for i in range(len(weights)):
-            temp_dict = copy.deepcopy(self.param_interface.sim_dict)
             for j, param in enumerate(disp_params):
-                temp_dict[param] = values[i][j]
-            old_sim_dict = self.param_interface.sim_dict
-            self.param_interface.sim_dict = temp_dict
+                sim_params[param] = values[i][j]
             nd_dict_dispersed = self.param_interface.nondimensionalise(sim_params)
-            self.param_interface.sim_dict = old_sim_dict
-            
             dictionaries.append(nd_dict_dispersed)
             weight_products.append(np.prod(weights[i]))
         
-        parallel_func = self.get_parallel_function()
+        parallel_func = self._get_parallel_function()
         iterable = [(nd_dict, times, weight) for nd_dict, weight in zip(dictionaries, weight_products)]
-        
-        pool = None
-        try:
-            pool = mp.Pool(processes=num_cpu)
-            results = pool.starmap(parallel_func, iterable)
-            np_results = np.array(results)
-        finally:
-            if pool is not None:
-                pool.close()
-                pool.join()
-        
+        if self.options.parallel_cpu>1:
+            pool = None
+            try:
+                pool = mp.Pool(processes=self.options.parallel_cpu)
+                results = pool.starmap(parallel_func, iterable)
+                np_results = np.array(results)
+            finally:
+                if pool is not None:
+                    pool.close()
+                    pool.join()
+        else:
+            np_results=np.array([parallel_func(*x) for x in iterable])
         return np.sum(np_results, axis=0)
-    def get_voltage(self, times, input_parameters, validation_parameters, **kwargs):
+    def get_voltage(self, times, input_parameters, validation_parameters):
         """
+        Base class for individual technique voltage calculations to be called by child using super() 
         Args:
-            times (list): list of timepoints
-            input_parameters (dict, optional): dictionary of input parameters
-            dimensional (bool, optional): whether or not the times are in dimensional format or not
+            times (list): List of timepoints - responsibility of the user to make sure the dimensional format is correct
+            input_parameters (dict): Dictionary of input parameters - as above
+            validation_parameters (dict): To make sure the required parameters are all present. 
+        
         Returns:
-            list: list of potential values at the provided time points. By default, these values will be in dimensional format (V)
-        """
-
-        if "dimensional" not in kwargs:
-            kwargs["dimensional"]=False 
+            dict: Validated and processed input parameters
         
-        
+        Exceptions:
+            - Exception: From sci.check_input_dict if required parameters missing
+        """ 
         sci.check_input_dict(
             input_parameters, copy.deepcopy(validation_parameters), optional_arguments=[]
         )
         input_parameters=copy.deepcopy(input_parameters)
-        input_parameters = self.validate_input_parameters(input_parameters)
+        input_parameters = ParameterHandler.validate_input_parameters(input_parameters, self.options.experiment_type)
         return input_parameters
+    @abstractmethod
     def calculate_times(self, params, **kwargs):
         """
-        Calculates the time of an experiment e.g. for synthetic data. Each experiment has an end time, and a timestep.
-        FTV/DCV: Defined by the voltage window (V) and scan rate (V s^-1), doubled as you go up and down
-        PSV: Defined by the number of oscillations as part of the initialisation of the Experiment class
-        SquareWave: Defined per square wave "oscillation"
-
-        Args:
-            sampling_factor (int, default=200): defines the timestep dt. For the experiments involving a sinusoid (PSV, FTACV, SquareWave), this is taken to mean
-            X points per oscillation. For DCV, it is taken to mean X points per second.
-            input_parameters (dict, default=self._internal_memory["input_parameters"]): Defines the parameters used to calculate the time
-            Dimensional: controls whether the time is returned in dimensional or non-dimensional form
-        Returns:
-            np.ndarray: Array of times
+        Base class to be overridden. 
         """
-        print("Not implemented in base")
+        raise NotImplementedError
+    @abstractmethod
+    def _get_parallel_function(self):
+        """
+        Base class to be overridden. 
+        """
         return
       
 class ContinuousHandler(BaseHandler):
+    """
+    Handler for continuous voltammetric experiments (FTACV, PSV, DCV).
+    
+    Inherits from BaseHandler.
+    
+    Methods:
+        - simulate(simulation_params, times)
+        - get_voltage(times, input_parameters, validation_parameters, **kwargs)
+        - _get_parallel_function()
+        - calculate_times(params, **kwargs)
+    """
     def __init__(self, options, param_interface):
         super().__init__(options, param_interface)
     def simulate(self, simulation_params, times):
+        """
+        Execute simulation for continuous voltammetric experiments.
+        
+        Args:
+            simulation_params (dict): Dictionary of simulation parameters. Nondimensionalised using super()
+            times (array-like): Time points for simulation
+        
+        Returns:
+            numpy.ndarray: Current values at specified times
+        
+        Behavior:
+            - Uses dispersion_simulator if dispersion is enabled
+            - Otherwise performs single ODE simulation
+            - Returns total current (index 0) or Faradaic current (index 2) based on options
+        """
         if self.options.dispersion==True:
-            current = self.dispersion_simulator(sim_params, times)
+            current = self.dispersion_simulator(simulation_params, times)
         else:
             nd_dict=super().simulate(simulation_params, times)
-            solver=FUNCTION_REGISTRY.get(self.options.experiment_type, self.options.Faradaic_only)
-            solver(times, nd_dict)
+            if self.options.Faradaic_only==True:
+                idx=2
+            else:
+                idx=0
+            current=np.array(sos.ODEsimulate(times, nd_dict))[idx,:]
         return current
-    def get_voltage(self, times, input_parameters, validation_parameters, **kwargs):
-        inputs=super().get_voltage(times, input_parameters, validation_parameters, **kwargs)
-        if "tr" in inputs:
-            if kwargs["dimensional"]==True:
-                input_parameters["tr"]*=self._NDclass.c_T0
-            input_parameters["omega"] *= 2 * np.pi
-        return sos.potential(times, input_parameters)
+    def get_voltage(self, times, input_parameters, validation_parameters):
+        """
+        Calculate voltage waveform for continuous experiments.
+    
+        Args:
+            times (array-like): Time points for voltage calculation
+            input_parameters (dict): Dictionary of input parameters
+            validation_parameters (dict): Dictionary for parameter validation
+            **kwargs: Additional keyword arguments
+        
+        Returns:
+            numpy.ndarray: Voltage values at specified times
+        """
+        inputs=super().get_voltage(times, input_parameters, validation_parameters)
+        inputs["omega"] *= 2 * np.pi
+        return sos.potential(times, inputs)
+    def _get_parallel_function(self):
+        return _funcswitch(self.options.experiment_type, self.options.Faradaic_only)
     def calculate_times(self, params, **kwargs):
         if "sampling_factor" not in kwargs:
             sampling_factor=200
         else:
             sampling_factor=kwargs["sampling_factor"]
-        if "dimensional" not in kwargs:
-            dimensional=False
-        else:
-            dimensional=kwargs["dimensional"]
-        if self._internal_options.experiment_type == "FTACV" or self._internal_options.experiment_type == "DCV":
+        if self.options.experiment_type == "FTACV" or self.options.experiment_type == "DCV":
             end_time = 2 * abs(params["E_start"] - params["E_reverse"]) / params["v"]
-        elif self._internal_options.experiment_type == "PSV":
+        elif self.options.experiment_type == "PSV":
             if "PSV_num_peaks" not in kwargs:
                 kwargs["PSV_num_peaks"]=50
             end_time = kwargs["PSV_num_peaks"]/ params["omega"]
-        if self._internal_options.experiment_type == "DCV":
+        if self.options.experiment_type == "DCV":
             dt = 1 / (sampling_factor * params["v"])
-        elif self._internal_options.experiment_type == "FTACV" or self._internal_options.experiment_type == "PSV":
+        elif self.options.experiment_type == "FTACV" or self.options.experiment_type == "PSV":
             dt = 1 / (sampling_factor * params["omega"])
         times = np.arange(0, end_time, dt)
-        if dimensional == False:
-            times = self.nondim_t(times)
         return times
 class SquareWaveHandler(BaseHandler):
     def __init__(self, options, param_interface):
@@ -227,6 +294,8 @@ class SquareWaveHandler(BaseHandler):
         end_time=(abs(params["delta_E"]/params["scan_increment"])*params["sampling_factor"])
         dt=1
         return  np.arange(0, end_time, dt)
+    def _get_parallel_function(self):
+        return _parallel_sw_simulation
     def SW_sampling(self,parameters, **kwargs):
         self.SW_params={}
         sampling_factor=parameters["sampling_factor"]
@@ -269,24 +338,23 @@ class SquareWaveHandler(BaseHandler):
             backwards=np.array([current[int(x)-1] for x in self.SW_params["b_idx"]])
         return forwards, backwards, backwards-forwards, self.SW_params["E_p"]
     def simulate(self, parameters, times):
-            if self.options.dispersion==True:   
-                current = self.dispersion_simulator(sim_params, times)
-            else:
-                nd_dict=super().simulate(parameters, times)
-                times=self.SW_params["sim_times"]
-                solver=FUNCTION_REGISTRY.get(options.experiment_type, False)
-                current = solver(times, nd_dict)
-            sw_dict={"total":current}
-            sw_dict["forwards"], sw_dict["backwards"], sw_dict["net"], E_p=self.SW_peak_extractor(current)
-            if self.options.square_wave_return!="total":
-                polynomial_cap=nd_dict["Cdl"]*np.ones(len(E_p))
-                keys=["CdlE1", "CdlE2", "CdlE3"]
-                for i in range(0, len(keys)):
-                    cdl=keys[i]
-                    if nd_dict[cdl]!=0:
-                        ep_power=np.power(E_p, i+1)
-                        polynomial_cap=np.add(polynomial_cap, nd_dict[cdl]*ep_power)
-                current=np.add(polynomial_cap, sw_dict[self._internal_options.square_wave_return])
+        if self.options.dispersion==True:   
+            current = self.dispersion_simulator(sim_params, times)
+        else:
+            nd_dict=super().simulate(parameters, times)
+            times=self.SW_params["sim_times"]
+            current = sos.SW_current(times, nd_dict)
+        sw_dict={"total":current}
+        sw_dict["forwards"], sw_dict["backwards"], sw_dict["net"], E_p=self.SW_peak_extractor(current)
+        if self.options.square_wave_return!="total":
+            polynomial_cap=nd_dict["Cdl"]*np.ones(len(E_p))
+            keys=["CdlE1", "CdlE2", "CdlE3"]
+            for i in range(0, len(keys)):
+                cdl=keys[i]
+                if nd_dict[cdl]!=0:
+                    ep_power=np.power(E_p, i+1)
+                    polynomial_cap=np.add(polynomial_cap, nd_dict[cdl]*ep_power)
+            current=np.add(polynomial_cap, sw_dict[self.options.square_wave_return])
         return current
 
 
