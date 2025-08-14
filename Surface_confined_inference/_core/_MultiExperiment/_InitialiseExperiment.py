@@ -99,7 +99,8 @@ class InitialiseMultiExperiment:
                     if experiment=="SquareWave":
                         self.classes[experiment_key]["class"].fixed_parameters = {"Cdl": 0}
                     for key in conditions_dict["Options"].keys():
-                        self.classes[experiment_key]["class"].__setattr__(key, conditions_dict["Options"][key])
+                        if key !="input_params":
+                            self.classes[experiment_key]["class"].__setattr__(key, conditions_dict["Options"][key])
                 except Exception as e:
                     raise KeyError("Error processing {0}:{1}".format(experiment_key, str(e)))
 

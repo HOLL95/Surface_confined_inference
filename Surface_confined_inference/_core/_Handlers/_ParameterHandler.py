@@ -212,7 +212,7 @@ def simulation_dict_construction(parameters, fixed_parameters, essential_paramet
                                 simulation_dict[param]=fixed_parameters[param]
                         
 
-        if options.phase_only==True:
+        if hasattr(options, "phase_only") and options.phase_only==True:
             simulation_dict["cap_phase"]=simulation_dict["phase"]
             simulation_dict["phase"]=simulation_dict["cap_phase"]
         simulation_dict = ParameterHandler.validate_input_parameters(simulation_dict, options.experiment_type)

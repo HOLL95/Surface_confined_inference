@@ -127,10 +127,10 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         cls=self.classes[classkey]["class"]
         if "divide" in self.group_to_conditions[groupkey]["scaling"]:
             for param in self.group_to_conditions[groupkey]["scaling"]["divide"]:
-                value/=cls._internal_memory["input_parameters"][param]
+                value/=cls._internal_options.input_params[param]
         if "multiply" in self.group_to_conditions[groupkey]["scaling"]:
             for param in self.group_to_conditions[groupkey]["scaling"]["multiply"]:
-                value*=cls._internal_memory["input_parameters"][param]  
+                value*=cls._internal_options.input_params[param]  
         return value
     def save_class(self, dir_path="saved", **kwargs):
         if "include_data" not in kwargs:

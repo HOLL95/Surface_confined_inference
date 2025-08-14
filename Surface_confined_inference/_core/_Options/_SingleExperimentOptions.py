@@ -26,8 +26,6 @@ class BaseExperimentOptions(OptionsManager):
         default=True,
         doc="Whether to implement Gauss-Hermite quadrature for approximating normal distributions in dispersion."
     )
-    
-    
     normalise_parameters = BoolOption(
         "normalise_parameters",
         default=False,

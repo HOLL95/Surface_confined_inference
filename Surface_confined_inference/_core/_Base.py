@@ -17,6 +17,18 @@ class BaseExperiment:
         
 
         class_name=data["class"]["name"]
+
+            
+        if data["class"]["module"]=="Surface_confined_inference.infer._RunMCMC":
+            data["class"]["module"]="Surface_confined_inference._core._Voltammetry"
+            class_name="SingleExperiment"
+            data["Options_handler"]=None
+            if "phase_flag"  in data["Experiment_parameters"]:
+                data["Experiment_parameters"].pop("phase_flag")
+            if "num_cpu" in data["Options"]:
+                data["Options"]["parallel_cpu"]=data["Options"]["num_cpu"]
+                data["Options"].pop("num_cpu")
+            
         experiment_class =  getattr(importlib.import_module(data["class"]["module"]),class_name)
         experiment_type= data["Options"]["experiment_type"]
         data["Options"].pop("experiment_type")
@@ -25,7 +37,6 @@ class BaseExperiment:
         else:
             module=importlib.import_module(data["Options_handler"]["module"])
             handler_arg=getattr(module, data["Options_handler"]["name"])
-        
         instance = experiment_class(
             experiment_type,
             data["Experiment_parameters"],

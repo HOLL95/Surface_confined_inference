@@ -69,7 +69,7 @@ def _process_ts_data(experiment_key, data,  loc):
         # Generate zero point for error calculation
         dummy_zero_class = sci.SingleExperiment(
             cls.experiment_type,
-            cls._internal_memory["input_parameters"],
+            cls._internal_options.input_params,
             problem="forwards",
             normalise_parameters=False
         )
@@ -113,7 +113,7 @@ def _process_swv_data(experiment_key, data, loc):
         # Calculate times and voltages
         times = cls.calculate_times()
         voltage = cls.get_voltage(times)
-        pot = np.array([voltage[int(x)] for x in cls._internal_memory["SW_params"]["b_idx"]])
+        pot = np.array([voltage[int(x)] for x in cls.SW_params["b_idx"]])
         
         # Apply baseline correction
         if zero_params is not None:

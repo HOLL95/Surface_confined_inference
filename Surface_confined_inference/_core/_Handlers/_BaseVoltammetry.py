@@ -250,7 +250,7 @@ class ContinuousHandler(BaseHandler):
         Args:
             times (array-like): Time points for voltage calculation
             input_parameters (dict): Dictionary of input parameters
-            validation_parameters (dict): Dictionary for parameter validation
+            validation_parameters (dict): Dictionary for parameter validation (always the _Voltammetry input parameters)
             **kwargs: Additional keyword arguments
         
         Returns:
@@ -260,8 +260,24 @@ class ContinuousHandler(BaseHandler):
         inputs["omega"] *= 2 * np.pi
         return sos.potential(times, inputs)
     def _get_parallel_function(self):
+        """
+        Fetch parallel simulation function for use with base `dispersion_simulator()` function
+        
+        """
         return _funcswitch(self.options.experiment_type, self.options.Faradaic_only)
     def calculate_times(self, params, **kwargs):
+        """
+        Calculate time array for continuous voltammetric experiments when e.g. experimental times are not provided or for synthetic studies
+        
+        Args:
+            params (dict): Dictionary containing experiment parameters
+            **kwargs: Optional arguments:
+                - sampling_factor (int, default=200): Points per oscillation or per second
+                - PSV_num_peaks (int, default=50): Number of oscillations for PSV experiments
+        
+        Returns:
+            numpy.ndarray: Array of time points from 0 to end_time with step dt
+        """
         if "sampling_factor" not in kwargs:
             sampling_factor=200
         else:
@@ -279,11 +295,40 @@ class ContinuousHandler(BaseHandler):
         times = np.arange(0, end_time, dt)
         return times
 class SquareWaveHandler(BaseHandler):
+    """
+    Handler for square wave voltammetric experiments.
+    
+    Inherits from BaseHandler.
+    
+    Attributes:
+        SW_params (dict): Square wave specific values to obtain appropriately sampled points
+    
+    Methods:
+        - __init__(options, param_interface)
+        - get_voltage(times, input_parameters, validation_parameters, **kwargs)
+        - calculate_times(params, **kwargs)
+        - _get_parallel_function()
+        - SW_sampling(parameters, **kwargs)
+        - SW_peak_extractor(current, **kwargs)
+        - simulate(parameters, times)
+    """
     def __init__(self, options, param_interface):
         super().__init__(options, param_interface)
-        self.SW_sampling(param_interface.sim_dict)
-    def get_voltage(self, times, input_parameters, validation_parameters, **kwargs):
-        inputs=super().get_voltage(times, input_parameters, validation_parameters, **kwargs)
+        self.SW_sampling(options.input_params)
+    def get_voltage(self, times, input_parameters, validation_parameters):
+        """
+        Calculate voltage waveform for square wave experiments. N.B. This is the unsampled voltage - sampled potential can be found using `SW_peak_extractor()`
+        
+        Args:
+            times (array-like): Integer time indices for square wave
+            input_parameters (dict): Dictionary of input parameters
+            validation_parameters (dict): Dictionary for parameter validation
+        
+        Returns:
+            numpy.ndarray: Voltage values at specified time indices
+        
+        """
+        inputs=super().get_voltage(times, input_parameters, validation_parameters)
         voltages=np.zeros(len(times))
         for i in times:
             i=int(i)
@@ -291,12 +336,36 @@ class SquareWaveHandler(BaseHandler):
         voltages[-1]=voltages[-2]
         return voltages
     def calculate_times(self,params, **kwargs):
+        """
+        Calculate time indices for square wave experiments.
+        
+        Args:
+            params (dict): Dictionary containing delta_E and scan_increment
+            **kwargs: Additional keyword arguments (unused)
+        
+        Returns:
+            numpy.ndarray: Array of integer time indices from 0 to end_time
+        
+        """
         end_time=(abs(params["delta_E"]/params["scan_increment"])*params["sampling_factor"])
         dt=1
         return  np.arange(0, end_time, dt)
     def _get_parallel_function(self):
+        """
+        Fetch parallel simulation function for use with base `dispersion_simulator()` function
+        
+        """
         return _parallel_sw_simulation
     def SW_sampling(self,parameters, **kwargs):
+        """
+        Initialize square wave sampling points and potential values
+        
+        Args:
+            parameters (dict): Dictionary of square wave parameters
+            **kwargs: Additional keyword arguments (unused)
+        
+
+        """
         self.SW_params={}
         sampling_factor=parameters["sampling_factor"]
         self.SW_params["end"]=int(abs(parameters['delta_E']//parameters['scan_increment']))
@@ -308,11 +377,27 @@ class SquareWaveHandler(BaseHandler):
         self.SW_params["sim_times"]=self.calculate_times(parameters)
 
     def SW_peak_extractor(self, current, **kwargs):
+        """
+        Extract forward, backward, and net currents from square wave simulation.
+        
+        Args:
+            current (array-like): Total current array from square wave simulation
+            **kwargs: Optional arguments:
+                - mean (int, default=0): Number of points for moving average (0 for single point)
+                - window_length (int, default=1): Window length for rolling average
+        
+        Returns:
+            tuple: (forwards, backwards, net, E_p) where:
+                - forwards (numpy.ndarray): Forward pulse currents
+                - backwards (numpy.ndarray): Backward pulse currents
+                - net (numpy.ndarray): Net current (backwards - forwards)
+                - E_p (numpy.ndarray): Potential values at each pulse
+        """
         if "mean" not in kwargs:
             kwargs["mean"]=0
         if "window_length" not in kwargs:
             kwargs["window_length"]=1
-        j=np.array(range(1, self.SW_params["end"]*self._internal_memory["input_parameters"]["sampling_factor"]))
+        j=np.array(range(1, self.SW_params["end"]*self.options.input_params["sampling_factor"]))
         if kwargs["mean"]==0:
             forwards=np.zeros(len(self.SW_params["f_idx"]))
             backwards=np.zeros(len(self.SW_params["b_idx"]))
@@ -338,8 +423,20 @@ class SquareWaveHandler(BaseHandler):
             backwards=np.array([current[int(x)-1] for x in self.SW_params["b_idx"]])
         return forwards, backwards, backwards-forwards, self.SW_params["E_p"]
     def simulate(self, parameters, times):
+        """
+        Execute square wave voltammetric simulation.
+        
+        Args:
+            parameters (dict): Dictionary of simulation parameters
+            times (array-like): Time points for simulation -Needs to be in nondimensional format
+        
+        Returns:
+            numpy.ndarray: Current values based on options.square_wave_return
+        
+        """
         if self.options.dispersion==True:   
-            current = self.dispersion_simulator(sim_params, times)
+            nd_dict=super().simulate(parameters, times)
+            current = self.dispersion_simulator(parameters, times)
         else:
             nd_dict=super().simulate(parameters, times)
             times=self.SW_params["sim_times"]
@@ -362,6 +459,17 @@ class SquareWaveHandler(BaseHandler):
 class ExperimentHandler:
     @staticmethod
     def create(options, param_interface):
+        """
+        Create appropriate experiment handler based on experiment type.
+        
+        Args:
+            options: Experiment options object containing experiment_type
+            param_interface (ParameterInterface): Interface for parameter management
+        
+        Returns:
+            BaseHandler: SquareWaveHandler for SquareWave experiments, 
+                        ContinuousHandler for all other experiment types
+        """
         if options.experiment_type=="SquareWave":
             return SquareWaveHandler(options, param_interface)
         else:

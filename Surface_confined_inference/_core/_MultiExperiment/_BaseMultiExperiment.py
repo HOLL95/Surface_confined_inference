@@ -26,7 +26,7 @@ class BaseMultiExperiment:
             classname=json_file[:ext]
             keys=classname.split("-")
             options=cls._internal_options.as_dict()
-            input_parameters=cls._internal_memory["input_parameters"]
+            input_parameters=options["input_params"]
             for key in ["fixed_parameters", "boundaries", "optim_list"]:
                 if hasattr(cls, key):
                     options[key]=getattr(cls, key)

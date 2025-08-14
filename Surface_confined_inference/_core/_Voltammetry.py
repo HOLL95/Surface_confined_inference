@@ -130,13 +130,13 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         self._phandler=ParameterHandler(**kwargs)
         self._param_context=self._phandler.context
         self._disp_context=self._phandler._disp_context
-        if self._disp_context.dispersion_warning !="":
+        """if self._disp_context.dispersion_warning !="":
             if self._warning_raised==False:
                 print(ParameterHandler.create_warning(self._disp_context.dispersion_warning))
                 self._warning_raised=True
         if self._warning_raised==True:
             if self._disp_context.dispersion_warning=="":
-                print(ParameterHandler.create_warning("Parameters set correctly"))
+                print(ParameterHandler.create_warning("Parameters set correctly"))"""
         self._ND_class=sci.NDParams(self._internal_options.experiment_type, self._internal_options.input_params)
         self._internal_options.dispersion=self._disp_context.dispersion
         self._ND_class.construct_function_dict(self._param_context.sim_dict, self._internal_options.experiment_type)
@@ -200,7 +200,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         if len(parameters) != len(self.optim_list):
             raise ValueError(f"Parameters and optim_list need to be the same length, currently parameters={len(parameters)} and optim_list={len(self.optim_list)}")
         if self._internal_options.normalise_parameters == True:
-            sim_params = dict(zip(self.optim_list,self.cls.change_normalisation_group(parameters, "un_norm")))
+            sim_params = dict(zip(self.optim_list,self._phandler.change_normalisation_group(parameters, "un_norm")))
         else:
             sim_params = dict(zip(self.optim_list, parameters))
         return self._ExperimentHandler.simulate(sim_params, times)

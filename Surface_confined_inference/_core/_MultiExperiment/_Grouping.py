@@ -74,6 +74,6 @@ def initialise_grouping(group_list, classes):
                     if function not in allowed_functions:
                         raise ValueError("Scaling function `{0}` not found in allowed functions {1} (group {2})".format(function, allowed_functions, key))
                     for parameter in group_to_condtions[key]["scaling"][function]:
-                        if parameter not in cls._internal_memory["input_parameters"]:
+                        if parameter not in cls._internal_options.input_params:
                             raise ValueError("Scaling parameter {0} not present for experiment class {1} (group {2})".format(parameter, classkey, key))
         return group_to_condtions, group_to_class
