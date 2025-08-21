@@ -6,6 +6,17 @@ from dataclasses import dataclass, field
 import os
 @dataclass(frozen=True)
 class DispersionContext:
+    """
+    Immutable dataclass storing dispersion-related context information, to be used by both an orchestrator and simulattor class
+    
+    Attributes:
+        dispersion (bool): Whether dispersion is enabled. Used to set disperion option in orchestrator class
+        dispersion_warning (str): Warning message for dispersion issues (default: ""). Currently not used
+        dispersion_parameters (list): List of parameters associated with a dispersion distribution (default: empty list)
+        dispersion_distributions (list): List of distribution types for respective dispersed parameters (default: empty list)
+        all_parameters (list): All parameter names including dispersed ones (default: empty list)
+        GH_values (list): Gauss-Hermite quadrature values for normal distributions (default: empty list)
+    """
     dispersion: bool
     dispersion_warning: str =""
     dispersion_parameters: list = field(default_factory=list)  
@@ -15,35 +26,48 @@ class DispersionContext:
 
 @dataclass(frozen=True)
 class ParameterContext:
+    """
+    Immutable dataclass storing information to be used by orchestrator and simulator classes
+    
+    Attributes:
+        fixed_parameters (dict): Dictionary of fixed parameter values
+        boundaries (dict): Dictionary of parameter boundaries to be used for minmax transformation
+        optim_list (list): List of optimisation parameters (i.e. to be changed as part of a loop)
+        sim_dict (dict): Simulation dictionary with all parameter values to be passed to C++ ODE simulator code, in dimensional form. 
+    """
     fixed_parameters: dict
     boundaries: dict
     optim_list: list 
     sim_dict: dict
 def dispersion_checking( all_parameters, GH_quadrature, bins):
         """
-
-        Function called when defining `_optim_list` variable, to check for the presence of dispersed parameters.
+        Check for dispersion parameters and validate distribution requirements.
+        
         Args:
-            optim_list (list): list of str variables
-        Initialises:
-            class: Dispersion, responsible for veryifying that the necessary dispersion parameters are present
-        Modifies:
-            Options - dispersion, sets True or False
+            all_parameters (list): List of all parameter names (optim_list + fixed_parameters)
+            GH_quadrature (bool): Whether to use Gauss-Hermite quadrature
+            bins (list): Number of bins for each dispersed parameter
+        
+        Returns:
+            DispersionContext: Context object containing dispersion information
+        
         Raises:
-            Exception: if the correct distribution parameters (for example mean and standard deviation) are not provided in `_optim_list` or `fixed_parameters`
-
-        Scans through all parameter names (i.e. those defined in optim_list and fixed_parameters) to check for the associated dispersion parameter
-        Dispersion is defined by setting parameters `{parameter}_{dispersion_flag}`. For example, if E0 has a normal distribution of values, we need `E0_mean` and `E0_std` variables
-        If a `{dispersion_flag}` is found in `all_parameters` (which is the combination of `_optim_list` and `fixed_parameters`) we create a new `{variable}:list` pair in `disp_param_dict`
-        This means the other `{dispersion_flag}` associated with that parameter will be added to the list associated with that `{variable}`
-        Once all parameters have been scanned through, we check to see which distribution each `{variable}:list` pair is associated with, which is achieved through set comparison
-        The `Dispersion` class is then initialised using the following information:
-        The number of bins for each dipseresed parameter (set in `_internal_options`)
-        The distribution for each parameter
-        The `{variables}` with which each distribution is associated
-
-        The required information is also initiliased for Gauss-Hermite quadratture, if required. If no normal distribution is found, then the GH_quadrature information is set to None
-
+            Exception: If required distribution parameters are missing
+            ValueError: If number of bins doesn't match number of dispersed parameters
+        
+        Behavior:
+            - Scans parameter names for dispersion flags (_mean, _std, etc.)
+            - Groups parameters by distribution type (normal, lognormal, uniform, etc.)
+            - Validates that all required parameters for each distribution are present
+            - Sets up Gauss-Hermite quadrature values for normal distributions
+            - Returns DispersionContext with dispersion configuration
+        
+        Distribution Types Supported:
+            - normal: requires _mean, _std
+            - lognormal: requires _logmean, _logscale  
+            - uniform: requires _lower, _upper
+            - skewed_normal: requires _mean, _std, _skew
+            - log_uniform: requires _logupper, _loglower
         """
         
         disp_flags = [
@@ -126,6 +150,16 @@ def dispersion_checking( all_parameters, GH_quadrature, bins):
             _disp_context=DispersionContext(dispersion=False)
             return _disp_context
 def validate_boundaries(parameters, boundaries):
+    """
+    Validate that all optimisation parameters have defined boundaries.
+    
+    Args:
+        parameters (list): List of parameter names requiring boundaries
+        boundaries (dict): Dictionary of parameter boundaries
+    
+    Raises:
+        ValueError: If any parameters are missing from boundaries
+    """
     missing_parameters = []
 
     for i in range(0, len(parameters)):
@@ -137,21 +171,31 @@ def validate_boundaries(parameters, boundaries):
             )
 def simulation_dict_construction(parameters, fixed_parameters, essential_parameters, dispersion_parameters, dispersion, simulation_dict, options):
         """
+        Construct the simulation dictionary. As part of a simulation loop, the simulation parameter keys will be updated, and then everything non-dimensionalised. 
+        
         Args:
-            parameters (list): passed when we set _optim_list, a list of str objects referring to parameter name
-        Initialises/modifies:
-            _internal_memory["simulation_dict"]
+            parameters (list): Optimisation parameters (set to None in dict) to be varied. 
+            fixed_parameters (dict): Fixed parameter values to be kept constant
+            essential_parameters (list): Required parameters for simulation
+            dispersion_parameters (list): Parameters with dispersion
+            dispersion (bool): Whether dispersion is enabled
+            simulation_dict (dict): Base simulation dictionary to modify
+            options: Options object with experiment configuration
+        
+        Returns:
+            dict: Complete simulation dictionary with all parameters
+        
         Raises:
-            Exception: If parameters set in `essential_parameters` are not found in either `_optim_list` or `fixed_parameters`
-        1) All parameters in `_optim_list` are set to `None`, as they will be changed on each simulation step
-        2) All parameter values in `fixed_parameters` are passed to `simulation_dict`
-        3) Checks to see if the parameters in _essential_parameters are present in `simulation_dict`
-            a) If dispersion is present, then the parameter will be set as part of the `dispersion_simulator` function, so it is set to 0
-            b) Else, if the missing parameter is one of the nonlinear capacitance parameters these are set to 0 for convenience
-            c) Else an error is thrown
-        4) Input parameters are fixed for each technique as appropriate using `validate_input_parameters`
-        5) Each parameter is then assigned its own nondimensionalisation function using `NDclass`
-
+            Exception: If essential parameters are missing and can't be defaulted
+        
+        Behavior:
+            - Sets optimization parameters to None (filled during simulation)
+            - Copies fixed parameter values to simulation dict
+            - Validates all essential parameters are present
+            - Sets defaults for missing optional parameters (CdlE*, phase, theta)
+            - Applies experiment-specific options (kinetics flags, etc.)
+            - Validates input parameters for experiment type
+            - Handles special cases for phase_only mode
         """
         missing_parameters = []
         all_parameters = list(
@@ -192,6 +236,11 @@ def simulation_dict_construction(parameters, fixed_parameters, essential_paramet
         }
         if "theta" not in simulation_dict:
             simulation_dict["theta"]=0
+        if options.model=="square_scheme":
+            simulation_dict["theta"]=1
+            simulation_dict["model"]=1
+        else:
+            simulation_dict["model"]=0
         for key in options_and_requirements.keys():
             sub_dict=options_and_requirements[key]
             option_value=sub_dict["option_value"]
@@ -218,14 +267,43 @@ def simulation_dict_construction(parameters, fixed_parameters, essential_paramet
         simulation_dict = ParameterHandler.validate_input_parameters(simulation_dict, options.experiment_type)
         return simulation_dict
 class ParameterHandler:
+    """
+    Initialize the ParameterHandler with experiment parameters and options.
+    
+    Args:
+        **kwargs: Keyword arguments containing:
+            - options: Options object with experiment configuration
+            - fixed_parameters (dict): Fixed parameter values
+            - boundaries (dict): Parameter boundaries for optimization
+            - parameters (list): List of optimization parameters
+    
+    Raises:
+        ValueError: If boundaries are missing for optimization parameters
+        Exception: If essential parameters are missing from optim_list or fixed_parameters
+    
+    Behavior:
+        - Validates parameter boundaries if problem type is "inverse"
+        - Checks for dispersion parameters and validates distributions
+        - Constructs simulation dictionary with all required parameters
+        - Sets up contexts for parameters and dispersion
+    """
     def __init__(self, **kwargs):
         self.options=kwargs["options"]
         self.fixed_parameters=kwargs["fixed_parameters"]
         self.boundaries=kwargs["boundaries"]
-        if self.options.experiment_type!="SquareWave":
-            self._essential_parameters = ["E0","k0","Cdl","gamma","CdlE1","CdlE2","CdlE3","alpha","Ru","phase"]
+        if self.options.model=="square_scheme":
+            roman_switch={**{x:x*"i" for x in range(1, 4)}, **{x:"{0}v{1}".format(max(5-x, 0)*"i",max(x-5, 0)*"i") for x in range(4, 7)}}
+            essential_p=[]
+            for i in range(1, 7):
+                essential_p+=[f"{x}_{i}" for x in ["E0", "k0","alpha"]]
+                essential_p+=[f"{x}_{roman_switch[i]}" for x in ["kp", "kd"]]
         else:
-            self._essential_parameters=["E0","k0","gamma","alpha","Cdl","CdlE1","CdlE2","CdlE3",]
+            essential_p=["E0","k0","alpha"]
+        
+        if self.options.experiment_type!="SquareWave":
+            self._essential_parameters = essential_p+["gamma","Cdl", "CdlE1","CdlE2","CdlE3", "Ru","phase"]
+        else:
+            self._essential_parameters=essential_p+["gamma","Cdl", "CdlE1","CdlE2","CdlE3"]
         parameters=kwargs["parameters"]
         self._optim_list=parameters
         if self.options.problem=="inverse":
@@ -274,16 +352,29 @@ class ParameterHandler:
         ) 
     @staticmethod
     def create_warning(warning_str):
+        """
+        Create a formatted warning message with terminal-width borders.
+        """
         term=os.get_terminal_size()[0]
         return "#"*term+"\n"+warning_str+"\n"+"#"*(term-1)
    
     def change_normalisation_group(self, parameters, method):
         """
+        Transform parameters between normalized and un-normalized values. Required parameters to be in same order as in _optim_list. 
+        
         Args:
-            parameters (list): list of numbers
-            method (str): flag indicating if the value is to be normalised or un-normalised
+            parameters (list): List of parameter values
+            method (str): Either "norm" (normalize) or "un_norm" (denormalize)
+        
         Returns:
-            list: list of appropriately transformed values
+            list: List of transformed parameter values
+        
+        Raises:
+            KeyError: If parameter not found in boundaries
+        
+        Behavior:
+            - Normalizes values to [0,1] range using boundaries if method="norm"
+            - Denormalizes from [0,1] to actual range if method="un_norm"
         """
         for key in self._optim_list:
             if key not in self.boundaries:
@@ -311,20 +402,26 @@ class ParameterHandler:
     @staticmethod
     def validate_input_parameters(inputs, exp_type):
         """
+        Validate and modify input parameters based on experiment type.
+        
         Args:
-            inputs (dict): Dictionary of parameters
+            inputs (dict): Dictionary of input parameters
+            exp_type (str): Experiment type ("DCV", "FTACV", "PSV", "SquareWave")
+        
         Returns:
-            dict : modified dictionary of input parameters according to the method assigned to the class
+            dict: Modified dictionary with experiment-specific parameters
+        
+        Behavior:
+            - Calculates experiment-specific parameters (tr, omega, etc.)
+            - Modifies inputs in-place and returns modified copy
         """
         if exp_type == "DCV":
             inputs["tr"] = abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
-            
             inputs["omega"] = 0
             inputs["delta_E"] = 0
             inputs["phase"]= 0
         elif exp_type == "FTACV":
             inputs["tr"] =  abs(inputs["E_reverse"] - inputs["E_start"]) / inputs["v"]
-            
         elif exp_type == "PSV":
             inputs["E_reverse"]=inputs["Edc"]
             inputs["tr"] = -1

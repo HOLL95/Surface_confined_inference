@@ -14,8 +14,8 @@ def _process_data(addresses, class_list, class_keys):
         ]
         
         if not matching_files:
-            print("Warning: No matching file found for {0}".format(experiment_key))
-            return
+            raise FileNotFoundError("No matching file containing {0} found in provided file_list".format(key_parts))
+            
         
         file = matching_files[0]
         
@@ -58,7 +58,7 @@ def _process_ts_data(experiment_key, data,  loc):
             return loc
         elif isinstance(zero_option, list):
             zero_params=zero_option
-        elif hasattr(cls.boundaries) is False:
+        elif hasattr(cls, "boundaries") is False:
             raise ValueError("Class doesn't contain boundaries for normalisation required for method {0}".format(zero_option))
         elif zero_option=="midpoint":
             zero_params=cls.change_normalisation_group([0.5 for x in cls.optim_list], "un_norm")
@@ -71,7 +71,8 @@ def _process_ts_data(experiment_key, data,  loc):
             cls.experiment_type,
             cls._internal_options.input_params,
             problem="forwards",
-            normalise_parameters=False
+            normalise_parameters=False,
+            model=cls.model
         )
         dummy_zero_class.fixed_parameters=cls.fixed_parameters
         dummy_zero_class.dispersion_bins = [1]

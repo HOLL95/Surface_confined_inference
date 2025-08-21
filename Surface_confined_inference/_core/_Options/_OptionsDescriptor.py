@@ -141,30 +141,7 @@ class ExclusiveSequenceOption(SequenceOption):
             present=value_set.difference(self.target)
             if len(present)>0:
                 raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
-class ExclusiveDictOption(TypedOption):
-    """Descriptor for sequence options where all values must be present."""
-    def __init__(self, name: str, default: Dict = None, 
-                target: Optional[Sequence]=[],
-                value_type: Optional[Type] = None,
-                doc: str = None):
-                super().__init__(name, dict, default or {}, doc)
-                self.target=set(target)
-                self.value_type=value_type
 
-    def validate(self, value: Any) -> None:
-        super().validate(value)
-        if value is not None:
-            value_set=set(value.keys())
-            missing=self.target.difference(value_set)
-            if len(missing)>0:
-                raise ValueError(f"In option {self.name} the following values are missing {" ".join(list(missing))}")
-            present=value_set.difference(self.target)
-            if len(present)>0:
-                raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
-            if self.value_type is not None:
-                for key in value.keys():
-                    if isinstance(value[key], self.value_type) is False:
-                        raise TypeError(f"In {self.name}, element {key} is {type(value[key])}, and not the required {self.value_type}")
 
 class StringOption(TypedOption):
     """Descriptor for string options."""
@@ -216,6 +193,26 @@ class DictOption(TypedOption):
                 if self.value_type and not isinstance(v, self.value_type):
                     raise TypeError(f"Value for key {repr(k)} in {self.name} must be of type "
                                     f"{self.value_type.__name__}, got {type(v).__name__}")
+class ExclusiveDictOption(DictOption):
+    """Descriptor for sequence options where all values must be present."""
+    def __init__(self, name: str, default: Dict = None, 
+                target: Optional[Sequence]=[],
+                value_type: Optional[Type] = None,
+                doc: str = None):
+                super().__init__(name, default=default or {}, key_type=None,value_type=value_type,required_keys=None,doc=doc)
+                self.target=set(target)
+                self.value_type=value_type
+
+    def validate(self, value: Any) -> None:
+        super().validate(value)
+        if value is not None:
+            value_set=set(value.keys())
+            missing=self.target.difference(value_set)
+            if len(missing)>0:
+                raise ValueError(f"In option {self.name} the following values are missing {" ".join(list(missing))}")
+            present=value_set.difference(self.target)
+            if len(present)>0:
+                raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
 class ComposedOption(OptionDescriptor):
     """Descriptor for options where each item in a sequence must be validated by at least one of the provided validators."""
     

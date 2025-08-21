@@ -22,7 +22,9 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     _allowed_experiments=["FTACV","PSV","DCV","SWV","SquareWave","Trumpet"]
     def __init__(self, input_params, **kwargs):
         self._internal_options = sci.MultiExperimentOptions(**kwargs)
+        
         self.input_params=input_params
+        
         self.file_list=self._internal_options.file_list
         
         self.class_keys=list(self.classes.keys())
@@ -65,6 +67,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     def file_list(self, file_list):
         self._internal_options.file_list=file_list
         self.classes=_process_data(file_list, self.classes, self.class_keys)
+        
     @property
     def group_list(self):
         if len(self._internal_options._group_list)==0:
@@ -178,7 +181,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         with open(os.path.join(dir_path, "multi_options.json"),"w") as f:
             json.dump(multi_dict, f)
     def check_grouping(self,):
-        self._plot_manager.plot_results([], savename=None, show_legend=True)
+        self._plot_manager.plot_results([], savename=None, show_legend=True, deced=False)
     def results(self, **kwargs):
         defaults={"show_legend":True,
                 "savename":None,

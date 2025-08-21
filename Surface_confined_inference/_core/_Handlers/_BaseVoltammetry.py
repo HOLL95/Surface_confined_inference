@@ -83,6 +83,7 @@ class ParameterInterface:
         for key in sim_params.keys():
             mutable_dict[key] = sim_params[key]
         for key in self.sim_dict.keys():
+
             nd_dict[key] = self.func_dict[key](mutable_dict[key])
         return nd_dict
 
@@ -137,7 +138,6 @@ class BaseHandler(ABC):
             - Executes simulations in parallel (if parallel_cpu > 1) or sequentially. 
             - Returns weighted sum of all simulation results
         """
-      
         mutable_dict=copy.deepcopy(self.param_interface.sim_dict)
         for key in sim_params.keys():
             mutable_dict[key]=sim_params[key]
@@ -241,6 +241,7 @@ class ContinuousHandler(BaseHandler):
                 idx=2
             else:
                 idx=0
+            print(nd_dict)
             current=np.array(sos.ODEsimulate(times, nd_dict))[idx,:]
         return current
     def get_voltage(self, times, input_parameters, validation_parameters):

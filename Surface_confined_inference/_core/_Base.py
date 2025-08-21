@@ -7,7 +7,37 @@ class BaseExperiment:
     
     @classmethod
     def from_json(cls, json_path):
-        """Factory method to create experiment from JSON"""
+        """
+        Factory method to create experiment instances from JSON configuration files.
+        
+        This method reads a JSON file containing experiment configuration and creates the appropriate
+        experiment class instance based on the specifications in the file, where the .json file has been generated using the "save_class" function in SingleExperiment or its child classes. 
+        Allows for sharing instances of the simulator class between machines or e.g. slurm processes. 
+        
+        Args:
+            json_path (str): Path to the JSON configuration file containing experiment specifications.
+                           The JSON file should contain:
+                           - "class": Dictionary with "name" and "module" keys specifying the experiment class
+                           - "Options": Dictionary containing experiment options including "experiment_type"
+                           - "Experiment_parameters": Dictionary of experiment parameters
+                           - "Options_handler": Optional handler configuration (can be None), will default to SingleExperimentOptions.
+                           - Optional keys: "fixed_parameters", "boundaries", "optim_list"
+        
+        Returns:
+            BaseExperiment: An instance of the appropriate experiment class (e.g., SingleExperiment, or any of its child classes)
+                          configured with the parameters and options from the JSON file.
+        
+        Raises:
+            FileNotFoundError: If the specified json_path does not exist
+            json.JSONDecodeError: If the JSON file is malformed
+            KeyError: If required keys are missing from the JSON configuration
+            ImportError: If the specified module or class cannot be imported
+            AttributeError: If the specified class or handler cannot be found in the module
+            
+        Usage:
+            experiment = BaseExperiment.from_json("config.json")
+            
+        """
         with open(json_path, "r") as f:
             data = json.load(f)
         

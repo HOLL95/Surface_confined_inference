@@ -19,39 +19,119 @@ using namespace std;
 
 //TODO rewrite as lambdas 
 
+static double last_successful_t = -1.0;
+static int function_call_count = 0;
+static int repeated_calls_at_same_t = 0;
+static const int MAX_REPEATED_CALLS = 3; // Threshold to detect step size issues
+
+// Function to print derivatives when step size problems are detected
+void print_derivatives_debug(sunrealtype t, N_Vector y, N_Vector ydot, 
+                            std::unordered_map<std::string, double>* params) {
+    std::cout << "\n!!! STEP SIZE REDUCTION DETECTED at t=" << t << " !!!" << std::endl;
+    std::cout << "=== Current State Variables ===" << std::endl;
+    std::cout << "I (Current): " << Ith(y, 1) << std::endl;
+    std::cout << "Q: " << Ith(y, 2) << std::endl;
+    std::cout << "Qminus: " << Ith(y, 3) << std::endl;
+    std::cout << "Q2minus: " << Ith(y, 4) << std::endl;
+    std::cout << "QHplus: " << Ith(y, 5) << std::endl;
+    std::cout << "QH22plus: " << Ith(y, 6) << std::endl;
+    std::cout << "QH: " << Ith(y, 7) << std::endl;
+    std::cout << "QHminus: " << Ith(y, 8) << std::endl;
+    std::cout << "QH21plus: " << Ith(y, 9) << std::endl;
+    
+    double QH2 = (-Ith(y, 2) - Ith(y, 3) - Ith(y, 4) - Ith(y, 7) - 
+                  Ith(y, 5) - Ith(y, 8) - Ith(y, 9) - Ith(y, 6) + 1);
+    std::cout << "QH2 (calculated): " << QH2 << std::endl;
+    
+    std::cout << "\n=== Computed Derivatives ===" << std::endl;
+    std::cout << "dI/dt: " << Ith(ydot, 1) << std::endl;
+    std::cout << "dQ/dt: " << Ith(ydot, 2) << std::endl;
+    std::cout << "dQminus/dt: " << Ith(ydot, 3) << std::endl;
+    std::cout << "dQ2minus/dt: " << Ith(ydot, 4) << std::endl;
+    std::cout << "dQHplus/dt: " << Ith(ydot, 5) << std::endl;
+    std::cout << "dQH22plus/dt: " << Ith(ydot, 6) << std::endl;
+    std::cout << "dQH/dt: " << Ith(ydot, 7) << std::endl;
+    std::cout << "dQHminus/dt: " << Ith(ydot, 8) << std::endl;
+    std::cout << "dQH21plus/dt: " << Ith(ydot, 9) << std::endl;
+    
+    // Check for very large derivatives
+    double max_deriv = 0;
+    for (int i = 1; i <= 9; i++) {
+        if (std::abs(Ith(ydot, i)) > max_deriv) {
+            max_deriv = std::abs(Ith(ydot, i));
+        }
+    }
+    std::cout << "Maximum absolute derivative: " << max_deriv << std::endl;
+    
+    // Print key rate constants
+    double I = Ith(y, 1);
+    double Er = mono_E(*params, t, (*params)["phase"]) - I * (*params)["Ru"];
+    std::cout << "\n=== Key Parameters ===" << std::endl;
+    std::cout << "Er (Electrode potential): " << Er << std::endl;
+    std::cout << "Current I: " << I << std::endl;
+    std::cout << "Resistance Ru: " << (*params)["Ru"] << std::endl;
+    
+    for (int j = 1; j <= 6; j++) {
+        std::cout << "kred_" << j << ": " << (*params)["kred_" + std::to_string(j)] 
+                  << ", kox_" << j << ": " << (*params)["kox_" + std::to_string(j)] << std::endl;
+    }
+    std::cout << "=========================================\n" << std::endl;
+}
+
 extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data)
 {
     std::unordered_map<std::string, double>* params = static_cast<std::unordered_map<std::string, double>*>(user_data);
+    
     double I = Ith(y, 1);
     double dIdt, Cdlp;
     double Er, dE, cap_Er, cap_dE;
     double dQdt, dQminusdt, dQ2minusdt, dQHplusdt, dQHdt, dQHminusdt, dQH22plusdt, dQH21plusdt, dchargedt;
     double Q = Ith(y, 2);
     double Qminus = Ith(y, 3);
-    double Q2minus = Ith(y, 4);// Jacobian Matrix Elements with Simplified Notation
+    double Q2minus = Ith(y, 4);
     double QHplus = Ith(y, 5);
     double QH22plus = Ith(y, 6);
     double QH = Ith(y, 7);
     double QHminus = Ith(y, 8);
     double QH21plus = Ith(y, 9);
     double QH2=(-Q - Qminus - Q2minus - QH - QHplus - QHminus - QH21plus - QH22plus + 1);
-
+    double kred, kox;
     Er=mono_E(*params, t, (*params)["phase"])-I*(*params)["Ru"];
     cap_Er=mono_E(*params, t,(*params)["cap_phase"])-I*(*params)["Ru"];
     cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
-
-
-
+    static double last_print_time = -1;
+    const double MAX_RATE = 1e23;  // Adjust as needed
+    // Update rate constants
     for (int j = 1; j < 7; j++) {
         string k = "k0_" + std::to_string(j);
         string a = "alpha_" + std::to_string(j);
         string e = "E0_" + std::to_string(j);
-        (*params)["kred_" + std::to_string(j)] = params->at(k) * std::exp(-params->at(a) * (Er - params->at(e)));
-        (*params)["kox_" + std::to_string(j)] = params->at(k) * std::exp((1 - params->at(a)) * (Er - params->at(e)));
+        kred= params->at(k) * std::exp(-params->at(a) * (Er - params->at(e)));
+        kox= params->at(k) * std::exp((1 - params->at(a)) * (Er - params->at(e)));
+        
+        (*params)["kred_" + std::to_string(j)] = std::min(kred, MAX_RATE);
+        (*params)["kox_" + std::to_string(j)] = std::min(kox, MAX_RATE);
     }
-
-    
-
+    /*
+    if (t - last_print_time >= 1) {
+        last_print_time = t;
+        std::cout << "=== Species Concentrations at t=" << t << " ===" << std::endl;
+        std::cout << "Q (Quinone)" << Q << std::endl;
+        std::cout<<"Reduction: " <<params->at("kred_1")<<" Oxidation: "<<params->at("kox_1")<<std::endl;
+        std::cout << "Qminus (Quinone radical anion): " << Qminus << std::endl;
+        std::cout<<"Reduction: " <<params->at("kred_2")<<" Oxidation: "<<params->at("kox_2")<<std::endl;
+        std::cout << "Q2minus (Quinone dianion):       " << Q2minus << std::endl;
+        std::cout << "QHplus (Protonated quinone):    " << QHplus << std::endl;
+        std::cout << "QH22plus (Diprotonated quinone):" << QH22plus << std::endl;
+        std::cout << "QH (Semiquinone):           " << QH << std::endl;
+        std::cout << "QHminus (Deprotonated semiq.):   " << QHminus << std::endl;
+        std::cout << "QH21plus (Protonated semiq.):    " << QH21plus << std::endl;
+        std::cout << "QH2 (Hydroquinone):          " << QH2 << std::endl;
+        std::cout << "Total mass balance check:    " << (Q + Qminus + Q2minus + QH + QHplus + QHminus + QH21plus + QH22plus + QH2) << std::endl;
+        std::cout << "=========================================" << std::endl;
+    }
+    */
+    // Compute derivatives
     dQdt = -Q*params->at("kred_1") - Q*params->at("kp_i") + Qminus*params->at("kox_1") + QHplus*params->at("kd_i");
     dQminusdt = Q*params->at("kred_1") - Qminus*params->at("kox_1") - Qminus*params->at("kred_2") - Qminus*params->at("kp_ii") + Q2minus*params->at("kox_2") + QH*params->at("kd_ii");
     dQ2minusdt = Qminus*params->at("kred_2") - Q2minus*params->at("kox_2") - Q2minus*params->at("kp_iii") + QHminus*params->at("kd_iii");
@@ -61,6 +141,7 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
     dQH22plusdt = QHplus*params->at("kp_iv") + QH21plus*params->at("kox_5") - QH22plus*params->at("kred_5") - QH22plus*params->at("kd_iv");
     dQH21plusdt = QH*params->at("kp_v") - QH21plus*params->at("kox_5") - QH21plus*params->at("kred_6") - QH21plus*params->at("kd_v") + QH22plus*params->at("kred_5") + params->at("kox_6")*QH2;
     
+    // Set derivatives
     Ith(ydot, 2) = dQdt;
     Ith(ydot, 3) = dQminusdt;
     Ith(ydot, 4) = dQ2minusdt;
@@ -69,30 +150,36 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
     Ith(ydot, 7) = dQHdt;
     Ith(ydot, 8) = dQHminusdt;
     Ith(ydot, 9) = dQH21plusdt;
-    dchargedt=Q*params->at("kred_1") - \
-                Qminus*params->at("kox_1") + \
-                Qminus*params->at("kred_2") - \
-                Q2minus*params->at("kox_2") - \
-                QH*params->at("kox_3") + \
-                QH*params->at("kred_4") + \
-                QHplus*params->at("kred_3") - \
-                QHminus*params->at("kox_4") - \
-                QH21plus*params->at("kox_5") + \
-                QH21plus*params->at("kred_6") + \
-                QH22plus*params->at("kred_5") - \
+    
+    dchargedt=-Q*params->at("kred_1") + \
+                Qminus*params->at("kox_1") - \
+                Qminus*params->at("kred_2") + \
+                Q2minus*params->at("kox_2") + \
+                QH*params->at("kox_3") - \
+                QH*params->at("kred_4") - \
+                QHplus*params->at("kred_3") + \
+                QHminus*params->at("kox_4") + \
+                QH21plus*params->at("kox_5") - \
+                QH21plus*params->at("kred_6") - \
+                QH22plus*params->at("kred_5") + \
                 params->at("kox_6")*QH2;
     
     double Er2=pow(cap_Er,2);
     Cdlp=(*params)["Cdl"]*(1+((*params)["CdlE1"]*cap_Er)+((*params)["CdlE2"]*Er2)+((*params)["CdlE3"]*Er2*cap_Er));
     dIdt=-(1/((*params)["Ru"]*Cdlp))*(I-(*params)["gamma"]*dchargedt-Cdlp*cap_dE);
     
-
-
     Ith(ydot, 1) = dIdt;
     updateCdlp(*params, Cdlp);
-
-    return (0);
+    
+    // Check if we should print derivatives due to step size issues
+    /*
+    if (repeated_calls_at_same_t >= MAX_REPEATED_CALLS) {
+        print_derivatives_debug(t, y, ydot, params);
+        repeated_calls_at_same_t = 0; // Reset to avoid excessive printing
     }
+    */
+    return (0);
+}
 
 extern "C" int Jac_multi_e(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,
                 void* user_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3)

@@ -26,7 +26,7 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         
         initialisation_parameters={x:input_parameters[x] for x in param_dict[experiment_type]}
         initialisation_parameters=self.add_dummy_params(initialisation_parameters)
-        super().__init__(experiment_type, initialisation_parameters, phase_function=phase_func)
+        super().__init__(experiment_type, initialisation_parameters)
         self.experiment_type=experiment_type
         self.param_dict=param_dict
     def add_dummy_params(self, param_dict):
@@ -44,7 +44,7 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         return_dict={}
         for i in range(0, len(names)):
             name=names[i]
-            return_dict[name]=sci.normalise(params[i], self._internal_memory["param_boundaries"][name])
+            return_dict[name]=sci.normalise(params[i],self.boundaries[name])
         return return_dict
     def dummy_un_normalise(self, params):
         
@@ -52,12 +52,12 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         return_dict={}
         for i in range(0, len(names)):
             name=names[i]
-            return_dict[name]=sci.un_normalise(params[i], self._internal_memory["param_boundaries"][name])
+            return_dict[name]=sci.un_normalise(params[i],self.boundaries[name])
         return return_dict
     def simulate(self,parameters, times):
         param_dict=self.dummy_un_normalise(parameters)
         updated_params=self.add_dummy_params(param_dict)
-        simulated_voltage=super().get_voltage(times, dimensional=True, input_parameters=updated_params)
+        simulated_voltage=super().get_voltage(times,  input_parameters=updated_params)
 
 
         return np.array(simulated_voltage)
@@ -134,7 +134,6 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
                 kwargs["num_peaks"]=time[-1]*sneak_freq
                 
     simulator=DummyVoltageSimulator(experiment_type, kwargs, sinusoidal_phase=kwargs["sinusoidal_phase"])
-    
     boundaries={"E_start":[-2, 2],
                     "E_reverse":[-2, 2],
                     "E_dc":[-2, 2],
@@ -147,7 +146,7 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
                     "phase_delta_E":[-1.5, 1.5],
                     "phase_omega":[0.1, 400]
                     }
-    simulator._internal_memory["param_boundaries"]=boundaries
+    simulator.boundaries=boundaries
     estimated_parameters={x:kwargs[x] for x in simulator.param_dict[experiment_type]}
     if kwargs["optimise"]==True:
         if "aliasing" not in kwargs:

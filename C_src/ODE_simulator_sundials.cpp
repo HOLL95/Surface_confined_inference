@@ -54,9 +54,9 @@ static int check_retval(void* returnvalue, const char* funcname, int opt);
 
 py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string, double> params){
     int NEQ=2;
-    //mode=0 for single E
-    //mode =1 for square scheme
-    if (params["mode"]==1){
+    //model=0 for single E
+    //model =1 for square scheme
+    if (params["model"]==1){
         NEQ=9;
     }
     #define RTOL  SUN_RCONST(1.0e-6) /* scalar relative tolerance            */
@@ -100,7 +100,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     //Current
     Ith(y, 1)=params["Cdl"]*mono_dE(params, 0, params["phase"]);
     
-    Ith(y, 2)=params["theta"];
+    
      /* Set the vector absolute tolerance */
     abstol = N_VNew_Serial(NEQ, sunctx);
     if (check_retval((void*)abstol, "N_VNew_Serial", 0)) { return (return_val); }
@@ -113,7 +113,11 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
         Ith(y, j+1) = 0;
         Ith(abstol, j+1)=ATOL3;
     }
-    
+    if (params["model"]==1){
+        Ith(y, 8)=params["theta"];
+    }else{
+        Ith(y, 2)=params["theta"];
+    }
     
 
    
@@ -126,7 +130,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     /* Call CVodeInit to initialize the integrator memory and specify the
     * user's right hand side function in y'=f(t,y), the initial time T0, and
     * the initial dependent variable vector y. */
-    if (params["mode"]==1){
+    if (params["model"]==1){
          retval = CVodeInit(cvode_mem, multi_e, 0, y);
     }else{
         retval = CVodeInit(cvode_mem, single_e, 0, y);
@@ -154,7 +158,7 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     if (check_retval(&retval, "CVodeSetLinearSolver", 1)) { return (return_val); }
 
     /* Set the user-supplied Jacobian routine Jac */
-     if (params["mode"]==1){
+     if (params["model"]==1){
          retval = CVodeSetJacFn(cvode_mem, Jac_multi_e);
     }else{
         retval = CVodeSetJacFn(cvode_mem, Jac);
@@ -171,8 +175,13 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
                 // Return zeros on numerical error
                 throw std::runtime_error("CVode failed");
             }
+            if (params["model"]==1){
+                multi_e(t, y, ydot, &params);
+            }
+            else{
+                single_e(t, y, ydot, &params);
+            }
             
-            single_e(t, y, ydot, &params);
             
             state_variables[0][iout]=Ith(y, 1);
             state_variables[1][iout]=Ith(y, 2);
@@ -194,9 +203,9 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
         if (sunctx) SUNContext_Free(&sunctx);
         
         // Reset state_variables to zeros
-        for (int i = 0; i < NEQ+2; i++) {
-            std::fill(state_variables[i].begin(), state_variables[i].end(), 0.0);
-        }
+        //for (int i = 0; i < NEQ+2; i++) {
+        //    std::fill(state_variables[i].begin(), state_variables[i].end(), 0.0);
+        //}
         
         return py::cast(state_variables);
     }

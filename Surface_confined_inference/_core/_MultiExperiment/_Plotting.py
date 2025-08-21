@@ -512,6 +512,9 @@ class PlotManager:
         
         return axis, line_list
     def plot_results(self, simulation_values, **kwargs):
+        for classkey in self.class_keys:
+            if "data" not in self._cls.classes[classkey]:
+                raise ValueError("No data associated with {0}".format(classkey))
         linestyles=[ "dashed", "dashdot","dotted",]
         if "target_key" not in kwargs:
             target_key=[None]

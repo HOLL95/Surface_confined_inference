@@ -6,6 +6,28 @@ from numpy import pi
 
 class NDParams:
     def __init__(self, experiment_type, input_parameters):
+        """
+        Initialize the non-dimensionalization parameters.
+        
+        Args:
+            experiment_type (str): Type of experiment ("FTACV", "DCV", "TrumpetPlot", "PSV", "SquareWave")
+            input_parameters (dict): Dictionary containing experimental parameters including:
+                - Temp (float): Temperature in Kelvin
+                - v (float): Scan rate V s^-1
+                - omega (float): Frequency 
+                - area (float): Electrode area cm ^-2
+                - Surface_coverage (float): Surface coverage mol cm^-2
+        
+        Behavior:
+            Sets up characteristic scales for non-dimensionalization:
+            - c_E0: Characteristic potential scale (RT/F)
+            - c_T0: Characteristic time scale (depends on time constant of the experiment)
+            - c_I0: Characteristic current scale
+            - c_Gamma: Characteristic surface coverage
+            
+        Raises:
+            KeyError: If required parameters are missing from input_parameters
+        """
 
         self.F = 96485.3328959
         self.R = 8.314459848
@@ -16,6 +38,7 @@ class NDParams:
         K_nondim = ["SquareWave"]
         if experiment_type in V_nondim:
             time_constant = input_parameters["v"]
+
         elif experiment_type in Omega_nondim:
             time_constant = input_parameters["omega"]*self.c_E0
         self.c_T0 = abs(self.c_E0 / time_constant)
@@ -28,6 +51,21 @@ class NDParams:
         self.area = input_parameters["area"]
 
     def construct_function_dict(self, dim_dict, experiment_type):
+        """
+        Create a dictionary mapping parameter names to their non-dimensionalization functions. 
+        The resulting function switch structure is then used to transform parameters for ultimate submission to the simulation function
+        
+        Args:
+            dim_dict (dict): Dictionary of dimensional parameters
+            experiment_type (str): Type of experiment
+            
+        Behavior:
+            Maps each parameter to its appropriate non-dimensionalization function
+            based on the parameter name pattern. Dependent on the time nondimensonalisation 
+            
+        Side Effects:
+            Sets self.function_dict attribute (used to access the function switch)
+        """
         if experiment_type !="SquareWave":
             function_dict = {}
             for key in dim_dict:
@@ -46,7 +84,7 @@ class NDParams:
                 elif key == "v":
                     function_dict[key] = self.v_nondim
                 elif key=="tr":
-                    function_dict[key] = self.t_nondim
+                    function_dict[key] = self.t_redim
                 else:
                     function_dict[key] = lambda x:x
             function_dict["cap_phase"] = lambda x:x
@@ -63,7 +101,9 @@ class NDParams:
             function_dict["cap_phase"] = lambda x:x
         self.function_dict=function_dict
     def redimensionalise(self, nondim_dict):
-
+        """
+        Convert non-dimensional parameters back to dimensional form.
+        """
         dim_dict = {}
         for key in nondim_dict:
             if key[0] == "E" or key == "delta_E":
@@ -83,6 +123,9 @@ class NDParams:
             else:
                 dim_dict[key] = nondim_dict[key]
         return dim_dict
+    """
+    Nondimensional and redimensional functions
+    """
     def e_nondim(self, value):
         return value / self.c_E0
 

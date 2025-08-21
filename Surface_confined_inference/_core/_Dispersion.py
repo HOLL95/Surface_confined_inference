@@ -8,13 +8,29 @@ import matplotlib.pyplot as plt
 
 class Dispersion:
     def __init__(
-        self,
-        dispersion_bins,
-        dispersion_parameters,
-        dispersion_distributions,
-        optim_list,
-        fixed_parameters={},
-    ):
+        self,dispersion_bins,dispersion_parameters,dispersion_distributions,optim_list,fixed_parameters={},):
+        """
+        Initialize a Dispersion object for parameter distribution modeling.
+        
+        Args:
+            dispersion_bins (list): Number of bins for discretizing each dispersed parameter distribution.
+                                Must be same length as dispersion_parameters.
+            dispersion_parameters (list): Names of parameters to be dispersed (e.g., ['E0', 'k0']).
+            dispersion_distributions (list): Distribution types for each parameter. Must be same length 
+                                        as dispersion_parameters. Valid values: ['uniform', 'normal', 
+                                        'lognormal', 'skewed_normal', 'log_uniform'].
+            optim_list (list): List of optimization parameters.
+            fixed_parameters (dict, optional): Dictionary of fixed parameter values. Defaults to {}.
+        
+        Behavior:
+            Validates that dispersion_bins, dispersion_parameters, and dispersion_distributions 
+            have consistent lengths. Sets up the dispersion configuration for later use in 
+            generic_dispersion().
+        
+        Raises:
+            ValueError: If dispersion_bins and dispersion_parameters have different lengths.
+            ValueError: If dispersion_distributions and dispersion_parameters have different lengths.
+        """
         self.bins = dispersion_bins
         self.dispersion_parameters = dispersion_parameters
         self.distributions = dispersion_distributions
@@ -33,6 +49,37 @@ class Dispersion:
             self.bins = [self.bins]
 
     def generic_dispersion(self, dim_dict, GH_list=[]):
+        """
+        Generate parameter values and weights for dispersion simulation based on specified distributions.
+        
+        Args:
+            dim_dict (dict): Dictionary containing parameter values including distribution parameters
+                            (e.g., 'X_mean', 'X_std' for normal distributions).
+            GH_list (list, optional): List of Gauss-Hermite quadrature nodes and weights for normal
+                                    distributions. Defaults to []. Each element should be a dict
+                                    with 'nodes' and 'normal_weights' keys, or None for non-normal
+                                    distributions.
+        
+        Behavior:
+            For each dispersed parameter, generates discrete parameter values and associated weights
+            based on the specified distribution type:
+            - 'uniform': Uniform distribution with '_lower' and '_upper' bounds
+            - 'normal': Normal distribution with '_mean' and '_std' parameters
+            - 'lognormal': Log-normal distribution with '_shape' and '_scale' parameters  
+            - 'skewed_normal': Skewed normal with '_mean', '_std', and '_skew' parameters
+            - 'log_uniform': Log-uniform with '_logupper' and '_loglower' parameters
+            
+            Uses Gauss-Hermite quadrature for normal distributions if GH_list is provided,
+            otherwise uses uniform binning with probability weights.
+        
+        Returns:
+            tuple: A 3-element tuple containing:
+                - sim_params (list): Copy of dispersion_parameters list
+                - value_combinations (list): List of tuples, each containing parameter values
+                                        for one simulation (length = n_dispersed_parameters^bins)
+                - weight_combinations (list): List of tuples, each containing probability weights
+                                            corresponding to value_combinations
+        """
         weight_arrays = []
         value_arrays = []
         for i in range(0, len(self.dispersion_parameters)):

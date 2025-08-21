@@ -20,7 +20,12 @@ class BaseExperimentOptions(OptionsManager):
         default=None,
         doc="Type of experiment (FTACV, PSV, DCV, SquareWave)."
     )
-    
+    model=EnumOption(
+        "model",
+        allowed_values=["single_electron", "square_scheme"],
+        default="single_electron",
+        doc="Model for system. Currently single electron redox reaction or 3x3 square scheme. "
+    )
     GH_quadrature = BoolOption(
         "GH_quadrature",
         default=True,

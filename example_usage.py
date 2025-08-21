@@ -5,7 +5,7 @@ import numpy as np
 inputs={
         "E_start": -0.4,
         "E_reverse": 0.3,
-        "omega": 1,
+        "omega": 10,
         "delta_E": 0.15,
         "area": 0.07,
         "Temp": 298,
@@ -50,9 +50,9 @@ non_disped_current=non_disped_ftv.dim_i(non_disped_ftv.simulate([0.1,100, 1e-10,
 
 ftv.save_class("json_test")
 load=sci.BaseExperiment.from_json("json_test.json")
-plt.plot(non_disped_current, label="No dispersion")
-plt.plot(current, label="Original class")
+plt.plot(dc_voltage, non_disped_current, label="No dispersion")
+plt.plot(dc_voltage,current, label="Original class")
 
-plt.plot(load.dim_i(load.simulate([0.05, 100], nondim_t)), color="black", linestyle="--", label="Loaded class")
+plt.plot(dc_voltage,load.dim_i(load.simulate([0.05, 100], nondim_t)), color="black", linestyle="--", label="Loaded class")
 plt.legend()
 plt.show()
