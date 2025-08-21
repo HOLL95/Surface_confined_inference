@@ -241,7 +241,6 @@ class ContinuousHandler(BaseHandler):
                 idx=2
             else:
                 idx=0
-            print(nd_dict)
             current=np.array(sos.ODEsimulate(times, nd_dict))[idx,:]
         return current
     def get_voltage(self, times, input_parameters, validation_parameters):

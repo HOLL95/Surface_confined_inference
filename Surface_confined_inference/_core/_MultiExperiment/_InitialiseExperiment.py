@@ -101,6 +101,8 @@ class InitialiseMultiExperiment:
                     for key in conditions_dict["Options"].keys():
                         if key !="input_params":
                             self.classes[experiment_key]["class"].__setattr__(key, conditions_dict["Options"][key])
+                    if "fixed_parameters" in conditions_dict:
+                        self.classes[experiment_key]["class"].fixed_parameters=conditions_dict["fixed_parameters"]
                 except Exception as e:
                     raise KeyError("Error processing {0}:{1}".format(experiment_key, str(e)))
 
