@@ -142,7 +142,8 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     * and vector absolute tolerances */
     retval = CVodeSVtolerances(cvode_mem, RTOL, abstol);
     if (check_retval(&retval, "CVodeSVtolerances", 1)) { return (return_val); }
-    
+    int max_steps = 10000;  // or whatever number you need
+    int flag = CVodeSetMaxNumSteps(cvode_mem, max_steps);
 
 
     /* Create dense SUNMatrix for use in linear solves */

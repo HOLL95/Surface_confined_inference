@@ -100,7 +100,7 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
     cap_Er=mono_E(*params, t,(*params)["cap_phase"])-I*(*params)["Ru"];
     cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
     static double last_print_time = -1;
-    const double MAX_RATE = 1e23;  // Adjust as needed
+    const double MAX_RATE = 1e10;  // Adjust as needed
     // Update rate constants
     for (int j = 1; j < 7; j++) {
         string k = "k0_" + std::to_string(j);
