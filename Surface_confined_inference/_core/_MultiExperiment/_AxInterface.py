@@ -231,13 +231,16 @@ class AxInterface(sci.OptionsAwareMixin):
                 ]
 
         objectives={key:ObjectiveProperties(minimize=True, threshold=thresholds[key]) for key in self._cls.grouping_keys}
-        self.ax_client.create_experiment(
-                                    name=self._internal_options.name,
-                                    parameters=param_arg,
-                                    objectives=objectives,
-                                    overwrite_existing_experiment=False,
-                                    is_test=False,
-                                )
+        input_dict=dict(
+            name=self._internal_options.name,
+            parameters=param_arg,
+            objectives=objectives,
+            overwrite_existing_experiment=False,
+            is_test=False,
+        )
+        if len(self._internal_options.input_constraints)>0:
+            input_dict["parameter_constraints"]=self._internal_options.input_constraints
+        self.ax_client.create_experiment(**input_dict)
         self._cls.save_class(dir_path=os.path.join(self._internal_options.results_directory,"evaluator"), include_data=True)
         if self._internal_options.simulate_front==True:
             for classkey in self._cls.class_keys:

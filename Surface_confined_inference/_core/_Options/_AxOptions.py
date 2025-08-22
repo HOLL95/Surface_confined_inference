@@ -67,8 +67,8 @@ class AxInterfaceOptions(OptionsManager):
                 default="none",
                 doc="Argument to be submitted to SLURM for priority"
                 )
-    """debug=BoolOption("Debug",
-                    default=False,
-                    doc="Flag for printing debug statements when loading process executors")"""
+    input_constraints=SequenceOption("input_constraints",
+                                    default=[],
+                                    doc="list of input constraints to be passed to the AxClient")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
