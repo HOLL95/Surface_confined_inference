@@ -218,22 +218,16 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             return times
         elif kwargs["dimensional"]==False and self._internal_options.experiment_type!="SquareWave":
             return self.nondim_t(times)
-        
-    def simulate(self, parameters, times):
+    def _simulation_prep(self, parameters, times):
         """
-        Simulate the electrochemical experiment with given parameters.
-        
-        Args:
-            parameters (list): List of parameter values (same length as optim_list)
-            times (list): List of time points for simulation
-        
+        Common method to check parameters are appropriate and prepare for simulation
+
         Raises:
             ValueError: If optim_list is not set
             ValueError: If parameters and optim_list have different lengths
             ValueError: If more information is needed to configure Disperion
-        
-        Returns:
-            list: Current values at the specified time points
+        return 
+            dict: simulation parameters and values
         """
         if self.optim_list is None:
             raise ValueError("optim_list variable needs to be set, even if it is an empty list")
@@ -245,8 +239,35 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             sim_params = dict(zip(self.optim_list,self._phandler.change_normalisation_group(parameters, "un_norm")))
         else:
             sim_params = dict(zip(self.optim_list, parameters))
-        return self._ExperimentHandler.simulate(sim_params, times)
+        return sim_params
+    def simulate(self, parameters, times):
+        """
+        Simulate the electrochemical experiment with given parameters.
         
+        Args:
+            parameters (list): List of parameter values (same length as optim_list)
+            times (list): List of time points for simulation
+        
+        
+        Returns:
+            list: Current values at the specified time points
+        """
+        sim_params=self._simulation_prep(parameters, times)
+        return self._ExperimentHandler.simulate(sim_params, times)
+    def get_thetas(self, parameters, times):
+        """
+        Get the full output from the c++ simulation code, including relative proportions of each species. 
+        
+        Args:
+            parameters (list): List of parameter values (same length as optim_list)
+            times (list): List of time points for simulation
+        
+        
+        Returns:
+            list: Current, Faradaic current, and then N columns depending on how many species there are in the model
+        """
+        sim_params=self._simulation_prep(parameters, times)
+        return self._ExperimentHandler.get_thetas(sim_params, times)
     def save_class(self,path):
         """
         Save the experiment class configuration to a JSON file.

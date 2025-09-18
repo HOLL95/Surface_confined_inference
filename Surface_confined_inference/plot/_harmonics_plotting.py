@@ -231,7 +231,8 @@ def plot_harmonics(**kwargs):
         kwargs["nyticks"]=None
     if "save_csv" not in kwargs:
         kwargs["save_csv"]=False
-
+    if "clip_oscillations" not in kwargs:
+        kwargs["clip_oscillations"]=None
     label_counter = 0
     for key in kwargs:
         if "data" in key:
@@ -330,9 +331,16 @@ def plot_harmonics(**kwargs):
         harmonics = time_series_dict[plot_name]["harmonics"]
         if kwargs["title"] is not None:
             kwargs["axes_list"][0].set_title(kwargs["title"])
+        if kwargs["clip_oscillations"] is not None:
+            freq=sci.get_frequency(time_series_dict[plot_name]["time"], time_series_dict[plot_name]["current"])
+            start=kwargs["clip_oscillations"]/freq
+            end=time_series_dict[plot_name]["time"][-1]-start
+            idx=np.where((time_series_dict[plot_name]["time"]>start) & (time_series_dict[plot_name]["time"]<end))
+        else:
+            idx=np.where(time_series_dict[plot_name]["time"]>=0)
         for i in range(0, len(harmonics)):
             ax = kwargs["axes_list"][i]
-            xaxis = time_series_dict[plot_name]["xaxis"]
+            xaxis = time_series_dict[plot_name]["xaxis"][idx]
             if i == 0:
                 if i == harmonics[i]:
                     if kwargs["plot_func"] == np.abs or kwargs["plot_func"] == abs:
@@ -342,9 +350,10 @@ def plot_harmonics(**kwargs):
                 else:
                     pf = kwargs["plot_func"]
                
+
                 ax.plot(
                     xaxis,
-                    pf(harm_dict[plot_name][i, :]),
+                    pf(harm_dict[plot_name][i, :])[idx],
                     label=plot_name,
                     alpha=time_series_dict[plot_name]["alpha"],
                     color=time_series_dict[plot_name]["colour"],
@@ -355,7 +364,7 @@ def plot_harmonics(**kwargs):
                 
                 ax.plot(
                     xaxis,
-                    kwargs["plot_func"](harm_dict[plot_name][i, :]),
+                    kwargs["plot_func"](harm_dict[plot_name][i, :])[idx],
                     alpha=time_series_dict[plot_name]["alpha"],
                     color=time_series_dict[plot_name]["colour"],
                     lw=time_series_dict[plot_name]["lw"],

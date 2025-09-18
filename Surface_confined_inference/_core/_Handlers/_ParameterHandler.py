@@ -4,6 +4,8 @@ import re
 import itertools
 from dataclasses import dataclass, field
 import os
+from numbers import Number
+from warnings import warn
 @dataclass(frozen=True)
 class DispersionContext:
     """
@@ -260,10 +262,8 @@ def simulation_dict_construction(parameters, fixed_parameters, essential_paramet
                             else:
                                 simulation_dict[param]=fixed_parameters[param]
                         
-
         if hasattr(options, "phase_only") and options.phase_only==True:
             simulation_dict["cap_phase"]=simulation_dict["phase"]
-            simulation_dict["phase"]=simulation_dict["cap_phase"]
         simulation_dict = ParameterHandler.validate_input_parameters(simulation_dict, options.experiment_type)
         return simulation_dict
 class ParameterHandler:

@@ -119,6 +119,9 @@ class BaseHandler(ABC):
             dict: Non-dimensionalised parameter dictionary
         """
         nd_dict = self.param_interface.nondimensionalise(sim_params)
+        if self.options.experiment_type!="SquareWave":
+            if self.options.phase_only==True:
+                nd_dict["cap_phase"]=nd_dict["phase"]
         return nd_dict
     def dispersion_simulator(self, sim_params, times):
         """
@@ -243,6 +246,9 @@ class ContinuousHandler(BaseHandler):
                 idx=0
             current=np.array(sos.ODEsimulate(times, nd_dict))[idx,:]
         return current
+    def get_thetas(self, simulation_params, times):
+        nd_dict=super().simulate(simulation_params, times)
+        return np.array(sos.ODEsimulate(times, nd_dict))
     def get_voltage(self, times, input_parameters, validation_parameters):
         """
         Calculate voltage waveform for continuous experiments.

@@ -100,7 +100,7 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
     cap_Er=mono_E(*params, t,(*params)["cap_phase"])-I*(*params)["Ru"];
     cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
     static double last_print_time = -1;
-    const double MAX_RATE = 1e10;  // Adjust as needed
+    const double MAX_RATE = 1e23;  // Adjust as needed
     // Update rate constants
     for (int j = 1; j < 7; j++) {
         string k = "k0_" + std::to_string(j);
@@ -109,8 +109,8 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
         kred= params->at(k) * std::exp(-params->at(a) * (Er - params->at(e)));
         kox= params->at(k) * std::exp((1 - params->at(a)) * (Er - params->at(e)));
         
-        (*params)["kred_" + std::to_string(j)] = std::min(kred, MAX_RATE);
-        (*params)["kox_" + std::to_string(j)] = std::min(kox, MAX_RATE);
+        (*params)["kred_" + std::to_string(j)] =kred;
+        (*params)["kox_" + std::to_string(j)] = kox;
     }
     /*
     if (t - last_print_time >= 1) {
