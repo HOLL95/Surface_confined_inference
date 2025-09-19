@@ -6,6 +6,14 @@ from ._OptionsDescriptor import (
 )
 from ._OptionsMeta import OptionsManager, OptionsMeta
 class AxInterfaceOptions(OptionsManager):
+    """
+    Configuration options for Ax (Adaptive Experimentation) platform integration.
+
+    This class manages options for integrating electrochemical parameter optimization
+    with Meta's Ax platform, supporting both local execution and high-performance
+    computing cluster deployment via SLURM.
+
+    """
     name=StringOption("name",
                         default="AxClientOptimisation",
                         doc="Ax client optimisation name")
@@ -71,4 +79,26 @@ class AxInterfaceOptions(OptionsManager):
                                     default=[],
                                     doc="list of input constraints to be passed to the AxClient")
     def __init__(self, **kwargs):
+        """
+        Initialize AxInterfaceOptions with provided keyword arguments.
+
+        Args:
+            **kwargs: Keyword arguments for setting option values.
+                     Must include valid option names as defined by the descriptors.
+
+        Raises:
+            AttributeError: If unknown options are provided
+            ValueError: If option values fail validation (e.g., out of range)
+            TypeError: If option values are of incorrect type
+
+        Example:
+            options = AxInterfaceOptions(
+                name="MyOptimization",
+                num_iterations=100,
+                independent_runs=10,
+                in_cluster=True,
+                num_cpu=4,
+                email="user@example.com"
+            )
+        """
         super().__init__(**kwargs)
