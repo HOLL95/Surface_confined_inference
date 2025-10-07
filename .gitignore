@@ -17,3 +17,4 @@ localtests/
 *.json
 test_inference.txt
 Results_test/
+CLAUDE.md
