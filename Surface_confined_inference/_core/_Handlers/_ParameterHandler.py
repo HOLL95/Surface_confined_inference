@@ -227,7 +227,7 @@ def simulation_dict_construction(parameters, fixed_parameters, essential_paramet
                     missing_parameters.append(key)
         if len(missing_parameters) > 0:
             raise Exception(
-                "The following parameters either need to be set in optim_list, or set at a value using the fixed_parameters variable\n{0}".format(
+                "The following parameters either need to be set in optim_list, or set at a value using the fixed_parameters variable: {0}".format(
                     ", ".join(missing_parameters)
                 )
             )
@@ -255,7 +255,7 @@ def simulation_dict_construction(parameters, fixed_parameters, essential_paramet
                     extra_required_params=sub_dict["params"][option_value]
                     for param in extra_required_params:
                         if param not in all_parameters:
-                            raise Exception("Because of option {0} being set to {1}, the following parameters need to be in either optim_list or fixed_parameters: {2}\n. Currently missing {3}".format(key, option_value, extra_required_params, param))
+                            raise Exception("Because of option {0} being set to {1}, the following parameters need to be in either optim_list or fixed_parameters: {2}. Currently missing {3}".format(key, option_value, extra_required_params, param))
                         else:
                             if param in parameters:
                                 simulation_dict[param]=None
