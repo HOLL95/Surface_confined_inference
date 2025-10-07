@@ -1016,10 +1016,13 @@ class PlotManager:
                                 norm_param="_".join(key.split("_")[:-1])
                                 if norm_param==yparam:
                                     ax[i,j].axhline(kwargs["true_values"][key], color="black", linestyle="--")
-                    if kwargs["information_score"] is not None:
-                        colour=idxs[i][j]["colours"]
+                    if kwargs["show_depths"] is not False:
+                        if kwargs["information_score"] is not None:
+                            colour=idxs[i][j]["colours"]
+                        else:
+                            colour=depthDataset
                     else:
-                        colour=depthDataset
+                        colour=None
                     if kwargs["order_by_depth"] ==True:
                         if isinstance(colour, str) is False:
                             cidx=np.argsort(colour)

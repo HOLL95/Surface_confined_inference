@@ -1,4 +1,3 @@
-
 import collections.abc
 import numbers
 from typing import List, Optional, Sequence
@@ -7,6 +6,15 @@ from ._OptionsDescriptor import (
 )
 from ._OptionsMeta import OptionsManager, OptionsMeta
 class MultiExperimentOptions(OptionsManager):
+    """
+    Configuration options for multi-experiment electrochemical parameter estimation.
+
+    This class manages options for experiments involving multiple datasets,
+    parameter optimization across multiple files, and synthetic data generation.
+    It extends OptionsManager to provide validation and management of complex
+    multi-experiment configurations.
+
+    """
     SWV_e0_shift=BoolOption("SWV_e0_shift", 
                             default=False, 
                             doc="SWV anodic/cathodic peaks can be at different potentials, this option allows to fit that shift explicitly.")
