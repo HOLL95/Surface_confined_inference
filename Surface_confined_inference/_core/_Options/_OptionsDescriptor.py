@@ -50,7 +50,7 @@ class TypedOption(OptionDescriptor):
         """Validate that the value is of the allowed types."""
         if not any(isinstance(value, t) for t in self.allowed_types):
             type_names = [t.__name__ for t in self.allowed_types]
-            type_str = " or ".join(type_names)
+            type_str = ' or '.join(type_names)
             raise TypeError(f"{self.name} must be of type {type_str}, got {type(value).__name__}")
 
 
@@ -64,7 +64,7 @@ class EnumOption(OptionDescriptor):
     def validate(self, value: Any) -> None:
         """Validate that the value is one of the allowed values."""
         if value not in self.allowed_values:
-            values_str = ", ".join(repr(v) for v in self.allowed_values)
+            values_str = ', '.join(repr(v) for v in self.allowed_values)
             raise ValueError(f"{self.name} must be one of: {values_str}, got {repr(value)}")
 
 
@@ -137,10 +137,10 @@ class ExclusiveSequenceOption(SequenceOption):
             value_set=set(value)
             missing=self.target.difference(value_set)
             if len(missing)>0:
-                raise ValueError(f"In option {self.name} the following values are missing {" ".join(list(missing))}")
+                raise ValueError(f"In option {self.name} the following values are missing {' '.join(list(missing))}")
             present=value_set.difference(self.target)
             if len(present)>0:
-                raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
+                raise ValueError(f"In option {self.name} the following values should not be present {' '.join(list(present))}")
 
 
 class StringOption(TypedOption):
@@ -182,7 +182,7 @@ class DictOption(TypedOption):
         if self.required_keys:
             missing_keys = [key for key in self.required_keys if key not in value]
             if missing_keys:
-                missing_str = ", ".join(repr(k) for k in missing_keys)
+                missing_str = ', '.join(repr(k) for k in missing_keys)
                 raise ValueError(f"{self.name} is missing required keys: {missing_str}")
         
         if self.key_type or self.value_type:
@@ -209,10 +209,10 @@ class ExclusiveDictOption(DictOption):
             value_set=set(value.keys())
             missing=self.target.difference(value_set)
             if len(missing)>0:
-                raise ValueError(f"In option {self.name} the following values are missing {" ".join(list(missing))}")
+                raise ValueError(f"In option {self.name} the following values are missing {' '.join(list(missing))}")
             present=value_set.difference(self.target)
             if len(present)>0:
-                raise ValueError(f"In option {self.name} the following values should not be present {" ".join(list(present))}")
+                raise ValueError(f"In option {self.name} the following values should not be present {' '.join(list(present))}")
 class ComposedOption(OptionDescriptor):
     """Descriptor for options where each item in a sequence must be validated by at least one of the provided validators."""
     
@@ -256,7 +256,7 @@ class ComposedOption(OptionDescriptor):
                     validation_errors.append(str(e))
             
             if not valid:
-                error_msg = "\n".join(validation_errors)
+                error_msg = ' '.join(validation_errors)
                 raise ValueError(f"Item {i} in {self.name} failed validation with all validators:\n{error_msg}")
 
 
