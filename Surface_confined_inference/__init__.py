@@ -16,7 +16,6 @@ from ._core._PintsFunctions import (FourierGaussianLogLikelihood,
                                     GaussianKnownSigmaTruncatedLogLikelihood)
 
 from ._core._Processing import top_hat_filter
-from ._Debug._FittingDebug import FittingDebug
 
 from ._core._InputChecking import (
     check_input_dict,

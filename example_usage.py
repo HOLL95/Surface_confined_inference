@@ -3,7 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 inputs={
-        "E_start": -0.4,
+       
         "E_reverse": 0.3,
         "omega": 10,
         "delta_E": 0.15,

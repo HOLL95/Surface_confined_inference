@@ -119,9 +119,8 @@ class BaseHandler(ABC):
             dict: Non-dimensionalised parameter dictionary
         """
         nd_dict = self.param_interface.nondimensionalise(sim_params)
-        if self.options.experiment_type!="SquareWave":
-            if self.options.phase_only==True:
-                nd_dict["cap_phase"]=nd_dict["phase"]
+        if hasattr(self.options, "phase_only") and self.options.phase_only==True:
+            nd_dict["cap_phase"]=nd_dict["phase"]
         return nd_dict
     def dispersion_simulator(self, sim_params, times):
         """

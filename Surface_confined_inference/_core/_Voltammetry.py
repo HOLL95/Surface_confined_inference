@@ -218,6 +218,8 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             return times
         elif kwargs["dimensional"]==False and self._internal_options.experiment_type!="SquareWave":
             return self.nondim_t(times)
+        else:
+            return times
     def _simulation_prep(self, parameters, times):
         """
         Common method to check parameters are appropriate and prepare for simulation
