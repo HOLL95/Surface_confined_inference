@@ -72,10 +72,6 @@ class TestSingleExperiment:
                 self.memory[key]["data_loc"]=os.path.join("testdata", key)
             else:
                 self.memory[key]["data_loc"]=os.path.join("tests","testdata", key)
-
-           
-        
-            
             self.memory[key]["class"] = SingleExperiment(key, input_dict[key])
             self.memory[key]["class"].fixed_parameters={
                                             "Cdl": 1e-4,

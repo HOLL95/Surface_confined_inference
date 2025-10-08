@@ -83,3 +83,30 @@ class OptionsAwareMixin:
         if not name.startswith("_") and name not in self._core_options:
             print("Warning: '{0}' is not in the list of accepted options for `{1}` and will not affect simulation behavior".format(name, self.__class__.__name__))
         super().__setattr__(name, value)
+    def __getattr__(self, name):
+        """
+        Fallback attribute getter that retrieves values from _internal_options.
+        
+        This method is only called when the attribute is not found on the instance.
+        It allows accessing option values via class.option_name instead of 
+        class._internal_options.option_name.
+        
+        Args:
+            name (str): The name of the attribute being accessed
+            
+        Returns:
+            The value from _internal_options if it exists there
+            
+        Raises:
+            AttributeError: If the attribute is not found in _internal_options either
+        """
+        internal_options = object.__getattribute__(self, '__dict__').get('_internal_options')
+        
+        if internal_options is not None:
+            # Check if it has get_option_names method
+            if hasattr(internal_options, "get_option_names"):
+                if name in internal_options.get_option_names():
+                    return getattr(internal_options, name)
+        
+        # Standard behavior - raise AttributeError
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")

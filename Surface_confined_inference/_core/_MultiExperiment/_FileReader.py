@@ -114,7 +114,7 @@ def _process_swv_data(experiment_key, data, loc):
         # Calculate times and voltages
         times = cls.calculate_times()
         voltage = cls.get_voltage(times)
-        pot = np.array([voltage[int(x)] for x in cls.SW_params["b_idx"]])
+        pot = np.array([voltage[int(x)] for x in cls._ExperimentHandler.SW_params["b_idx"]])
         
         # Apply baseline correction
         if zero_params is not None:
