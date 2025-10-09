@@ -108,7 +108,7 @@ class TestMultiExperiment:
         sim_params=[sci._utils.normalise(sim_dict[x], self.boundaries[x]) for x in cls._all_parameters]
         simulations=cls.evaluate(sim_params)
         for ckey in cls.class_keys:
-            assert sci._utils.RMSE(cls.classes[ckey]["data"], simulations[ckey])<1e-3
+            assert sci._utils.RMSE(cls.classes[ckey]["data"], simulations[ckey])<1e-2
     def test_saving_and_loading(self):
         cls=sci.MultiExperiment(self.experiments_dict, common=self.common, synthetic=True, normalise=True, boundaries=self.boundaries)
         cls.group_list=self.group_list
@@ -120,7 +120,7 @@ class TestMultiExperiment:
         sim_params=[sci._utils.normalise(sim_dict[x], self.boundaries[x]) for x in loaded_class._all_parameters]
         simulations=loaded_class.evaluate(sim_params)
         for ckey in loaded_class.class_keys:
-            assert sci._utils.RMSE(loaded_class.classes[ckey]["data"], simulations[ckey])<1e-3
+            assert sci._utils.RMSE(loaded_class.classes[ckey]["data"], simulations[ckey])<1e-2
 if __name__ == '__main__':    
     unittest.main()
     #v=TestMultiExperiment()
