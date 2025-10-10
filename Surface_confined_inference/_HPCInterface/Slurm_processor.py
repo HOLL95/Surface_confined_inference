@@ -1,11 +1,13 @@
-import numpy as np
-import Surface_confined_inference as sci
-from pathlib import Path
 import argparse
-import copy
 import datetime
-import matplotlib.pyplot as plt
 import os
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+import Surface_confined_inference as sci
+
 parser=argparse.ArgumentParser("Slurm processor")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class", type=str)
@@ -23,11 +25,11 @@ args = parser.parse_args()
 if args.method=="optimisation":
     datafile=np.loadtxt(args.datafile)
     if len(args.checkfiles)!=len(args.checkfile_types):
-        raise ValueError("Misconfigured checkfiles - {0} and {1}".format(args.checkfiles, args.checkfile_types))
+        raise ValueError(f"Misconfigured checkfiles - {args.checkfiles} and {args.checkfile_types}")
     time=datafile[:,0]
     potential=datafile[:,2]
     current=datafile[:,1]
-    with open(args.JobIds, "r") as f:
+    with open(args.JobIds) as f:
         ids=f.readlines()
     simulator=sci.BaseExperiment.from_json(args.simulator)
     loc=args.resultsLoc
@@ -37,7 +39,7 @@ if args.method=="optimisation":
 
         try:
             int(curr_id[0])
-            parameter_file=loc+"/Results_run_{0}.npy".format(curr_id)
+            parameter_file=loc+f"/Results_run_{curr_id}.npy"
         except:
             continue
         parameters=np.load(parameter_file)
@@ -63,7 +65,7 @@ if args.method=="optimisation":
 
     date=datetime.datetime.today().strftime('%Y-%m-%d')
     savepath=loc.split("/")
-    savepath="/".join(savepath[:-1])+"/PooledResults_{0}".format(date)
+    savepath="/".join(savepath[:-1])+f"/PooledResults_{date}"
     Path(savepath).mkdir(parents=True, exist_ok=True)
 
 

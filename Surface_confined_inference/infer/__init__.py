@@ -1,6 +1,3 @@
-from ._SimpleInference import (
-    get_input_parameters,
-    EIS_solution_resistance
-)
+from ._SimpleInference import EIS_solution_resistance, get_input_parameters
 
 

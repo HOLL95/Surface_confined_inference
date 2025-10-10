@@ -2,14 +2,19 @@
 Options specific to electrochemical experiments.
 This module provides option classes for different types of electrochemical experiments.
 """
-import collections.abc
 import numbers
-from typing import List, Optional, Sequence
-
-from ._OptionsDescriptor import BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor, ExclusiveDictOption, ExclusiveSequenceOption
-
-from ._OptionsMeta import OptionsManager, OptionsMeta
 import os
+
+from ._OptionsDescriptor import (
+    BoolOption,
+    EnumOption,
+    ExclusiveDictOption,
+    NumberOption,
+    OptionDescriptor,
+    SequenceOption,
+)
+from ._OptionsMeta import OptionsManager, OptionsMeta
+
 
 class BaseExperimentOptions(OptionsManager):
     """Base options common to all electrochemical experiments."""

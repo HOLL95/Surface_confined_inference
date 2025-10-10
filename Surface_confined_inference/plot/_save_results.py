@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import Surface_confined_inference as sci
 from pandas import DataFrame
+
+import Surface_confined_inference as sci
+
+
 def save_results(time, voltage, experiment, simulations, directory, experiment_type,boundaries, **kwargs):
     if "save_csv" not in kwargs:
         kwargs["save_csv"]=False
@@ -16,7 +19,7 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
     kwarg_keys=set(kwargs.keys())
     if kwargs["table"]==True:
         if necessary_args.issubset(kwarg_keys) is False:
-            raise ValueError("Need {0} for a table".format(kwarg_keys-necessary_args))
+            raise ValueError(f"Need {kwarg_keys-necessary_args} for a table")
         else:
             labels=["Rounded_table.txt", "Full_table.txt"]
             dp=[2, 10]
@@ -40,7 +43,7 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
                                     bar_list[key].append(full_list[key])
                     for j in range(0, len(max_len)):
                         max_len[j]=max(len(formatted_values[j]), max_len[j])
-                with open(directory+"/{0}".format(labels[m]), "w") as f:
+                with open(directory+f"/{labels[m]}", "w") as f:
                     table_writer(fancy_titles, max_len, f)
                     for values in str_values:
                         table_writer(values, max_len, f)
@@ -121,9 +124,9 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
             ax.set_ylabel("Current (A)")
             ax.legend()
             
-            adjust_and_save(fig, directory, "Rank {0} current.png".format(i+1))
+            adjust_and_save(fig, directory, f"Rank {i+1} current.png")
             if pooled_figure==True:
-                pool_ax.plot(xaxis, simulations[i,:], label="Rank {0}".format(i+1), alpha=0.5)
+                pool_ax.plot(xaxis, simulations[i,:], label=f"Rank {i+1}", alpha=0.5)
             if harmonic==True:
                 
                 h_fig, h_ax=plt.subplots(len(kwargs["harmonics"]), 1)
@@ -138,14 +141,14 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
                     ylabel="Current (A)",
                     axes_list=h_ax
                     )
-                plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage, "harmonics":kwargs["harmonics"]}
+                plot_dict[f"Rank {i+1}_data"]={"time": time, "current": simulations[i,:], "voltage":voltage, "harmonics":kwargs["harmonics"]}
 
                 
                 sci.plot.plot_harmonics(**plot_dict)  
                 
                 if pooled_figure==True:
-                    pooled_plot_dict["Rank {0}_data".format(i+1)]={"time": time, "current": simulations[i,:], "voltage":voltage}
-                adjust_and_save(h_fig, directory,"Rank {0} harmonics.png".format(i+1))
+                    pooled_plot_dict[f"Rank {i+1}_data"]={"time": time, "current": simulations[i,:], "voltage":voltage}
+                adjust_and_save(h_fig, directory,f"Rank {i+1} harmonics.png")
                 if kwargs["save_csv"]==True:
                     generated_harmonics=sci.plot.generate_harmonics(time, 
                                                             simulations[i,:],
@@ -156,10 +159,10 @@ def save_results(time, voltage, experiment, simulations, directory, experiment_t
                     for j in range(0, len(kwargs["harmonics"])):
                         save_dict["Harmonic {0}".format(kwargs["harmonics"][j])]=harm_func(generated_harmonics[j,:])
             if kwargs["save_csv"]==True:
-                DataFrame(save_dict).to_csv(directory+"/"+"Rank {0}.csv".format(i+1))
+                DataFrame(save_dict).to_csv(directory+"/"+f"Rank {i+1}.csv")
         except:
             with open(directory+"/"+"failed_runs.txt", "a") as f:
-                f.write("{1} Run {0} failed\n".format(i+1, experiment_type))
+                f.write(f"{experiment_type} Run {i+1} failed\n")
 
             continue
     

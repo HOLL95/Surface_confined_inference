@@ -1,7 +1,10 @@
-import Surface_confined_inference as sci
+
 import numpy as np
 from scipy.interpolate import CubicSpline
-import os
+
+import Surface_confined_inference as sci
+
+
 def _process_data(addresses, class_list, class_keys):
     if len(addresses)==0:
         return class_list
@@ -14,7 +17,7 @@ def _process_data(addresses, class_list, class_keys):
         ]
         
         if not matching_files:
-            raise FileNotFoundError("No matching file containing {0} found in provided file_list".format(key_parts))
+            raise FileNotFoundError(f"No matching file containing {key_parts} found in provided file_list")
             
         
         file = matching_files[0]
@@ -29,7 +32,7 @@ def _process_data(addresses, class_list, class_keys):
             raise
         process_dict={"FTACV":_process_ts_data,"DCV":_process_ts_data,"PSV":_process_ts_data, "SWV":_process_swv_data, "SquareWave":_process_swv_data}     
         if cls.experiment_type not in process_dict:
-            raise KeyError("Experiment {0} needs to contain one of {1}".format(experiment_key, process_dict.keys()))
+            raise KeyError(f"Experiment {experiment_key} needs to contain one of {process_dict.keys()}")
         else:
             class_list[experiment_key]=process_dict[cls.experiment_type](experiment_key, data,loc)
     return class_list
@@ -59,13 +62,13 @@ def _process_ts_data(experiment_key, data,  loc):
         elif isinstance(zero_option, list):
             zero_params=zero_option
         elif hasattr(cls, "boundaries") is False:
-            raise ValueError("Class doesn't contain boundaries for normalisation required for method {0}".format(zero_option))
+            raise ValueError(f"Class doesn't contain boundaries for normalisation required for method {zero_option}")
         elif zero_option=="midpoint":
             zero_params=cls.change_normalisation_group([0.5 for x in cls.optim_list], "un_norm")
         elif zero_option=="random":
             zero_params=cls.change_normalisation_group(np.random.rand(len(cls.optim_list)), "un_norm")
         else:
-            raise ValueError("Zero params for {0} must be one of midpoint, random, a list of parameters or None, not {1}".format(experiment_key, zero_option))
+            raise ValueError(f"Zero params for {experiment_key} must be one of midpoint, random, a list of parameters or None, not {zero_option}")
         # Generate zero point for error calculation
         dummy_zero_class = sci.SingleExperiment(
             cls.experiment_type,
@@ -119,8 +122,8 @@ def _process_swv_data(experiment_key, data, loc):
         # Apply baseline correction
         if zero_params is not None:
             signal_region = zero_params["potential_window"]
-            before = np.where((pot < signal_region[0]))
-            after = np.where((pot > signal_region[1]))
+            before = np.where(pot < signal_region[0])
+            after = np.where(pot > signal_region[1])
             
             noise_data = []
             noise_spacing = zero_params["thinning"]

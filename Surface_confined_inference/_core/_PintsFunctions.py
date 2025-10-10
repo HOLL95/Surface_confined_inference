@@ -1,7 +1,10 @@
-import pints
-import Surface_confined_inference as sci
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pints
+
+import Surface_confined_inference as sci
+
+
 class FourierGaussianLogLikelihood(pints.ProblemLogLikelihood):
     def __init__(self, problem):
         super().__init__(problem)

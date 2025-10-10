@@ -1,15 +1,16 @@
-import Surface_confined_inference as sci
-import SurfaceODESolver as sos
-import itertools
-import copy 
-import re
-import numpy as np
+import copy
 import multiprocessing as mp
-from typing import Callable
-from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Callable
+
+import numpy as np
+import SurfaceODESolver as sos
+
+import Surface_confined_inference as sci
+
 from ._ParameterHandler import ParameterHandler
-import matplotlib.pyplot as plt
+
 #context manager
 #options
 #parameter handling

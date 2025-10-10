@@ -1,19 +1,22 @@
-from ax.service.ax_client import AxClient
-from ax.service.utils.instantiation import ObjectiveProperties
-import logging
 import copy
-from submitit import AutoExecutor
-import numpy as np
-import Surface_confined_inference as sci
-from pathlib import Path
+import logging
 import os
+import subprocess
+import time
+from pathlib import Path
+
 import numpy as np
 import submitit
-from .AxParetoFuncs import pool_pareto
-import time
-from scipy.signal import decimate
-import subprocess
 import torch
+from ax.service.ax_client import AxClient
+from ax.service.utils.instantiation import ObjectiveProperties
+from scipy.signal import decimate
+
+import Surface_confined_inference as sci
+
+from .AxParetoFuncs import pool_pareto
+
+
 class AxInterface(sci.OptionsAwareMixin):
     def __init__(self,**kwargs):
         self._internal_options = sci.AxInterfaceOptions(**kwargs)
@@ -57,7 +60,7 @@ class AxInterface(sci.OptionsAwareMixin):
         for i in range(0, self._internal_options.num_iterations):
             parameters, trial_index = self.ax_client.get_next_trial()
             self.ax_client.complete_trial(trial_index=trial_index, raw_data=cls.optimise_simple_score(parameters))
-            self.ax_client.save_to_json_file(filepath=os.path.join(self._internal_options.results_directory, "clients", "ax_client_run_{0}.json".format(job_number)))
+            self.ax_client.save_to_json_file(filepath=os.path.join(self._internal_options.results_directory, "clients", f"ax_client_run_{job_number}.json"))
     def init_sim_executor(self, name, timeout=None, dependency=None):
         executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
         if timeout is None:
@@ -145,7 +148,7 @@ class AxInterface(sci.OptionsAwareMixin):
     def restart(self, start_point):
         valid_start_points=["pool", "simulate", "rclone"]
         if start_point not in valid_start_points:
-            raise ValueError("{0} not in allowed restart point ({1})".format(start_point, valid_start_points))
+            raise ValueError(f"{start_point} not in allowed restart point ({valid_start_points})")
         dependency=None
         logging.basicConfig(filename='restart.log', level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -194,9 +197,9 @@ class AxInterface(sci.OptionsAwareMixin):
             try:
                 self._cls=sci.BaseMultiExperiment.from_directory(MultiExperimentInstance)
             except Exception as e:
-                raise ValueError("Failed to load MultiExperiment class: {0}".format(str(e)))
+                raise ValueError(f"Failed to load MultiExperiment class: {e!s}")
         elif MultiExperimentInstance.__class__.__name__ !="MultiExperiment":
-            raise ValueError("Instance needs to be Surface_confined_inference.MultiExperiment, not {0}".format(MultiExperimentInstance.__class__.__name__))
+            raise ValueError(f"Instance needs to be Surface_confined_inference.MultiExperiment, not {MultiExperimentInstance.__class__.__name__}")
         else:
             self._cls=MultiExperimentInstance
         max_cpu=self._internal_options.num_cpu
@@ -252,7 +255,7 @@ class AxInterface(sci.OptionsAwareMixin):
         return self._cls.simple_score(zero_dict)
     def spawn_bulk_simulation(self, ):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
-        with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt"), "r") as f:
+        with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt")) as f:
             num_points=int(f.readline())
         node_chunks=min(num_points, 300)
         process_per_chunk=int(np.floor(num_points//node_chunks))+1
@@ -273,7 +276,7 @@ class AxInterface(sci.OptionsAwareMixin):
     def run_bulk_simulation(self, index, chunk_size):
         print("spawn3")
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
-        with open(os.path.join(self._internal_options.results_directory, "pareto_points", "parameters.txt"), "r") as f:
+        with open(os.path.join(self._internal_options.results_directory, "pareto_points", "parameters.txt")) as f:
             param_values = np.loadtxt(f, skiprows=1)
             f.seek(0)
             params = f.readline().strip().split()[1:]

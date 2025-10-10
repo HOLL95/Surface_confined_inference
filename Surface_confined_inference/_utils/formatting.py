@@ -1,7 +1,10 @@
-import numpy as np
-import Surface_confined_inference as sci
 import re
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+import Surface_confined_inference as sci
+
 colours=plt.rcParams['axes.prop_cycle'].by_key()['color']
 unit_dict={
         "E0": "V",
@@ -146,7 +149,7 @@ def get_titles(titles, **kwargs):
                     if re.search(".*_[1-9]+", titles[z]) is not None:
                         fname, true_name=sci._utils.numbered_title(titles[z], units=False)
                     else:
-                        fname=re.findall(".*(?=_{0})".format(sci._utils.dispersion_param_names[q]), titles[z])[0]
+                        fname=re.findall(f".*(?=_{sci._utils.dispersion_param_names[q]})", titles[z])[0]
                         true_name=fname
                     if nounits==True:
                         plot_units[titles[z]]=""

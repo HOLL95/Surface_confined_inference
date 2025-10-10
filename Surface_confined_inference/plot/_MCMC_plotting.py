@@ -1,14 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import copy
-import matplotlib.ticker as ticker
-from PIL import Image
-import re
-import Surface_confined_inference as sci
 
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
 import pints
 
-
+import Surface_confined_inference as sci
 
 
 def change_param( params, optim_list, parameter, value):
@@ -90,12 +87,12 @@ def plot_params( titles, set_chain, **kwargs):
             else:
                 
                 order_val=abs(int(np.ceil(np.abs(order))))+1
-                axes.xaxis.set_major_formatter(ticker.FormatStrFormatter('%.{0}f'.format(order_val)))
+                axes.xaxis.set_major_formatter(ticker.FormatStrFormatter(f'%.{order_val}f'))
         if kwargs["pool"]==True:
             axes.hist(plot_chain,bins=20, stacked=True, label=kwargs["label"], alpha=kwargs["alpha"])
         elif kwargs["pool"]==False:
             for j in range(0, len(set_chain[:, 0, 0])):
-                axes.hist(set_chain[j, kwargs["burn_remove"]:, i],bins=20, stacked=True, label="Chain {0}".format(i+1), alpha=kwargs["alpha"])
+                axes.hist(set_chain[j, kwargs["burn_remove"]:, i],bins=20, stacked=True, label=f"Chain {i+1}", alpha=kwargs["alpha"])
         elif kwargs["pool"]=="pre_pooled":
                 axes.hist(set_chain,bins=20, stacked=True, label=kwargs["label"], alpha=kwargs["alpha"])
         if kwargs["Rhat_title"]==True:
@@ -202,7 +199,7 @@ def plot_2d( params, chains, **kwargs):
     if "colour" not in kwargs:
         kwargs["colour"]=None
     elif len(kwargs["axis"])!=n_param:
-        return ValueError("Axis length must be {0}".format(n_param))
+        return ValueError(f"Axis length must be {n_param}")
     else:
         ax=kwargs["axis"]   
     if "title_debug" not in kwargs:

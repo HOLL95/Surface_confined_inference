@@ -1,22 +1,22 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import os
 import copy
-from scipy.interpolate import CubicSpline
-import itertools
-import Surface_confined_inference as sci
+import json
+import os
+from numbers import Number
 from pathlib import Path
-from ._InitialiseExperiment import InitialiseMultiExperiment, validate_input_dict
+
+import numpy as np
+
+import Surface_confined_inference as sci
+
 from ._FileReader import _process_data
 from ._Grouping import initialise_grouping
+from ._InitialiseExperiment import InitialiseMultiExperiment, validate_input_dict
 from ._ParameterManager import ParameterManager
-from pathlib import Path
-import json
-from ._utils import recursive_list_cast
-from numbers import Number
-from ._BaseMultiExperiment import BaseMultiExperiment
-from .SyntheticFuncs import create_times
 from ._Plotting import PlotManager
+from ._utils import recursive_list_cast
+from .SyntheticFuncs import create_times
+
+
 class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     _manual_options=["class_keys", "classes", "input_params", "group_to_conditions", "group_to_class", "group_to_parameters"]
     _allowed_experiments=["FTACV","PSV","DCV","SWV","SquareWave","Trumpet"]
@@ -38,7 +38,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                 if self._internal_options.SWV_e0_shift==True:
                     if "SquareWave" in self.classes[key]["class"].experiment_type:
                         if "anodic" not in key and "cathodic" not in key:
-                            raise ValueError("If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {0}".format(key))
+                            raise ValueError(f"If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {key}")
         self._all_harmonics=list(self._all_harmonics)
         self._all_parameters=list(self._all_parameters)
         
@@ -50,7 +50,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     def input_params(self, parameters):
         for key in parameters.keys():
             if key not in self._allowed_experiments:
-                raise ValueError("Experiment {0} not enabled for MultiExperiments (only {1})".format(key, self._allowed_experiments))
+                raise ValueError(f"Experiment {key} not enabled for MultiExperiments (only {self._allowed_experiments})")
             validate_input_dict(parameters[key], [key])
         initialised_classes=InitialiseMultiExperiment(parameters, 
                                                     common=self._internal_options.common, 
@@ -149,7 +149,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
             if kwargs["include_data"]==True:
                 for attr in ["zero_point", "zero_sim", "FT", "zero_point_ft", "data", "times"]:
                     if attr in self.classes[classkey]:
-                        with open(os.path.join(data_path, "{0}.txt".format(attr)), "w") as f:
+                        with open(os.path.join(data_path, f"{attr}.txt"), "w") as f:
                             if isinstance(self.classes[classkey][attr], Number):
                                 f.write(str(self.classes[classkey][attr]))
                             elif isinstance(self.classes[classkey][attr], np.ndarray):
@@ -161,18 +161,18 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                                 try:
                                     write_arg=float(self.classes[classkey][attr])
                                     f.write(str(write_arg))
-                                except Exception as e:
+                                except Exception:
                                     raise TypeError(f"Not castable to number when saving class:{classkey} element:{attr}, item:{self.classes[classkey][attr]}, type:{type(self.classes[classkey][attr])}")
                             else:
                                 try:
                                     np.savetxt(f, self.classes[classkey][attr])
-                                except Exception as e:
+                                except Exception:
                                     raise TypeError(f"Not castable to number when saving class:{classkey} element:{attr}, item:{self.classes[classkey][attr]}, type:{type(self.classes[classkey][attr])}")
             if "Zero_params" in self.classes[classkey]:
                 with open(os.path.join(data_path, "Zero_params.json"), "w") as f:
                     json.dump(self.classes[classkey]["Zero_params"], f)
             if len(data_dict)!=0:    
-                data_path = os.path.join(indv_class_path,"data", "{0}-data.json".format(classkey))
+                data_path = os.path.join(indv_class_path,"data", f"{classkey}-data.json")
                 with open(data_path, "w") as f:
                     json.dump(data_dict, f)
         multi_dict=self._internal_options.as_dict()

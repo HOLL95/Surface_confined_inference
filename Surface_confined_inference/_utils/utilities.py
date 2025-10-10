@@ -1,8 +1,11 @@
-import numpy as np
-from functools import wraps
-import re
-import Surface_confined_inference as sci
 import math
+import re
+from functools import wraps
+
+import numpy as np
+
+import Surface_confined_inference as sci
+
 experimental_input_params={"FTACV":["E_start", "E_reverse", "omega" ,"phase", "delta_E", "v"],
                 "DCV":["E_start", "E_reverse",  "v"],
                 "PSV":["Edc", "omega", "phase", "delta_E"]}
@@ -32,7 +35,7 @@ def RMSE(simulation, data):
         float: root mean squared error between the simulation and data
     """
     if len(simulation)!=len(data):
-        raise ValueError("Simulation and data needs to be the same length simulation={0}, data={1}".format(len(simulation), len(data)))
+        raise ValueError(f"Simulation and data needs to be the same length simulation={len(simulation)}, data={len(data)}")
     return np.sqrt(np.mean(np.square(simulation-data)))
 def temporary_options(**func_kwargs):
     def decorator(func):
@@ -77,7 +80,7 @@ def read_param_table(loc, **kwargs):
     return_arg=[]
     if "get_titles" not in kwargs:
         kwargs["get_titles"]=False
-    with open(loc, "r")as f:
+    with open(loc)as f:
         lines=f.readlines()
         for line in lines[1:]:
             linelist=re.split(r",\s*", line.strip())
@@ -120,7 +123,7 @@ def custom_logspace(start, end, custom_value, num_points):
 def construct_experimental_dictionary(existing_dictionary,terminal_entry, *args):
     if len(args)==1:
         if hasattr(existing_dictionary, args[0]):
-            raise ValueError("Overwriting terminal entry in node {0}, aborting".format(args[0]))
+            raise ValueError(f"Overwriting terminal entry in node {args[0]}, aborting")
         existing_dictionary[args[0]]=terminal_entry
         return existing_dictionary
     else:

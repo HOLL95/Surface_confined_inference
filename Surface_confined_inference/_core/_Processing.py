@@ -1,7 +1,8 @@
-import numpy as np
-import Surface_confined_inference as sci
 import copy
-import matplotlib.pyplot as plt
+
+import numpy as np
+
+
 def top_hat_filter(times, time_series, **kwargs):
     """
     Args:

@@ -11,7 +11,6 @@ The mixin integrates with the options management system to provide:
 - Support for manual options that bypass validation
 - Core options that are always accepted
 """
-from abc import ABC, abstractmethod
 
 class OptionsAwareMixin:
     """
@@ -81,7 +80,7 @@ class OptionsAwareMixin:
             return
         # Warn about unknown attributes
         if not name.startswith("_") and name not in self._core_options:
-            print("Warning: '{0}' is not in the list of accepted options for `{1}` and will not affect simulation behavior".format(name, self.__class__.__name__))
+            print(f"Warning: '{name}' is not in the list of accepted options for `{self.__class__.__name__}` and will not affect simulation behavior")
         super().__setattr__(name, value)
     def __getattr__(self, name):
         """

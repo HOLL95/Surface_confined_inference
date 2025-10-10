@@ -1,6 +1,9 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import warnings
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+
 def nyquist(spectra, **kwargs):
     if "ax" not in kwargs:
         _,kwargs["ax"]=plt.subplots(1,1)

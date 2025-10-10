@@ -1,10 +1,13 @@
-import Surface_confined_inference as sci
-import numpy as np
+import copy
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pints
 import scipy as sp
 import tabulate
-import copy
+
+import Surface_confined_inference as sci
+
 
 class DummyVoltageSimulator(sci.SingleExperiment):
     def __init__(self, experiment_type, input_parameters, **kwargs):
@@ -183,9 +186,9 @@ def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
         
         for key in estimated_parameters:
             if estimated_parameters[key]>boundaries[key][1]:
-                print("Warning: {0} is larger than reasonable experimental value {1} for the parameter {2}. Would recommend checking your data".format(estimated_parameters[key], boundaries[key][1], key))
+                print(f"Warning: {estimated_parameters[key]} is larger than reasonable experimental value {boundaries[key][1]} for the parameter {key}. Would recommend checking your data")
             if estimated_parameters[key]<boundaries[key][0]:
-                print("Warning: {0} is smaller than reasonable experimental value {1} for the parameter {2}. Would recommend checking your data".format(estimated_parameters[key], boundaries[key][1], key))
+                print(f"Warning: {estimated_parameters[key]} is smaller than reasonable experimental value {boundaries[key][1]} for the parameter {key}. Would recommend checking your data")
 
         problem = pints.SingleOutputProblem(simulator, aliased_time, aliased_voltage)
         error = pints.SumOfSquaresError(problem)

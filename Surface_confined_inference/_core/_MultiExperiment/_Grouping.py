@@ -1,4 +1,3 @@
-import Surface_confined_inference as sci
 def initialise_grouping(group_list, classes):
         class_keys=list(classes.keys())
        
@@ -7,29 +6,29 @@ def initialise_grouping(group_list, classes):
         for i in range(0, len(group_list)):
             experiment_list=[x.split("-") for x in list(class_keys) if group_list[i]["experiment"] in x]
             naughty_list=[]
-            empty_key=["{0}:{1}".format(x, group_list[i][x]) for x in ["experiment", "type"]]
+            empty_key=[f"{x}:{group_list[i][x]}" for x in ["experiment", "type"]]
             if "numeric" in group_list[i]:
                 
                 for key in group_list[i]["numeric"].keys():
                     found_unit=False
-                    in_key="_{0}-".format(key)
+                    in_key=f"_{key}-"
                     for expkey in class_keys:
                         if in_key in expkey or expkey[-len(in_key)+1:]==in_key[:-1]:
                             found_unit=True
                     if found_unit==False:
-                        raise ValueError("{0} not found in any experiments".format(key))
+                        raise ValueError(f"{key} not found in any experiments")
 
                         
                     if "-" in key:
-                        raise ValueError("'-'is not allowed in groupkeys ({0})".format(key))
+                        raise ValueError(f"'-'is not allowed in groupkeys ({key})")
                     qualifiers=list(group_list[i]["numeric"][key].keys())
                     if len(qualifiers)>1:
-                        raise ValueError("{0} in {1}, {2} has more than one qualifier".format(key, empty_key[0], empty_key[1]))
+                        raise ValueError(f"{key} in {empty_key[0]}, {empty_key[1]} has more than one qualifier")
                     else:
                         qualifier=qualifiers[0]
                         
                     if qualifier not in numeric_qualifiers:
-                        raise ValueError("{0} not in allowed qualifiers - lesser, geq, between, equals".format(qualifiers[0]))
+                        raise ValueError(f"{qualifiers[0]} not in allowed qualifiers - lesser, geq, between, equals")
                     if qualifier!="between":
                         qualifier_value=float(group_list[i]["numeric"][key][qualifier])
                         empty_key+=["%s:%d%s" % (qualifier, qualifier_value, key)] 
@@ -54,7 +53,7 @@ def initialise_grouping(group_list, classes):
             if "match" in group_list[i]:
                 
                 for match in group_list[i]["match"]:
-                    empty_key+=["match:{0}".format(match)] 
+                    empty_key+=[f"match:{match}"] 
                     for j in range(0, len(experiment_list)):
                         if match not in experiment_list[j]:
                            naughty_list.append(j)
@@ -67,13 +66,13 @@ def initialise_grouping(group_list, classes):
         allowed_functions=["divide", "multiply"]
         for key in group_to_class.keys():
             if len(group_to_class[key])==0:
-                raise ValueError("No experiments match condtions in {0}".format(key))
+                raise ValueError(f"No experiments match condtions in {key}")
             for classkey in group_to_class[key]:
                 cls=classes[classkey]["class"]
                 for function in group_to_condtions[key]["scaling"]:
                     if function not in allowed_functions:
-                        raise ValueError("Scaling function `{0}` not found in allowed functions {1} (group {2})".format(function, allowed_functions, key))
+                        raise ValueError(f"Scaling function `{function}` not found in allowed functions {allowed_functions} (group {key})")
                     for parameter in group_to_condtions[key]["scaling"][function]:
                         if parameter not in cls._internal_options.input_params:
-                            raise ValueError("Scaling parameter {0} not present for experiment class {1} (group {2})".format(parameter, classkey, key))
+                            raise ValueError(f"Scaling parameter {parameter} not present for experiment class {classkey} (group {key})")
         return group_to_condtions, group_to_class

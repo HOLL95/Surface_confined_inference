@@ -1,8 +1,10 @@
-import numpy as np
-import Surface_confined_inference as sci
 import argparse
 import os
-from datetime import datetime
+
+import numpy as np
+
+import Surface_confined_inference as sci
+
 parser = argparse.ArgumentParser("Slurm submitter")
 parser.add_argument("datafile", help="time-current-potential data filename", type=str)
 parser.add_argument("simulator", help="Json filename that initilises simulator class",)
@@ -32,7 +34,7 @@ if args.method=="optimisation":
                                     dimensional=True)
     job_id=os.environ.get('SLURM_JOB_ID')
     task_id=os.environ.get('SLURM_ARRAY_TASK_ID')    
-    np.save("{2}/Individual_runs/Results_run_{0}_{1}.npy".format(job_id,task_id, args.saveloc), results)
+    np.save(f"{args.saveloc}/Individual_runs/Results_run_{job_id}_{task_id}.npy", results)
 elif args.method=="sampling":
     simclass=sci.sci.BaseExperiment.from_json(args.simulator,class_type="parallelsimulator")
     extra_args={}
@@ -48,7 +50,7 @@ elif args.method=="sampling":
                         **extra_args
     )
     task_id=os.environ.get('SLURM_ARRAY_TASK_ID')
-    np.save("{1}/Individual_runs/Chain_{0}.npy".format(task_id, args.saveloc), results)
+    np.save(f"{args.saveloc}/Individual_runs/Chain_{task_id}.npy", results)
 
 
 

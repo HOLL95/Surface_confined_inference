@@ -1,4 +1,5 @@
 import numpy as np
+
 import Surface_confined_inference as sci
 
 
@@ -56,7 +57,6 @@ def get_DC_component(time, potential, current):
 
 
 def maximum_availiable_harmonics(times, current):
-    import matplotlib.pyplot as plt
     fft = abs(np.fft.fft(current))
     frequencies = np.fft.fftfreq(len(current), times[1] - times[0])
     input_freq = sci.get_frequency(times, current)

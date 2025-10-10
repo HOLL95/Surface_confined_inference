@@ -1,10 +1,15 @@
-import collections.abc
 import numbers
-from typing import List, Optional, Sequence
+
 from ._OptionsDescriptor import (
-    BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor, DictOption, ComposedOption, FileOption, DirectoryOption
+    BoolOption,
+    ComposedOption,
+    DictOption,
+    FileOption,
+    SequenceOption,
 )
-from ._OptionsMeta import OptionsManager, OptionsMeta
+from ._OptionsMeta import OptionsManager
+
+
 class MultiExperimentOptions(OptionsManager):
     """
     Configuration options for multi-experiment electrochemical parameter estimation.

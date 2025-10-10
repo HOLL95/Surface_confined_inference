@@ -1,7 +1,10 @@
-import numpy as np
-import itertools
 import copy
+import itertools
+
+import numpy as np
 import tabulate
+
+
 class ParameterManager:
     def __init__(self, all_parameters, grouping_keys, classes, SWV_e0_shift, group_to_class):
         self.all_parameters=all_parameters
@@ -17,32 +20,32 @@ class ParameterManager:
         new_all_parameters=[]
         for key in seperated_param_dictionary:
             if key not in self.all_parameters:
-                raise ValueError("{0} not in optim_list of any class".format(key))
+                raise ValueError(f"{key} not in optim_list of any class")
             all_idx=list(itertools.chain(*seperated_param_dictionary[key]))
             set_idx=set(all_idx)#existing_values
             required_idx=list(range(0, len(self.grouping_keys)))#required_values
             if len(set_idx)>len(required_idx):
-                raise ValueError("More grouping indices ({0}) than number of groups ({1})".format(set_idx, required_idx))
+                raise ValueError(f"More grouping indices ({set_idx}) than number of groups ({required_idx})")
 
             if len(set_idx)<len(required_idx):
                 missing_values=list(set(required_idx).difference(set_idx))
-                raise ValueError("{0} in parameter grouping assignment missing indexes for {1}".format(key, " ".join(["{0} (index {1})".format(self.grouping_keys[x],x) for x in missing_values])))
+                raise ValueError("{0} in parameter grouping assignment missing indexes for {1}".format(key, " ".join([f"{self.grouping_keys[x]} (index {x})" for x in missing_values])))
 
             if len(all_idx)!=len(required_idx):
                 diffsum=sum(np.diff(list(set_idx)))
                
                 if (diffsum-1)!=required_idx[-1]:
-                    raise ValueError("{0} (in {1}) in parameter grouping assignment contains duplicates".format(all_idx, key))
+                    raise ValueError(f"{all_idx} (in {key}) in parameter grouping assignment contains duplicates")
                 else:
-                    raise ValueError("{0} (in {1}) in parameter grouping assignment contains more indexes that then number of groups ({2})".format(all_idx, key, len(required_idx)))
+                    raise ValueError(f"{all_idx} (in {key}) in parameter grouping assignment contains more indexes that then number of groups ({len(required_idx)})")
 
-            new_all_parameters+=["{0}_{1}".format(key, x+1) for x in range(0, len(seperated_param_dictionary[key]))]
+            new_all_parameters+=[f"{key}_{x+1}" for x in range(0, len(seperated_param_dictionary[key]))]
             for m in range(0,len(seperated_param_dictionary[key])):
                 element=seperated_param_dictionary[key][m]
                 for j in range(0, len(element)):
                     group_key=self.grouping_keys[element[j]]
                     p_idx=group_to_parameters[group_key].index(key)
-                    group_to_parameters[group_key][p_idx]="{0}_{1}".format(key, m+1)
+                    group_to_parameters[group_key][p_idx]=f"{key}_{m+1}"
         common_params=[x for x in self.all_parameters if x not in seperated_param_dictionary]
         
         self.all_parameters=new_all_parameters+common_params
@@ -112,11 +115,11 @@ class ParameterManager:
                             elif "cathodic" in classkey:
                                 sim_values[true_param]-=valuedict[param]
                             else:
-                                raise ValueError("If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {0}".format(key))
+                                raise ValueError(f"If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {key}")
                 optimisation_parameters[classkey]=[sim_values[x] for x in cls.optim_list]
         for key in self.classes.keys():
             if key not in optimisation_parameters:
-                raise KeyError("{0} not added to optimisation list, check that at least one group includes it".format(key))
+                raise KeyError(f"{key} not added to optimisation list, check that at least one group includes it")
         return optimisation_parameters   
     def results_table(self, parameters, class_keys,**kwargs):
         if "mode" not in kwargs:

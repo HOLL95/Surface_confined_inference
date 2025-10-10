@@ -1,6 +1,6 @@
 # base_experiment.py - Contains the base class
 import json
-import Surface_confined_inference as sci
+
 
 class BaseExperiment:
     """Base class for all experiment types"""
@@ -38,12 +38,11 @@ class BaseExperiment:
             experiment = BaseExperiment.from_json("config.json")
             
         """
-        with open(json_path, "r") as f:
+        with open(json_path) as f:
             data = json.load(f)
         
         # Import all experiment modules to ensure registration
         import importlib
-        import sys
         
 
         class_name=data["class"]["name"]

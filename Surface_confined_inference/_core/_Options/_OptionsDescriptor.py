@@ -4,9 +4,10 @@ These descriptors handle type checking and validation for different option types
 """
 import collections.abc
 import numbers
-from typing import Any, Dict, List, Optional, Type, Union, Sequence
 import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Type, Union
+
 
 class OptionDescriptor:
     """Base descriptor class for options with validation."""
@@ -65,7 +66,7 @@ class EnumOption(OptionDescriptor):
         """Validate that the value is one of the allowed values."""
         if value not in self.allowed_values:
             values_str = ', '.join(repr(v) for v in self.allowed_values)
-            raise ValueError(f"{self.name} must be one of: {values_str}, got {repr(value)}")
+            raise ValueError(f"{self.name} must be one of: {values_str}, got {value!r}")
 
 
 class BoolOption(TypedOption):
@@ -188,10 +189,10 @@ class DictOption(TypedOption):
         if self.key_type or self.value_type:
             for k, v in value.items():
                 if self.key_type and not isinstance(k, self.key_type):
-                    raise TypeError(f"Key {repr(k)} in {self.name} must be of type {self.key_type.__name__}, "
+                    raise TypeError(f"Key {k!r} in {self.name} must be of type {self.key_type.__name__}, "
                                     f"got {type(k).__name__}")
                 if self.value_type and not isinstance(v, self.value_type):
-                    raise TypeError(f"Value for key {repr(k)} in {self.name} must be of type "
+                    raise TypeError(f"Value for key {k!r} in {self.name} must be of type "
                                     f"{self.value_type.__name__}, got {type(v).__name__}")
 class ExclusiveDictOption(DictOption):
     """Descriptor for sequence options where all values must be present."""
@@ -248,7 +249,7 @@ class ComposedOption(OptionDescriptor):
             for validator in self.validators:
                 try:
                     # Create a temporary descriptor instance with the same name
-                    temp_validator = validator("{0}_{1}".format(self.name, i))
+                    temp_validator = validator(f"{self.name}_{i}")
                     temp_validator.validate(item)
                     valid = True
                     break

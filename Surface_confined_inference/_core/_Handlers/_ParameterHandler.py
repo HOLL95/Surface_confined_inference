@@ -1,11 +1,13 @@
-import Surface_confined_inference as sci
 import copy
-import re
 import itertools
-from dataclasses import dataclass, field
 import os
-from numbers import Number
+import re
+from dataclasses import dataclass, field
 from warnings import warn
+
+import Surface_confined_inference as sci
+
+
 @dataclass(frozen=True)
 class DispersionContext:
     """
@@ -129,7 +131,7 @@ def dispersion_checking( all_parameters, GH_quadrature, bins):
                 else:
                     dispersion_distributions.append(best_guess)
             if len(dispersion_distributions)!=len(bins):
-                raise ValueError("Need one bin for each of {0}, currently only have {1}".format(dispersion_distributions, bins))
+                raise ValueError(f"Need one bin for each of {dispersion_distributions}, currently only have {bins}")
 
             normal=[x for x in range(0, len(dispersion_distributions)) if dispersion_distributions[x]=="normal"]
             GH_values=[]
@@ -255,7 +257,7 @@ def simulation_dict_construction(parameters, fixed_parameters, essential_paramet
                     extra_required_params=sub_dict["params"][option_value]
                     for param in extra_required_params:
                         if param not in all_parameters:
-                            raise Exception("Because of option {0} being set to {1}, the following parameters need to be in either optim_list or fixed_parameters: {2}. Currently missing {3}".format(key, option_value, extra_required_params, param))
+                            raise Exception(f"Because of option {key} being set to {option_value}, the following parameters need to be in either optim_list or fixed_parameters: {extra_required_params}. Currently missing {param}")
                         else:
                             if param in parameters:
                                 simulation_dict[param]=None
@@ -378,7 +380,7 @@ class ParameterHandler:
         """
         for key in self._optim_list:
             if key not in self.boundaries:
-                raise KeyError("{0} not in bounadries {1}".format(key, self.boundaries.keys()))
+                raise KeyError(f"{key} not in bounadries {self.boundaries.keys()}")
         normed_params = copy.deepcopy(parameters)
         if method == "un_norm":
             for i in range(0, len(parameters)):

@@ -1,9 +1,13 @@
-import numpy as np
-import Surface_confined_inference as sci
+import datetime
 import os
 import uuid
 from pathlib import Path
-import datetime
+
+import numpy as np
+
+import Surface_confined_inference as sci
+
+
 class SingleSlurmSetup(sci.SingleExperiment):
     def __init__(self, experiment_type, experiment_parameters, **kwargs):
         super().__init__(experiment_type, experiment_parameters, **kwargs)
@@ -76,12 +80,12 @@ class SingleSlurmSetup(sci.SingleExperiment):
         }
         save_json=identifier+"_Slurm_Json.json"
         self.save_class("Submission/"+save_json)
-        submission_file="{0}_Automated_slurm_submission.job".format(identifier)
+        submission_file=f"{identifier}_Automated_slurm_submission.job"
         
         with open("Submission/"+submission_file, "w") as f:
             f.write("#!/usr/bin/env bash\n")
             for key in master_dict.keys():
-                write_str="#SBATCH {0}={1}\n".format(key, master_dict[key])
+                write_str=f"#SBATCH {key}={master_dict[key]}\n"
                 f.write(write_str)
             f.write("set -e \n")
             f.write('SLURM_LOG_DIR=\"slurm_logs\"\n')
@@ -134,7 +138,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
         with open("Submission/"+cleanup_file, "w") as f:
             f.write("#!/usr/bin/env bash\n")
             for key in cleanup_dict.keys():
-                write_str="#SBATCH {0}={1}\n".format(key, cleanup_dict[key])
+                write_str=f"#SBATCH {key}={cleanup_dict[key]}\n"
                 f.write(write_str)
             f.write("set -e \n")
             if kwargs["method"]=="optimisation":
@@ -161,7 +165,7 @@ class SingleSlurmSetup(sci.SingleExperiment):
                         if "parameters" in kwargs["check_experiments"][key]:
                             check_technique=sci.SingleExperiment(key, kwargs["check_experiments"][key]["parameters"])
                             
-                            check_json_path= cwd+"/Submission/"+identifier+"_Check_{0}.json".format(key)
+                            check_json_path= cwd+"/Submission/"+identifier+f"_Check_{key}.json"
                             self.save_class(check_json_path, switch_type={"experiment":key, "parameters":kwargs["check_experiments"][key]["parameters"]})
                             json_addresses.append(check_json_path)
                         else:
@@ -183,9 +187,9 @@ class SingleSlurmSetup(sci.SingleExperiment):
         with open("Submission/"+controller_file, "w") as f:
             f.write("#!/usr/bin/env bash\n")
             f.write("array_job_id=$(sbatch Submission/"+submission_file+" | awk '{print $4}')\n")
-            f.write("sbatch --dependency=afterok:$array_job_id Submission/{0}\n".format(cleanup_file) )
+            f.write(f"sbatch --dependency=afterok:$array_job_id Submission/{cleanup_file}\n" )
         with open("Submission/RemoteDesktopSetup.sh", "w") as f:
-            with open(RDS_loc , "r") as readfile:
+            with open(RDS_loc ) as readfile:
              for line in readfile:
               f.write(line)
 
@@ -211,12 +215,12 @@ class SingleSlurmSetup(sci.SingleExperiment):
             date=datetime.datetime.today().strftime('%Y-%m-%d')
             saveloc="{0}/{2}/PooledResults_{1}".format(os.getcwd(), date, kwargs["results_directory"])
             print("")
-            print("Results will be written to {0}".format(saveloc))
-            print("To copy this to your personal filestore (when the run is complete) from this terminal window, I think you should run:\n\n scp -r {0} scp.york.ac.uk:/home/userfs/{1}/{2}".format(saveloc, user[0], user))
+            print(f"Results will be written to {saveloc}")
+            print(f"To copy this to your personal filestore (when the run is complete) from this terminal window, I think you should run:\n\n scp -r {saveloc} scp.york.ac.uk:/home/userfs/{user[0]}/{user}")
             print("")
             print("To start the remote desktop service and view the results, run")
             print("")
-            print("source {0}/Submission/RemoteDesktopSetup.sh".format(os.getcwd()))
+            print(f"source {os.getcwd()}/Submission/RemoteDesktopSetup.sh")
             print("")
             print("And follow the instructions there")
             import subprocess

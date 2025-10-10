@@ -1,18 +1,20 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import warnings
-import time
+import copy
 import os
 import re
-import copy
-from matplotlib.widgets import Slider, Button, RadioButtons, TextBox, CheckButtons
-from numpy.lib.stride_tricks import sliding_window_view
-from scipy.optimize import curve_fit
-from scipy.integrate import simpson
+import warnings
 from decimal import Decimal
-import Surface_confined_inference as sci
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pints
-class DCV_peak_area():
+from matplotlib.widgets import Button, CheckButtons, RadioButtons, Slider, TextBox
+from scipy.integrate import simpson
+from scipy.optimize import curve_fit
+
+import Surface_confined_inference as sci
+
+
+class DCV_peak_area:
     
     def __init__(self, times, potential, current, area, **kwargs):
         
@@ -107,7 +109,7 @@ class DCV_peak_area():
             #plt.show()
             popt, pcov = curve_fit(func, noise_times, noise_current)
             fitted_curve=[func(t, *popt) for t in time_half]
-            return_arg["poly_{0}".format(i)]=[volt_half, fitted_curve]
+            return_arg[f"poly_{i}"]=[volt_half, fitted_curve]
             
             #plt.plot(volt_half, fitted_curve, color="red")
             sub_c=np.subtract(current_half, fitted_curve)
@@ -115,10 +117,10 @@ class DCV_peak_area():
             fitted_curves[idx_1[i]:idx_2[i]]=fitted_curve
             #plt.plot(volt_half[signal_idx], sub_c[signal_idx])
             area=simpson(sub_c[signal_idx], x=time_half[signal_idx])
-            return_arg["bg_{0}".format(i)]=[noise_voltages, noise_current]
-            return_arg["subtract_{0}".format(i)]=[volt_half[signal_idx], sub_c[signal_idx]]
+            return_arg[f"bg_{i}"]=[noise_voltages, noise_current]
+            return_arg[f"subtract_{i}"]=[volt_half[signal_idx], sub_c[signal_idx]]
             gamma=abs(area/(self.area*96485.3321))
-            return_arg["gamma_{0}".format(i)]="{:.3E}".format(Decimal(gamma))
+            return_arg[f"gamma_{i}"]=f"{Decimal(gamma):.3E}"
         return return_arg
     def get_slider_vals(self,):
         params=[self.slider_array[key].val for key in self.slider_array.keys()] 
@@ -162,10 +164,10 @@ class DCV_peak_area():
                 if self.check_status[key]==True:
                      plot_dict[key][i].set_data(0,0)
                 else:
-                    plot_dict[key][i].set_data(get_vals["{0}_{1}".format(key, i)][0],get_vals["{0}_{1}".format(key, i)][1])
+                    plot_dict[key][i].set_data(get_vals[f"{key}_{i}"][0],get_vals[f"{key}_{i}"][1])
                 if key=="subtract":
-                    current=get_vals["{0}_{1}".format(key, i)][1]
-                    potential=get_vals["{0}_{1}".format(key, i)][0]
+                    current=get_vals[f"{key}_{i}"][1]
+                    potential=get_vals[f"{key}_{i}"][0]
                     abs_current=abs(current)
                     current_max=max(abs_current)
                     loc=np.where(abs_current==current_max)
@@ -180,7 +182,7 @@ class DCV_peak_area():
                             self.scatter_points.append(self.all_Ax.scatter(potential_max, actual_current_max, s=100,color="purple", marker="x"))
                         elif self.show_peaks=="Lines":
                             self.vlines.append(self.all_Ax.axvline(potential_max, color="purple", linestyle="--"))
-            self.gamma_text[i].set_text("$\\Gamma_"+txt[i]+"="+get_vals["gamma_{0}".format(i)]+"$ mol cm$^{-2}$")
+            self.gamma_text[i].set_text("$\\Gamma_"+txt[i]+"="+get_vals[f"gamma_{i}"]+"$ mol cm$^{-2}$")
             
             self.all_Ax.relim()
             self.all_Ax.autoscale_view()
@@ -228,7 +230,7 @@ class DCV_peak_area():
         self.func_order="2"
         txt=["f", "b"]
         get_vals=self.background_subtract(init_param_values)
-        self.gamma_text=[text_ax.text(0.0, 1-(i*1), "$\\Gamma_"+txt[i]+"="+get_vals["gamma_{0}".format(i)]+"$ mol cm$^{-2}$") for i in range(0, 2)]
+        self.gamma_text=[text_ax.text(0.0, 1-(i*1), "$\\Gamma_"+txt[i]+"="+get_vals[f"gamma_{i}"]+"$ mol cm$^{-2}$") for i in range(0, 2)]
         text_ax.set_axis_off()
         
 
@@ -305,7 +307,7 @@ class DCV_peak_area():
         try:
             key=float(expression)
             self.position_list[key]=self.peak_positions
-            self.save_text.set_text("{0}mV added".format(key))
+            self.save_text.set_text(f"{key}mV added")
         except:
             self.save_text.set_text("Not a scan rate")
     def get_scale_dict(self):
@@ -583,7 +585,7 @@ class TrumpetSimulator:
         if "starting_point" not in kwargs:
             kwargs["starting_point"]="random"
         if "boundaries" not in kwargs:
-            raise KeyError("Requires boundaries for {0}".format(self._optim_list))
+            raise KeyError(f"Requires boundaries for {self._optim_list}")
         if "plot_results" not in kwargs:
             kwargs["plot_results"]=False
         

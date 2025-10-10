@@ -1,9 +1,9 @@
-from scipy.stats import norm, lognorm, skewnorm, loguniform
-import numpy as np
-import itertools
 import copy
+import itertools
 import math
-import matplotlib.pyplot as plt
+
+import numpy as np
+from scipy.stats import lognorm, loguniform, norm, skewnorm
 
 
 class Dispersion:

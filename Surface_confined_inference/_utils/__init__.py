@@ -1,14 +1,23 @@
-from .utilities import add_noise, RMSE, temporary_options, read_param_table, custom_linspace, custom_logspace, normalise, un_normalise, moving_avg, GH_setup
 from .formatting import (
-        fancy_names,
-        unit_dict,
-        dispersion_param_names,
-        numbered_title,
-        get_titles,
-        format_values,
-        numbered_title,
-        nounits,
+        colours,
         det_subplots,
-        colours
-
+        dispersion_param_names,
+        fancy_names,
+        format_values,
+        get_titles,
+        nounits,
+        numbered_title,
+        unit_dict,
+)
+from .utilities import (
+        RMSE,
+        GH_setup,
+        add_noise,
+        custom_linspace,
+        custom_logspace,
+        moving_avg,
+        normalise,
+        read_param_table,
+        temporary_options,
+        un_normalise,
 )

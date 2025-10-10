@@ -1,6 +1,8 @@
-import Surface_confined_inference as sci
 import numpy as np
-import matplotlib.pyplot as plt
+
+import Surface_confined_inference as sci
+
+
 def convert_to_bode(spectra):
         spectra=[complex(x, y) for x,y in zip(spectra[:,0], spectra[:,1])]
         phase=np.angle(spectra, deg=True)#np.arctan(np.divide(-spectra[:,1], spectra[:,0]))*(180/math.pi)
@@ -20,7 +22,7 @@ class SimpleSurfaceCircuit:
             if celem not in kwargs:
                 kwargs[celem]=celem
             elif kwargs[celem] not in accepted_vals:
-                raise KeyError("{0} must be one of either {1}, not {2}".format(celem, accepted_vals, kwargs[celem]))
+                raise KeyError(f"{celem} must be one of either {accepted_vals}, not {kwargs[celem]}")
             elif kwargs[celem]=="Q"+elem:
                 alphas.append("alpha"+elem)
         self.options=kwargs
@@ -35,7 +37,7 @@ class SimpleSurfaceCircuit:
                 keys=kwargs["boundaries"].keys()
                 for key in self.parameters:
                     if key not in keys:
-                        raise KeyError("Boundaries needed for {0}".format(key))
+                        raise KeyError(f"Boundaries needed for {key}")
                 self.boundaries=kwargs["boundaries"]
     def n_parameters(self):
         return len(self.parameters)

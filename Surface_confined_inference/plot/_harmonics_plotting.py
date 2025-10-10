@@ -1,8 +1,11 @@
-import numpy as np
 import copy
+
 import matplotlib.pyplot as plt
-import Surface_confined_inference as sci
+import numpy as np
 from pandas import DataFrame
+
+import Surface_confined_inference as sci
+
 
 def generate_harmonics(times, data, **kwargs):
     if "func" not in kwargs or kwargs["func"] == None:
@@ -85,7 +88,7 @@ def generate_harmonics(times, data, **kwargs):
 
         if kwargs["return_fourier"] == False:
             if kwargs["one_sided"] == True:
-                harmonics[i, :] = 2 * ((np.fft.ifft(top_hat)))
+                harmonics[i, :] = 2 * (np.fft.ifft(top_hat))
 
             else:
                 harmonics[i, :] = np.fft.ifft(f_domain_harmonic)

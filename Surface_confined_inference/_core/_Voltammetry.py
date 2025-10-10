@@ -1,21 +1,13 @@
-import SurfaceODESolver as sos
-import Surface_confined_inference as sci
-from Surface_confined_inference._utils import RMSE
-from ._Handlers._ParameterHandler import ParameterHandler
-from ._Handlers._BaseVoltammetry import ExperimentHandler, ParameterInterface
-from pathlib import Path
-import pints
-import collections.abc
-import numbers
-from warnings import warn
-import itertools
-import numpy as np
-import copy
-import re
-import time
-import math
-import matplotlib.pyplot as plt
 import json
+
+import numpy as np
+
+import Surface_confined_inference as sci
+
+from ._Handlers._BaseVoltammetry import ExperimentHandler, ParameterInterface
+from ._Handlers._ParameterHandler import ParameterHandler
+
+
 class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
     _change_options=["experiment_type", "GH_quadrature", "dispersion_bins", "phase_only", "square_wave_return", "input_params"]
     def __init__(self, experiment_type, experiment_parameters, options_handler=None, **kwargs):
@@ -318,7 +310,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             value=ParameterHandler.validate_input_parameters(value, self._internal_options.experiment_type)
         if name=="experiment_type" and hasattr(self._internal_options, "experiment_type"):
             if value!=self._internal_options.experiment_type:
-                raise ValueError("Cannot switch experiment of existing class ({0}), please create a new one".format(self._internal_options.experiment_type))
+                raise ValueError(f"Cannot switch experiment of existing class ({self._internal_options.experiment_type}), please create a new one")
         super().__setattr__(name, value)
         if name in self._change_options:
             self._intitialise_phandler(options=self._internal_options)

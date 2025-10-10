@@ -1,7 +1,10 @@
-import numpy as np
-import Surface_confined_inference as sci
+
 import matplotlib.pyplot as plt
-import os
+import numpy as np
+
+import Surface_confined_inference as sci
+
+
 class HeuristicMethod:
     def __init__(self,file, **kwargs):
         if "method" not in kwargs:

@@ -1,18 +1,18 @@
-import Surface_confined_inference as sci
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import copy
-from string import ascii_uppercase
-from scipy.spatial import ConvexHull
-from scipy.interpolate import CubicSpline
-from scipy.spatial.distance import cdist
-from matplotlib.ticker import FuncFormatter
-import matplotlib.patches as mplpatches
-import matplotlib.cm as cm
-import matplotlib.colors as mcolours
-import re
 import itertools
+import re
+from string import ascii_uppercase
+
+import matplotlib as mpl
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.ticker import FuncFormatter
+from scipy.spatial import ConvexHull
+
+import Surface_confined_inference as sci
+
+
 class PlotManager:
     def __init__(self, composed_class, results_array=None, pre_saved=False):
         self._cls=composed_class
@@ -300,7 +300,7 @@ class PlotManager:
         kwargset=set(kwargs.keys())
         intersect=possible_args-kwargset
         if len(intersect)!=2:
-            raise ValueError("Only one of ({0}) allowed as arg - found {1}".format(possible_args, intersect))
+            raise ValueError(f"Only one of ({possible_args}) allowed as arg - found {intersect}")
         else:
             arg=list(kwargset.intersection(possible_args))[0]
         total_all_simulations=[]
@@ -330,7 +330,7 @@ class PlotManager:
                             param_values.append([element["parameters"][x] for x in self._cls._all_parameters])
                         param_values=np.array(param_values)
             else:
-                raise ValueError("For {0} argument results have to be loaded through `BaseMultiExperiment.results_loader()`".format(arg))
+                raise ValueError(f"For {arg} argument results have to be loaded through `BaseMultiExperiment.results_loader()`")
         if simulate_all==True:
             kwargs["deced"]=False
             dims=param_values.shape
@@ -340,7 +340,7 @@ class PlotManager:
             for i in range(0, dims[0]):
                 values=param_values[i,:]
                 if all([x>=0 and x<=1 for x in values]) != self._cls._internal_options.normalise: 
-                    print("Warning - are values correctly normalised? Loaded class has normalised set to {0}".format(self._cls._internal_options.normalise))
+                    print(f"Warning - are values correctly normalised? Loaded class has normalised set to {self._cls._internal_options.normalise}")
                 #print("here")
                 vals=self._cls.evaluate(values)
                 total_all_simulations.append(vals)
@@ -514,7 +514,7 @@ class PlotManager:
     def plot_results(self, simulation_values, **kwargs):
         for classkey in self.class_keys:
             if "data" not in self._cls.classes[classkey]:
-                raise ValueError("No data associated with {0}".format(classkey))
+                raise ValueError(f"No data associated with {classkey}")
         linestyles=[ "dashed", "dashdot","dotted",]
         if "target_key" not in kwargs:
             target_key=[None]
@@ -664,7 +664,7 @@ class PlotManager:
             kwargs["keylabel"]=True
         if kwargs["keylabel"]==True:
             letterdict=dict(zip(self.grouping_keys, ascii_uppercase[:len(self.grouping_keys)]))
-            legend_dict={key:"{0} : {1}".format(letterdict[key], key) for key in self.grouping_keys}
+            legend_dict={key:f"{letterdict[key]} : {key}" for key in self.grouping_keys}
             if "keylabel_legend" not in kwargs:
                 kwargs["keylabel_legend"]=True
         if "envelope_threshold" not in kwargs:
@@ -743,7 +743,7 @@ class PlotManager:
             return_array[:,i]=assign
         return return_array
     def _get_2d_neighours(self,xscores, yscores, **kwargs):
-            from sklearn.neighbors import NearestNeighbors, BallTree
+            from sklearn.neighbors import BallTree
             points = np.column_stack([xscores, yscores])
             hull = ConvexHull(points).vertices
             hull_pairs=np.array([points[x,:] for x in hull])
@@ -788,7 +788,7 @@ class PlotManager:
             indices_list=np.unique(empty_array)
             return indices_list
     def depths_from_dict(self, infodict, score_array):
-        from depth.model.DepthEucl import DepthEucl 
+        from depth.model.DepthEucl import DepthEucl
         combinations=list(itertools.combinations(self._all_parameters,2))
         joined_keys=[f"{x[0]}&{x[1]}" for x in combinations]
         combinations_dict={x:{} for x in joined_keys}
@@ -812,13 +812,13 @@ class PlotManager:
             if len(setlist[m])<2:
                 depth_lists.append(None)
             else:
-                new_score_array=np.column_stack(([score_array[:,x] for x in setlist[m]]))
+                new_score_array=np.column_stack([score_array[:,x] for x in setlist[m]])
                 model=DepthEucl().load_dataset(new_score_array)
                 depthDataset=model.spatial(evaluate_dataset=True)
                 depth_lists.append(depthDataset)
         return depth_lists, combinations_dict, setlist
     def pareto_parameter_plot(self, **kwargs):
-        from depth.model.DepthEucl import DepthEucl 
+        from depth.model.DepthEucl import DepthEucl
         if self._check_results_loaded() is False:
             raise ValueError("No `address` argument provided and results not loaded through directory")
         if "axes" not in kwargs:
@@ -915,7 +915,7 @@ class PlotManager:
                     else:
                         
                         match = re.search(pattern, split2[j][1])
-                        arg2="{0}{1}".format(equalitydict[split2[j][0]], match.group(0))
+                        arg2=f"{equalitydict[split2[j][0]]}{match.group(0)}"
                     table.append([arg1, arg2])
                 tab=tableaxes[1-i].table(cellText=table, cellLoc="left")
                 tab.auto_set_font_size(False)
@@ -1049,7 +1049,7 @@ class PlotManager:
                     if j==0:
                         ax[i,j].set_ylabel(all_params[i])
                         if abs(np.mean(plot_axis[1]))<1e-2:
-                            ax[i,j].yaxis.set_major_formatter(FuncFormatter(lambda x, _: '{:.1e}'.format(x)))
+                            ax[i,j].yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1e}'))
                     else:
                         ax[i,j].set_yticks([])
                 
@@ -1079,7 +1079,7 @@ class PlotManager:
                     ax[i,j].set_xlabel(all_params[j])
                     ax[i,j].tick_params(axis='x', labelrotation=35)
                     if abs(np.mean(plot_axis[0]))<1e-2:
-                        ax[i,j].xaxis.set_major_formatter(FuncFormatter(lambda x, _: '{:.1e}'.format(x)))
+                        ax[i,j].xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1e}'))
                 else:
                     ax[i,j].set_xticks([])
                     

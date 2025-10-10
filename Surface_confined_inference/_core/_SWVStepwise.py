@@ -1,7 +1,11 @@
-import SurfaceODESolver as sos
-import Surface_confined_inference as sci
 import copy
+
 import numpy as np
+import SurfaceODESolver as sos
+
+import Surface_confined_inference as sci
+
+
 class SWVStepwise(sci.SingleExperiment):
     def __init__(self, experiment_parameters, **kwargs):
 

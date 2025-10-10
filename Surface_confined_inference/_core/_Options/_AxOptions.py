@@ -1,10 +1,13 @@
-import collections.abc
-import numbers
-from typing import List, Optional, Sequence
 from ._OptionsDescriptor import (
-    BoolOption, EnumOption, NumberOption, SequenceOption, StringOption, OptionDescriptor, DictOption,ComposedOption, FileOption, DirectoryOption
+    BoolOption,
+    DirectoryOption,
+    NumberOption,
+    SequenceOption,
+    StringOption,
 )
-from ._OptionsMeta import OptionsManager, OptionsMeta
+from ._OptionsMeta import OptionsManager
+
+
 class AxInterfaceOptions(OptionsManager):
     """
     Configuration options for Ax (Adaptive Experimentation) platform integration.

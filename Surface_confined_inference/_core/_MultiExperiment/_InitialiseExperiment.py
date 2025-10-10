@@ -1,4 +1,6 @@
 import Surface_confined_inference as sci
+
+
 def validate_input_dict(dictionary, path):
         keylist=list(dictionary.keys())
         if "Parameters" in keylist:
@@ -9,16 +11,16 @@ def validate_input_dict(dictionary, path):
                 values=[x.split("_") for x in keylist]
                 units=set([x[1] for x in values])
                 if len(units)>1:
-                    raise ValueError("All units in node {1} need to be the same (currently {0} in {2})".format(set(units), "".join(["[{0}]".format(x) for x in path]), keylist))
+                    raise ValueError("All units in node {1} need to be the same (currently {0} in {2})".format(set(units), "".join([f"[{x}]" for x in path]), keylist))
                 for i in range(0, len(values)):
                     try:
                         float(values[i][0])
                     except:
-                        raise ValueError("Units need to be convertable to numbers  -> {0} {1}".format(values[i][0], values[i][1]))
+                        raise ValueError(f"Units need to be convertable to numbers  -> {values[i][0]} {values[i][1]}")
             elif not any(validator):
                 pass
             else:
-                raise ValueError("All labels in node {1} need to be the same (currently {0})".format(keylist, "".join(["[`{0}`]".format(x) for x in path])))
+                raise ValueError("All labels in node {1} need to be the same (currently {0})".format(keylist, "".join([f"[`{x}`]" for x in path])))
             for key in keylist:
                 updated_path=path+[key]
                 validate_input_dict(dictionary[key], updated_path)
@@ -104,7 +106,7 @@ class InitialiseMultiExperiment:
                     if "fixed_parameters" in conditions_dict:
                         self.classes[experiment_key]["class"].fixed_parameters=conditions_dict["fixed_parameters"]
                 except Exception as e:
-                    raise KeyError("Error processing {0}:{1}".format(experiment_key, str(e)))
+                    raise KeyError(f"Error processing {experiment_key}:{e!s}")
 
              
             else:

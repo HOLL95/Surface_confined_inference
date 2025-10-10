@@ -1,14 +1,14 @@
-import Surface_confined_inference as sci
-import importlib
-import sys
-import os
 import json
-from numpy import loadtxt
-from ._Plotting import PlotManager
-from scipy.signal import decimate
-from numpy import loadtxt
+import os
 import traceback
-import logging
+
+from numpy import loadtxt
+from scipy.signal import decimate
+
+import Surface_confined_inference as sci
+
+from ._Plotting import PlotManager
+
 
 class BaseMultiExperiment:
     """Base class for all experiment types"""
@@ -18,7 +18,7 @@ class BaseMultiExperiment:
         class_path=os.path.join(directory_path, "individual_classes", "classes")
         jsons=os.listdir(class_path)
         total_experiment_dict={}
-        with open(os.path.join(directory_path,"multi_options.json"), "r") as f:
+        with open(os.path.join(directory_path,"multi_options.json")) as f:
             global_options=json.load(f)
         for json_file in jsons:
             cls=sci.BaseExperiment.from_json(os.path.join(class_path, json_file))
@@ -32,7 +32,7 @@ class BaseMultiExperiment:
                     options[key]=getattr(cls, key)
             try:
                 path=os.path.join(directory_path, "individual_classes", "data", classname, "Zero_params.json")
-                with open(path, "r") as f:
+                with open(path) as f:
                     zero_params=json.load(f)
                 
                 experiment_dict={**{"Parameters":input_parameters}, **{"Options":options}, "Zero_params":zero_params}
@@ -69,7 +69,7 @@ class BaseMultiExperiment:
                                     f"FAILED TO LOAD FILE: {file_path}\n"
                                     f"Class: {classname}\n"
                                     f"File: {file}\n"
-                                    f"Error: {str(file_error)}\n"
+                                    f"Error: {file_error!s}\n"
                                     f"Error type: {type(file_error).__name__}\n"
                                     f"Traceback: {traceback.format_exc()}"
                                 )
@@ -81,7 +81,7 @@ class BaseMultiExperiment:
                         f"FAILED TO PROCESS CLASS: {classname}\n"
                         f"Data location: {data_loc}\n"
                         f"JSON file: {json_file}\n"
-                        f"Error: {str(class_error)}\n"
+                        f"Error: {class_error!s}\n"
                         f"Error type: {type(class_error).__name__}\n"
                         f"Traceback: {traceback.format_exc()}"
                     )
@@ -105,14 +105,14 @@ class BaseMultiExperiment:
                 file_path = os.path.join(directory_path, "pareto_points", filename)
                 
                 try:
-                    with open(file_path, "r") as f:
+                    with open(file_path) as f:
                         file=loadtxt(f, skiprows=1)
                         f.seek(0)
                         header = f.readline().strip().split()[1:]
                 except Exception as file_error:
                     error_msg = (
                         f"FAILED TO LOAD RESULTS FILE: {file_path}\n"
-                        f"Error: {str(file_error)}\n"
+                        f"Error: {file_error!s}\n"
                         f"Error type: {type(file_error).__name__}\n"
                         f"Traceback: {traceback.format_exc()}"
                     )
@@ -133,9 +133,9 @@ class BaseMultiExperiment:
                 too_many=present-expected
                 not_enough=expected-present
                 if len(too_many)!=0:
-                    raise ValueError("Additional {1} in parameter file versus class instance -{0}".format(too_many, item))
+                    raise ValueError(f"Additional {item} in parameter file versus class instance -{too_many}")
                 if len(not_enough)!=0:
-                    raise ValueError("{1} missing from parameter file versus class instance -{0}".format(not_enough, item.title()))
+                    raise ValueError(f"{item.title()} missing from parameter file versus class instance -{not_enough}")
                 for i in range(0, file.shape[0]):
                     results_array[i][key]=dict(zip(header, file[i,:]))
                     
@@ -164,7 +164,7 @@ class BaseMultiExperiment:
             if saved==True:
                 for classkey in instance.class_keys:
                     if instance.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
-                        with open(os.path.join(directory_path, "decimation.txt"), "r") as f:
+                        with open(os.path.join(directory_path, "decimation.txt")) as f:
                             dec_amount=int(loadtxt(f))
                         time=instance.classes[classkey]["times"]
                         current=instance.classes[classkey]["data"]
@@ -183,7 +183,7 @@ class BaseMultiExperiment:
             instance._results_array=sci.exclude_copies(results_array)
             instance._plot_manager=PlotManager(instance, instance._results_array)
             client_files=os.listdir(os.path.join(directory_path, "clients"))
-            with open(os.path.join(directory_path, "clients", client_files[0]),"r") as f:
+            with open(os.path.join(directory_path, "clients", client_files[0])) as f:
                 vals=json.load(f)
             thresholds={}
             for i in range(0, len(vals["experiment"]["optimization_config"]["objective_thresholds"])):
@@ -197,7 +197,7 @@ class BaseMultiExperiment:
             error_msg = (
                 f"FAILED IN RESULTS_LOADER\n"
                 f"Directory: {directory_path}\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 f"Error type: {type(e).__name__}\n"
                 f"Traceback: {traceback.format_exc()}"
             )

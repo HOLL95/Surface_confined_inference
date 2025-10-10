@@ -2,8 +2,8 @@
 Options management system with inheritance support.
 This module provides the metaclass and base class for option configuration.
 """
-from typing import Any, Dict, List, Set, Type, ClassVar
-import inspect
+from typing import Any, ClassVar, Dict, List, Set
+
 from ._OptionsDescriptor import OptionDescriptor
 
 

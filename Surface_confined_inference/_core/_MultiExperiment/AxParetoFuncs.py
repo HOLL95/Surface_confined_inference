@@ -1,8 +1,9 @@
-from ax.service.ax_client import AxClient
-from ax.service.utils.instantiation import ObjectiveProperties
-from ax.plot.pareto_utils import get_observed_pareto_frontiers
 import os
+
+from ax.plot.pareto_utils import get_observed_pareto_frontiers
+from ax.service.ax_client import AxClient
 from numpy import savetxt
+
 
 def dominates(a, b):
     return all(x <= y for x, y in zip(a, b)) and any(x < y for x, y in zip(a, b))

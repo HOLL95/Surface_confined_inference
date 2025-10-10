@@ -1,6 +1,3 @@
-import Surface_confined_inference as sci
-import copy
-import re
 from numpy import pi
 
 

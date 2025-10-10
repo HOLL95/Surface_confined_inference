@@ -212,7 +212,7 @@ cls.file_list = [os.path.join(fileloc, file) for file in os.listdir(fileloc)]
 # Check the grouping and scaling operations
 cls.check_grouping()
 
-# Generate random parameter values for demonstration
+# Generate random parameter values for demonstration (between 0 and 1 as normalisation is on )
 # In a real scenario, these would come from optimization or fitting
 sim_param_vals = np.random.rand(len(params))
 
