@@ -8,17 +8,12 @@ A Python package for simulating, analyzing, and performing inference on surface-
 ## Table of Contents
 
 - [Overview](#overview)
-- [Scientific Background](#scientific-background)
-- [Key Features](#key-features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Experiment Types](#experiment-types)
 - [Architecture](#architecture)
 - [Examples](#examples)
 - [Testing](#testing)
-- [Contributing](#contributing)
-- [Citation](#citation)
-- [License](#license)
 
 ## Overview
 
