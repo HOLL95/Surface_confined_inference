@@ -2,7 +2,7 @@
 
 A Python package for simulating, analyzing, and performing inference on surface-confined electrochemical systems. This project combines C++ ODE solvers with Python interfaces to enable efficient parameter estimation for various voltammetry techniques for surfaceo-confined systems
 
-[![Tests](https://github.com/HOLL95/Surface_confined_inference/actions/workflows/test.yml/badge.svg)](https://github.com/HOLL95/Surface_confined_inference/actions/workflows/test.yml)
+
 [![Python 3.10+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 ## Table of Contents
