@@ -825,7 +825,8 @@ class PlotManager:
             fig,ax=plt.subplots(len(self._all_parameters), len(self._all_parameters))
         else:
             ax=kwargs["axes"]
-        
+        if "single_colour" not in kwargs:
+            kwargs["single_colour"]=None
         if "true_values" not in kwargs:
             kwargs["true_values"]=None
         if "show_depths" not in kwargs:
@@ -835,6 +836,8 @@ class PlotManager:
         else:
             if "order_by_depth" not in kwargs:
                 kwargs["order_by_depth"]=True
+            if kwargs["single_colour"] is not None:
+                raise ValueError("If show_depths is True, single_colour must be `None` not {0}".format(kwargs["single_colour"]))
         if "edgecolour" not in kwargs:
             kwargs["edgecolour"]=None
         if "size" not in kwargs:
@@ -1022,7 +1025,7 @@ class PlotManager:
                         else:
                             colour=depthDataset
                     else:
-                        colour=None
+                        colour=kwargs["single_colour"]
                     if kwargs["order_by_depth"] ==True:
                         if isinstance(colour, str) is False:
                             cidx=np.argsort(colour)
@@ -1044,7 +1047,7 @@ class PlotManager:
                         if colorbar==True:
                             plot_args=dict(c=colour, cmap=kwargs["cmap"], alpha=1,edgecolor=kwargs["edgecolour"],)
                         else:
-                            plot_args=dict(alpha=1)
+                            plot_args=dict(alpha=1,edgecolor=kwargs["edgecolour"],c=colour)
                         ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], **plot_args)#
                     if j==0:
                         ax[i,j].set_ylabel(all_params[i])
@@ -1084,6 +1087,7 @@ class PlotManager:
                     ax[i,j].set_xticks([])
                     
         ax[0,0].set_ylabel("Density")
+        fig=plt.gcf()
         fig.set_size_inches(16, 11)
         plt.subplots_adjust(top=0.985,
         bottom=0.088,

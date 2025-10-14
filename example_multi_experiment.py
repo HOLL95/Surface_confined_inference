@@ -206,6 +206,13 @@ params = cls._all_parameters
 cls.group_list = group_list
 
 # Load experimental data files from test directory
+#The (.txt) files need to be:
+#1) In dimensional form
+#2) Time in column 1, Current in column 2
+#3) Labelled according to the group structure defined above 
+# It needs an experimental signifier, numerical values in the format number_unit
+# and these signifiers seperated by dashes (-)
+#(e.g. FTACV-3_Hz-280_mV.txt)
 fileloc = os.path.join(os.getcwd(), "tests/testdata/multi")
 cls.file_list = [os.path.join(fileloc, file) for file in os.listdir(fileloc)]
 
