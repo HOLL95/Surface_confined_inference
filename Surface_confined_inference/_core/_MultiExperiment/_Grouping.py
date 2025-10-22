@@ -1,3 +1,10 @@
+from decimal import Decimal
+import numpy as np
+def count_dp(num):
+    floor=np.floor(num)
+    dp=num-floor
+    numstr=str(dp)
+    return len(Decimal(numstr).normalize().as_tuple().digits)
 def initialise_grouping(group_list, classes):
         class_keys=list(classes.keys())
        
@@ -31,10 +38,23 @@ def initialise_grouping(group_list, classes):
                         raise ValueError(f"{qualifiers[0]} not in allowed qualifiers - lesser, geq, between, equals")
                     if qualifier!="between":
                         qualifier_value=float(group_list[i]["numeric"][key][qualifier])
-                        empty_key+=["%s:%d%s" % (qualifier, qualifier_value, key)] 
+                        if int(qualifier_value)==qualifier_value:
+                            empty_key+=["%s:%d%s" % (qualifier, qualifier_value, key)] 
+                        else:
+                            precision=count_dp(qualifier_value)
+                            empty_key+=["%s:%.*f%s" % (qualifier, precision, qualifier_value, key)]
                     else:
                         qualifier_value=[float(x) for x in group_list[i]["numeric"][key][qualifier]]
-                        empty_key+=["%s:%d~%d%s" % (qualifier, qualifier_value[0],qualifier_value[1], key)]
+                        groupstr=[f"{qualifier}:"]
+                        qval_strs=[]
+                        for qval in qualifier_value:
+                            if int(qval)!=qval:
+                                precision=count_dp(qualifier_value)
+                                qval_strs.append("%.*f" % (precision, qualifier_value))
+                            else:
+                                qval_strs.append("%d" % qualifier_value)
+                        groupstr+=["~".join(qval_strs), "%s"%key]
+                        empty_key+=["".join(groupstr)]
                     for j in range(0, len(experiment_list)):
                         current_exp=experiment_list[j]
                         get_numeric=float([x for x in current_exp if key in x][0].split("_")[0])
@@ -60,6 +80,7 @@ def initialise_grouping(group_list, classes):
             final_key="-".join(empty_key)
             
             final_experiment_list=[experiment_list[i] for i in range(0, len(experiment_list)) if i not in naughty_list]
+            
             group_to_class[final_key]=["-".join(x) for x in final_experiment_list]
         grouping_keys=list(group_to_class.keys())     
         group_to_condtions=dict(zip(grouping_keys, group_list)) 

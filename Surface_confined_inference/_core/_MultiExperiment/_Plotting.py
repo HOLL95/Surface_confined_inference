@@ -818,7 +818,7 @@ class PlotManager:
                 depth_lists.append(depthDataset)
         return depth_lists, combinations_dict, setlist
     def pareto_parameter_plot(self, **kwargs):
-        from depth.model.DepthEucl import DepthEucl
+       
         if self._check_results_loaded() is False:
             raise ValueError("No `address` argument provided and results not loaded through directory")
         if "axes" not in kwargs:
@@ -834,6 +834,7 @@ class PlotManager:
         if kwargs["show_depths"]==False:
             kwargs["order_by_depth"]=False
         else:
+            from depth.model.DepthEucl import DepthEucl
             if "order_by_depth" not in kwargs:
                 kwargs["order_by_depth"]=True
             if kwargs["single_colour"] is not None:
