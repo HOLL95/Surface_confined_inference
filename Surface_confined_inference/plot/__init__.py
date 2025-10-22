@@ -18,3 +18,4 @@ from ._MCMC_plotting import (
 )
 from ._multiplotter import multiplot
 from ._save_results import save_results
+from ._utils import add_panel_label, save_and_chop

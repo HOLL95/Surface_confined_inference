@@ -1,10 +1,13 @@
-from decimal import Decimal
+from decimal import Decimal, getcontext
 import numpy as np
+getcontext().prec = 28
+
 def count_dp(num):
-    floor=np.floor(num)
-    dp=num-floor
-    numstr=str(dp)
-    return len(Decimal(numstr).normalize().as_tuple().digits)
+
+    dec = Decimal(str(num))
+    normalized = dec.normalize()
+    return max(0, -normalized.as_tuple().exponent)
+
 def initialise_grouping(group_list, classes):
         class_keys=list(classes.keys())
        
@@ -49,10 +52,10 @@ def initialise_grouping(group_list, classes):
                         qval_strs=[]
                         for qval in qualifier_value:
                             if int(qval)!=qval:
-                                precision=count_dp(qualifier_value)
-                                qval_strs.append("%.*f" % (precision, qualifier_value))
+                                precision=count_dp(qval)
+                                qval_strs.append("%.*f" % (precision, qval))
                             else:
-                                qval_strs.append("%d" % qualifier_value)
+                                qval_strs.append("%d" % qval)
                         groupstr+=["~".join(qval_strs), "%s"%key]
                         empty_key+=["".join(groupstr)]
                     for j in range(0, len(experiment_list)):

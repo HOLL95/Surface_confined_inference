@@ -322,20 +322,28 @@ def plot_harmonics(**kwargs):
     counter=0
     for plot_name in label_list:
         counter+=1
+        freq=sci.get_frequency(time_series_dict[plot_name]["time"], time_series_dict[plot_name]["current"])
         if kwargs["h_num"] != False:
             if counter==1:
                 for z in range(0, len(all_harmonics)):
                     ax = kwargs["axes_list"][z]
                     ax2 = ax.twinx()
                     ax2.set_yticks([])
-                    ax2.set_ylabel(all_harmonics[z], rotation=0)
+                    if kwargs["h_num"]==True:
+                        ax2.set_ylabel(all_harmonics[z], rotation=0)
+                    elif kwargs["h_num"]=="frequencies":
+                        text = ax.text(0.98, 0.5, "{0} Hz".format(int(all_harmonics[z]*freq)), transform=ax.transAxes,
+                                        fontsize=8, bbox=dict( facecolor='white', alpha=0.5),
+                                        va='bottom', ha='right')
+                        
         
 
         harmonics = time_series_dict[plot_name]["harmonics"]
         if kwargs["title"] is not None:
             kwargs["axes_list"][0].set_title(kwargs["title"])
+       
         if kwargs["clip_oscillations"] is not None:
-            freq=sci.get_frequency(time_series_dict[plot_name]["time"], time_series_dict[plot_name]["current"])
+            
             start=kwargs["clip_oscillations"]/freq
             end=time_series_dict[plot_name]["time"][-1]-start
             idx=np.where((time_series_dict[plot_name]["time"]>start) & (time_series_dict[plot_name]["time"]<end))
