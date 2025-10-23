@@ -236,7 +236,7 @@ ax_class=sci.AxInterface(name="Example_submission",
 			simulate_front=False,#Simulate each pareto point for results
 			in_cluster=False)
 ax_class.setup_client(cls)
-#Uncomment this to run locally
+#Uncomment this to run inference locally
 #ax_class.experiment()
 #These processes can be quite hard to stop without a SLURM manager
 #See https://github.com/facebookincubator/submitit/issues/1766
