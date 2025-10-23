@@ -221,22 +221,23 @@ cls.check_grouping()
 
 # Generate random parameter values for demonstration (between 0 and 1 as normalisation is on )
 # In a real scenario, these would come from optimization or fitting
-#sim_param_vals = np.random.rand(len(params))
+sim_param_vals = np.random.rand(len(params))
 
 # Run simulations across all 31 experiments with the random parameters
 # This demonstrates that the MultiExperiment infrastructure is working
-#cls.results(parameters=sim_param_vals)
-ax_class=sci.AxInterface(name="Cytochrome_first_try",
-			independent_runs=20,
+cls.results(parameters=sim_param_vals)
+
+
+#Setup MultiExperiment inference to run locally
+ax_class=sci.AxInterface(name="Example_submission",
+			independent_runs=1, #Pareto points are pooled from all independent runs
 			num_iterations=100,
-			max_run_time=48,
-			results_directory="/users/jas645/Cytochrome_ME/results_example_test",
-			log_directory="/users/jas645/Cytochrome_ME/logs",
-			num_cpu=30,
-			simulate_front=True,
-			email="jas645@york.ac.uk",
-			in_cluster=True,
-			project="chem-electro-2024",
-			GB_ram=20)
+			num_cpu=1,#Only for dispersion simulation, won't get any speedup if it's non-dispersed
+			simulate_front=False,#Simulate each pareto point for results
+			in_cluster=False)
 ax_class.setup_client(cls)
-ax_class.experiment()
+#Uncomment this to run locally
+#ax_class.experiment()
+#These processes can be quite hard to stop without a SLURM manager
+#See https://github.com/facebookincubator/submitit/issues/1766
+

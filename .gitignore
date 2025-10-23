@@ -19,3 +19,6 @@ test_inference.txt
 Results_test/
 CLAUDE.md
 tests/saved
+results/
+slurm_logs/
+

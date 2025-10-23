@@ -31,12 +31,12 @@ class AxInterface(sci.OptionsAwareMixin):
             os.environ['OPENBLAS_NUM_THREADS'] = str(optimal_threads)
             
         environs=["IN_ARC", "IN_VIKING"]
-        self._environ=None
+        self._environ="Local"
         for environ in environs:
             if  os.environ.get(environ, '').lower() in ('true', '1', 'yes'):
                 self._environ=environ
         if self._environ is not None:
-            if self._environ=="IN_VIKING" or self._environ=="IN_ARC":
+            if self._environ=="IN_VIKING" or self._environ=="IN_ARC" or self._environ=="Local":
                 self._environ_args={
                     "cpus_per_task": "cpus_per_task",
                     "slurm_partition": "slurm_partition", 
@@ -62,7 +62,12 @@ class AxInterface(sci.OptionsAwareMixin):
             self.ax_client.complete_trial(trial_index=trial_index, raw_data=cls.optimise_simple_score(parameters))
             self.ax_client.save_to_json_file(filepath=os.path.join(self._internal_options.results_directory, "clients", f"ax_client_run_{job_number}.json"))
     def init_sim_executor(self, name, timeout=None, dependency=None):
-        executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
+        if self._internal_options.in_cluster==True:
+
+            executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
+        else:
+            executor=submitit.LocalExecutor(folder=self._internal_options.log_directory)
+
         if timeout is None:
             timeout=self._internal_options.max_run_time*60
         arg_dict = {
@@ -104,7 +109,10 @@ class AxInterface(sci.OptionsAwareMixin):
         timeout=kwargs["timeout"]
         dependency=kwargs["dependency"]
         criteria=kwargs["criteria"]
-        executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
+        if self._internal_options.in_cluster==True:
+            executor=submitit.AutoExecutor(folder=self._internal_options.log_directory)
+        else:
+            executor=submitit.LocalExecutor(folder=self._internal_options.log_directory)
         arg_dict = {
             self._environ_args["cpus_per_task"]: kwargs["cpu_count"],
             self._environ_args["slurm_partition"]: "nodes",
@@ -127,24 +135,23 @@ class AxInterface(sci.OptionsAwareMixin):
                             })
         return executor
     def experiment(self,):
-        if self._internal_options.in_cluster==True:
-            if os.path.isdir(self._internal_options.results_directory) is True:
-                for directory in ["clients", "pareto_points"]:
-                    path=os.path.join(self._internal_options.results_directory, directory)
-                    if len(os.listdir(path))>0:
-                        raise ValueError(f"Results directory '{path}' must be empty (contains ({os.listdir(path)}))")
-            with open(os.path.join(self._internal_options.results_directory, "decimation.txt"), "w") as f:
-                f.write(str(self._internal_options.front_decimation))
-            exp_job_ids=self.run_inference()
-            pool_job=self.pool_inference_results(dependency=exp_job_ids, criteria="afterany")
-            if self._internal_options.simulate_front==True:
-                submitted_sim_job=self.simulate_fronts(dependency=pool_job)
-            if self._internal_options.rclone_directory!="":
-                if self._internal_options.simulate_front is True:
-                    depend = submitted_sim_job
-                else:
-                    depend = pool_job
-                self.rclone_results(dependency=depend)
+        if os.path.isdir(self._internal_options.results_directory) is True:
+            for directory in ["clients", "pareto_points"]:
+                path=os.path.join(self._internal_options.results_directory, directory)
+                if len(os.listdir(path))>0:
+                    raise ValueError(f"Results directory '{path}' must be empty (contains ({os.listdir(path)}))")
+        with open(os.path.join(self._internal_options.results_directory, "decimation.txt"), "w") as f:
+            f.write(str(self._internal_options.front_decimation))
+        exp_job_ids=self.run_inference()
+        pool_job=self.pool_inference_results(dependency=exp_job_ids, criteria="afterany")
+        if self._internal_options.simulate_front==True:
+            submitted_sim_job=self.simulate_fronts(dependency=pool_job)
+        if self._internal_options.rclone_directory!="":
+            if self._internal_options.simulate_front is True:
+                depend = submitted_sim_job
+            else:
+                depend = pool_job
+            self.rclone_results(dependency=depend)
     def restart(self, start_point):
         valid_start_points=["pool", "simulate", "rclone"]
         if start_point not in valid_start_points:
@@ -169,10 +176,10 @@ class AxInterface(sci.OptionsAwareMixin):
 
 
     def run_inference(self, ):
-        exp_exectutor=self.init_sim_executor("experiment")
+        exp_executor=self.init_sim_executor("experiment")
         if self._internal_options.GPU !="none":
-            exp_exectutor.update_parameters(slurm_gres=self._internal_options.GPU)
-        run_experiment=exp_exectutor.map_array(self.run, range(0, self._internal_options.independent_runs))
+            exp_executor.update_parameters(slurm_gres=self._internal_options.GPU)
+        run_experiment=exp_executor.map_array(self.run, range(0, self._internal_options.independent_runs))
         exp_job_ids = [job.job_id for job in run_experiment]
         return exp_job_ids
     def pool_inference_results(self,dependency=None, criteria="afterok"):
