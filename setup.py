@@ -36,7 +36,7 @@ for environ in environs:
 if in_cluster==False:
     packages+=[ "scikit-learn"]
     
-    #packages+=["data-depth @ git+https://github.com/data-depth/library",]
+    packages+=["data-depth @ git+https://github.com/data-depth/library",]
     
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.
