@@ -3,13 +3,12 @@
 A Python package for simulating, analyzing, and performing inference on surface-confined electrochemical systems. This project combines C++ ODE solvers with Python interfaces to enable efficient parameter estimation for various voltammetry techniques for surfaceo-confined systems
 
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
 - [Experiment Types](#experiment-types)
 - [Architecture](#architecture)
 - [Examples](#examples)
@@ -21,8 +20,7 @@ Surface Confined Inference provides a comprehensive framework for studying elect
 
 - Simulate electrochemical experiments with realistic instrumental effects (capacitance, resistance)
 - Fit experimental data to extract kinetic and thermodynamic parameters
-- Perform Bayesian parameter inference with uncertainty quantification
-- Handle multiple experiments simultaneously with shared parameters
+- Perform multi-experiment optimisation
 - Model parameter distributions (dispersion) in heterogeneous systems
 
 
@@ -35,17 +33,6 @@ The package supports multiple voltammetric techniques, each with specific advant
 - **SWV (Square Wave Voltammetry)**: Applies a square wave on a staircase ramp
 - **PSV (Purely Sinusoidal Voltammetry)**: Pure sinusoidal modulation for fundamental harmonic analysis
 
-### Mathematical Framework
-
-The package uses a **nondimensionalization scheme** to improve numerical stability and solver performance. All simulations internally use dimensionless variables, with automatic conversion to/from physical units. This is handled transparently by the `NDParams` class.
-
-Key parameters include:
-- **E0**: Formal potential (V)
-- **k0**: Standard electron transfer rate constant (s⁻¹)
-- **α**: Charge transfer coefficient (dimensionless, typically ~0.5)
-- **Γ**: Surface coverage (mol/cm²)
-- **Ru**: Uncompensated resistance (Ω)
-- **Cdl**: Double-layer capacitance (F/cm²)
 
 ## Installation
 
@@ -78,7 +65,7 @@ cd builddir
 # Configure and build
 cmake ..
 make
-make install  # Optional, may require sudo
+make install  
 ```
 
 #### Step 3: Set CVODE Path
@@ -133,13 +120,8 @@ source env/bin/activate  # On Windows: env\Scripts\activate
 #### Step 3: Install the package
 
 ```bash
-python -m pip install . 
+python -m pip install -e . 
 ```
-
-This will:
-1. Compile the C++ ODE solver using CMake
-2. Create Python bindings via pybind11
-3. Install the Python package and dependencies
 
 #### Step 4: Verify installation
 
@@ -152,7 +134,7 @@ If successful, you should see a matplotlib plot comparing dispersed and non-disp
 
 ### HPC Cluster Support
 
-For specific HPC clusters, set these environment variables to use pre-configured paths:
+For specific HPC clusters, all installation can be achieved by running these commands
 
 ```bash
 # VIKING cluster (University of York)
@@ -163,72 +145,6 @@ source HPC_installers/ARC/arc_setup.sh
 
 ```
 
-## Quick Start
-
-### Basic Single Experiment
-
-Here's a minimal example to simulate an FTACV experiment:
-
-```python
-import Surface_confined_inference as sci
-import matplotlib.pyplot as plt
-
-# Define experimental parameters
-params = {
-    "E_reverse": 0.3,      # Reverse potential (V)
-    "omega": 10,           # AC frequency (Hz)
-    "delta_E": 0.15,       # AC amplitude (V)
-    "area": 0.07,          # Electrode area (cm²)
-    "Temp": 298,           # Temperature (K)
-    "N_elec": 1,           # Number of electrons
-    "v": 25e-3,            # Scan rate (V/s)
-}
-
-# Create experiment
-exp = sci.SingleExperiment("FTACV", params)
-
-
-
-exp.fixed_parameters = {
-    "Cdl": 1e-4,
-    "gamma": 1e-10,
-    "alpha": 0.5,
-    "Ru": 100,
-}
-
-exp.optim_list = ["E0", "k0"]
-
-# Generate time points and simulate
-times = exp.calculate_times(sampling_factor=200, dimensional=False)
-current = exp.simulate([0.1, 100], times)  # E0=0.1 V, k0=100 s⁻¹
-
-# Convert to dimensional units and plot
-time_s = exp.dim_t(times)
-current_A = exp.dim_i(current)
-voltage_V = exp.get_voltage(time_s)
-
-plt.plot(voltage_V, current_A)
-plt.xlabel('Potential (V)')
-plt.ylabel('Current (A)')
-plt.show()
-```
-
-
-
-### Saving and Loading
-
-Experiments and the associated configuration options can be serialized to JSON:
-
-```python
-# Save experiment configuration
-exp.save_class("my_experiment")
-
-# Load in another session
-loaded_exp = sci.BaseExperiment.from_json("my_experiment.json")
-
-# Verify it works
-current_loaded = loaded_exp.simulate([0.05, 100], times)
-```
 
 ## Experiment Types
 
@@ -297,26 +213,6 @@ exp = sci.SingleExperiment("PSV", params)
 
 ## Architecture
 
-The package uses a hybrid Python/C++ architecture:
-
-```
-┌─────────────────────────────────────────┐
-│         Python Layer (User API)         │
-│                                         │
-│  • Experiment setup & configuration     │
-│  • Parameter management                 │
-│  • Bayesian inference                   │
-│  • Plotting & visualization             │
-└─────────────────────────────────────────┘
-                   │
-                   ▼ pybind11
-┌─────────────────────────────────────────┐
-│      C++ Layer (High Performance)       │
-│                                         │
-│  • ODE solving (SUNDIALS/CVODE)        │
-│  • Numerical integration                │
-└─────────────────────────────────────────┘
-```
 
 ### Key Classes
 
