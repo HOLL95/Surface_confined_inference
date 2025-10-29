@@ -416,8 +416,11 @@ class PlotManager:
             fig,axes=plt.subplots(2, int(num_cols))
             axes[1, -1].set_axis_off()
         else:
+            
             num_cols=len(self.grouping_keys)/2
             fig,axes=plt.subplots(2, int(num_cols))
+            if len(self.grouping_keys)==2:
+                axes=np.array([[axes[0]], [axes[1]]])
         return fig,axes
     def master_harmonics_plotter(self, all_data, all_simulations, all_times, ax, 
                               label_list, plot_colours, linestyles, path_effects, 
@@ -569,6 +572,7 @@ class PlotManager:
             if isinstance(simulation_values[0], dict) is False or len(simulation_values)>1:
                 raise ValueError("In interactive mode, you can only submit a single dictioanry of simulation values")
             self.simulation_plots={"maxima":{}, "data_harmonics":{}}
+        
         for i in range(0, len(self.grouping_keys)):
                 
                 groupkey=self.grouping_keys[i]
@@ -728,18 +732,24 @@ class PlotManager:
                 return axis
         else:
             raise NotImplementedError("Manual `address` loading currently not implemented")
-    def _un_normalise_parameters(self,):
+    def _un_normalise_parameters(self,params=None):
+        if params is None:
+            params=self._cls._all_parameters
+        else:
+            for key in self._cls._all_parameters:
+                if key not in params:
+                    raise ValueError("Need {0} in list of params".format(key))
         if self._check_results_loaded() is False:
             raise ValueError("Need to load results through `sci.BaseMultiExperiment.resuls_loader()`")
-        return_array=np.zeros((len(self._cls._results_array),len(self._cls._all_parameters),))
-        for i in range(0, len(self._cls._all_parameters)):
-            norm_param=self._cls._all_parameters[i]
+        return_array=np.zeros((len(self._cls._results_array),len(params),))
+        for i in range(0, len(params)):
+            norm_param=params[i]
             if "_offset" in norm_param:
                 assign=[y["parameters"][norm_param] for y in self._cls._results_array]
             else:
                 if norm_param not in self._cls.boundaries.keys():
-                    norm_param="_".join(self._cls._all_parameters[i].split("_")[:-1])
-                assign=[sci._utils.un_normalise(y["parameters"][self._cls._all_parameters[i]], self._cls.boundaries[norm_param]) for y in self._cls._results_array]
+                    norm_param="_".join(params[i].split("_")[:-1])
+                assign=[sci._utils.un_normalise(y["parameters"][params[i]], self._cls.boundaries[norm_param]) for y in self._cls._results_array]
             return_array[:,i]=assign
         return return_array
     def _get_2d_neighours(self,xscores, yscores, **kwargs):
