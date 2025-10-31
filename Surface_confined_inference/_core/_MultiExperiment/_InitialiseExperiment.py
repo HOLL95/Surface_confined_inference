@@ -37,6 +37,8 @@ class InitialiseMultiExperiment:
             kwargs["sim_class"]=sci.SingleExperiment
         if "file_list" not in kwargs:
             kwargs["file_list"]=None
+        if "fixed_parameters" in kwargs:
+            setattr(self, "fixed_parameters", kwargs["fixed_parameters"])
         for key in kwargs.keys():
             setattr(self, key, kwargs[key])
         if self.normalise==True and self.boundaries is None:
