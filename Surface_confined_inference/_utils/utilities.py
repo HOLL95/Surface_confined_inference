@@ -1,7 +1,7 @@
 import math
 import re
 from functools import wraps
-
+import copy
 import numpy as np
 
 import Surface_confined_inference as sci
@@ -144,6 +144,20 @@ def GH_setup(nodes):
     nodes, weights = np.polynomial.hermite.hermgauss(nodes)
     normal_weights = np.multiply(1 / math.sqrt(math.pi), weights)
     return dict(zip(labels, [nodes, weights, normal_weights]))
+def get_dc_voltage(cls, times):
+    """
+    Args:
+        cls - class that inherits from Surface_confined_inference.SingleExperment with experiment_type `FTACV`
+    Returns:
+        np.ndarray: List of (dimensional) voltages using the input parameters from the FTACV class except the amplitude is 0
+    """
+    if cls.experiment_type!="FTACV":
+        raise ValueError("Experiment_type must be `FTACV`, not {0}".format(cls.experiment_type))
+    input_params=cls._input_parameters
+    new_input_params=copy.deepcopy(input_params)
+    new_input_params["delta_E"]=0
+   
+    return np.array(cls.get_voltage(times,input_parameters=new_input_params))
     
 
 

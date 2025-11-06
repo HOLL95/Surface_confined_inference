@@ -196,8 +196,24 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         self._plot_manager.plot_2d_pareto(**kwargs)
     def pareto_parameter_plot(self, **kwargs):
         self._plot_manager.pareto_parameter_plot(**kwargs)
-            
-   #TODO Need to make the individual class options, optimisation lists immutable
+    def change_class_options(self, option, value, class_keys=["all"]):
+        """
+        Convenience function to change options of all classes simultaneously
+        Args:
+            option str: Option name
+            value: Option value
+            class_keys list of strs: classes to apply the option to, by default will be all classes
+        Returns:
+            None
+        """
+        if class_keys[0]=="all":
+            ckeys=self.class_keys
+        else:
+            ckeys=class_keys
+        for ckey in ckeys:
+            setattr(self.classes[ckey]["class"], option, value)
+        
+
     
         
 

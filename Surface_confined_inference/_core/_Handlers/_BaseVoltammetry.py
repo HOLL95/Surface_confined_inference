@@ -177,7 +177,9 @@ class BaseHandler(ABC):
         """
         Base class for individual technique voltage calculations to be called by child using super() 
         Args:
-            times (list): List of timepoints - responsibility of the user to make sure the dimensional format is correct
+            times (list): 
+                List of timepoints - responsibility of the user to make sure the dimensional format is correct
+                Default behaviour is dimensional        
             input_parameters (dict): Dictionary of input parameters - as above
             validation_parameters (dict): To make sure the required parameters are all present. 
         
