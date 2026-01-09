@@ -89,6 +89,7 @@ class BaseMultiExperiment:
                     raise RuntimeError(error_msg) from class_error
                     
         instance.group_list=global_options["group_list"]
+
         global_options.pop("group_list")
         for key in global_options:
             if key not in excluded_options:
@@ -104,21 +105,12 @@ class BaseMultiExperiment:
             for filename in ["parameters.txt", "scores.txt"]:
                 file_path = os.path.join(directory_path, "pareto_points", filename)
                 
-                try:
-                    with open(file_path) as f:
-                        file=loadtxt(f, skiprows=1)
-                        f.seek(0)
-                        header = f.readline().strip().split()[1:]
-                except Exception as file_error:
-                    error_msg = (
-                        f"FAILED TO LOAD RESULTS FILE: {file_path}\n"
-                        f"Error: {file_error!s}\n"
-                        f"Error type: {type(file_error).__name__}\n"
-                        f"Traceback: {traceback.format_exc()}"
-                    )
-                    print(error_msg)
-                    raise RuntimeError(error_msg) from file_error
-                
+
+                with open(file_path) as f:
+                    file=loadtxt(f, skiprows=1)
+                    f.seek(0)
+                    header = f.readline().strip().split()[1:]
+               
                 if len(results_array)==0:
                     results_array=[{} for x in range(0, file.shape[0])]
                 key=filename.split(".")[0]
@@ -128,14 +120,15 @@ class BaseMultiExperiment:
                 elif key=="scores":
                     item="group(s)"
                     element=instance.grouping_keys
+                    
                 expected=set(element)
                 present=set(header)
                 too_many=present-expected
                 not_enough=expected-present
                 if len(too_many)!=0:
-                    raise ValueError(f"Additional {item} in parameter file versus class instance -{too_many}")
+                    raise ValueError(f"Additional {item} in {key} file versus class instance -{too_many}")
                 if len(not_enough)!=0:
-                    raise ValueError(f"{item.title()} missing from parameter file versus class instance -{not_enough}")
+                    raise ValueError(f"{item.title()} missing from {key} file versus class instance -{not_enough}")
                 for i in range(0, file.shape[0]):
                     results_array[i][key]=dict(zip(header, file[i,:]))
                     

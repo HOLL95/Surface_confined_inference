@@ -5,6 +5,7 @@ import numpy as np
 
 # Define experimental parameters for FTACV (Fourier Transform Alternating Current Voltammetry)
 inputs={
+        "E_start":-0.5,
         "E_reverse": 0.3,        # Reverse potential (V)
         "omega": 10,             # AC frequency (Hz)
         "delta_E": 0.15,         # AC amplitude (V)
@@ -29,8 +30,8 @@ ftv.boundaries = {"k0": [1e-3, 200], "E0_std": [1e-3, 0.06]}
 # Define fixed parameters that won't be optimized
 ftv.fixed_parameters = {
     "E0_mean":0.1,   # Mean formal potential (V)
-    "Cdl": 1e-4,     # Double layer capacitance (F/cm^2)
-    "gamma": 1e-10,  # Surface coverage (mol/cm^2)
+    "Cdl": 5e-5,     # Double layer capacitance (F/cm^2)
+    "gamma": 8e-11,  # Surface coverage (mol/cm^2)
     "alpha": 0.5,    # Charge transfer coefficient
     "Ru": 100,       # Uncompensated resistance (Ohms)
 }

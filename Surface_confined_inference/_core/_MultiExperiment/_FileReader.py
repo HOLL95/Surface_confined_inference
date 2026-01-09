@@ -1,7 +1,7 @@
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-
+import matplotlib.pyplot as plt
 import Surface_confined_inference as sci
 
 
@@ -146,8 +146,15 @@ def _process_swv_data(experiment_key, data, loc):
             
             # Store normalized data
             loc["data"] = cls.nondim_i(current - CS(pot))
+            #plt.plot(pot, current)
+            #plt.plot(pot[before], midded_current[before])
+            #plt.plot(pot[after], midded_current[after])
+            #plt.plot(sorted_x, sorted_y, lw=2)
+            #plt.plot(pot, CS(pot))
+            #plt.show()
         else:
              loc["data"] = cls.nondim_i(current)
+        
         loc["times"] = times
         loc["zero_sim"]=np.zeros(len(current))
         loc["zero_point"] = sci._utils.RMSE(np.zeros(len(current)), loc["data"])

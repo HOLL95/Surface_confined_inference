@@ -411,6 +411,8 @@ class PlotManager:
         return total_all_simulations
    
     def _configure_plot_axis(self):
+        print(self.grouping_keys)
+        print(self.group_to_class)
         if len(self.grouping_keys)%2!=0:
             num_cols=(len(self.grouping_keys)+1)/2
             fig,axes=plt.subplots(2, int(num_cols))

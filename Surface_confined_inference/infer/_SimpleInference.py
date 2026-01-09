@@ -68,6 +68,102 @@ class DummyVoltageSimulator(sci.SingleExperiment):
 
 
 def get_input_parameters(time, voltage,current, experiment_type, **kwargs):
+    """
+      Estimate and optionally optimize experimental input parameters from 
+      electrochemical data.
+      
+      This function analyzes time-series voltage and current data to extract
+      experimental parameters required for electrochemical simulation. It first 
+      estimates parameters using signal processing (FFT, DC extraction, slope 
+      calculation), then optionally refines estimates using CMA-ES optimization 
+      to minimize voltage prediction error.
+      
+      Args:
+          time (array-like): Time points in seconds (will be converted to 
+              numpy array)
+          voltage (array-like): Applied voltage at each time point in Volts 
+              (will be converted to numpy array)
+          current (array-like): Measured current response at each time point in Amps (will be converted to numpy array)
+          experiment_type (str): Type of electrochemical experiment. 
+              Supported types:
+              - "DCV": Direct Current Voltammetry
+              - "FTACV": Fourier Transform Alternating Current Voltammetry
+              - "PSV": Purely Sinusoidal Voltammetry
+          **kwargs: Optional keyword arguments to customize behavior:
+              - plot_results (bool): Whether to display comparison plots 
+                (default: False)
+              - optimise (bool): Whether to optimize estimated parameters 
+                using PINTS (default: True)
+              - runs (int): Number of optimization runs with random 
+                initialization (default: 5)
+              - return_sim_values (bool): Whether to return simulated voltage 
+                arrays (default: False)
+              - sinusoidal_phase (bool): Whether to include phase parameters
+                for sinusoids (default: False)
+              - sigma (float): Initial CMA-ES step size for optimization 
+                (default: 0.01)
+              - aliasing (int): Downsampling factor for optimization 
+                (auto-calculated if not provided)
+              - fixed_parameters (list): Parameter names to hold nearly 
+                constant during optimization (default: [])
+              - E_reverse (float): Reversal potential for DCV/FTACV 
+                (auto-detected if not provided)
+              - E_start (float): Starting potential for DCV/FTACV 
+                (auto-detected if not provided)
+              - v (float): Scan rate in V/s for DCV/FTACV (auto-calculated 
+                if not provided)
+              - delta_E (float): AC amplitude in V for PSV/FTACV 
+                (auto-detected if not provided)
+              - omega (float): AC frequency in Hz for PSV/FTACV 
+                (auto-detected if not provided)
+              - phase (float): AC phase offset in radians for PSV/FTACV 
+                (default: 0)
+              - Edc (float): DC offset potential in V for PSV 
+                (default: mean voltage)
+              - num_peaks (int): Number of sinusoidal cycles for PSV 
+                (auto-calculated if not provided)
+      
+      Returns:
+          tuple: Return type depends on kwargs settings:
+              If optimise=False and return_sim_values=False:
+                  - estimated_parameters (dict): Parameter estimates from 
+                    signal processing
+              If optimise=False and return_sim_values=True:
+                  - estimated_parameters (dict): Parameter estimates
+                  - estimated_simulated (array): Simulated voltage using 
+                    estimated parameters
+              If optimise=True and return_sim_values=False:
+                  - estimated_parameters (dict): Initial parameter estimates
+                  - inferred_parameters (dict): Optimized parameter values
+              If optimise=True and return_sim_values=True:
+                  - estimated_parameters (dict): Initial parameter estimates
+                  - inferred_parameters (dict): Optimized parameter values
+                  - estimated_simulated (array): Simulated voltage using 
+                    estimated parameters
+                  - inferred_simulated (array): Simulated voltage using 
+                    inferred parameters
+      
+      Raises:
+          TypeError: If aliasing keyword is not of type int
+      
+      Side Effects:
+          - Prints a table of estimated (and optionally inferred) parameters
+   
+            with RMSE errors
+          - Displays comparison plots if plot_results=True (experimental vs 
+            estimated vs inferred)
+          - Prints warnings if estimated parameters fall outside reasonable 
+            experimental bounds
+      
+      Example:
+          >>> # Simple parameter estimation without optimization
+          >>> params = get_input_parameters(t, v, i, "DCV", optimise=False)
+          
+          >>> # Full estimation and optimization with plotting
+          >>> est, inf = get_input_parameters(t, v, i, "FTACV", 
+          ...                                  plot_results=True, runs=10)
+      """
+
     time=np.array(time)
     voltage=np.array(voltage)
     current=np.array(current)
