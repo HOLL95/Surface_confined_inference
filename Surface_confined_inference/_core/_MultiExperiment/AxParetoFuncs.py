@@ -25,6 +25,7 @@ def internal_domination(front, keys):
 def exclude_copies(front):
     excluded_idx=[]
     keys=front[0]["parameters"].keys()
+
     for i in range(0, len(front)):
         if i not in excluded_idx:
             params=[front[i]["parameters"][key] for key in keys]
@@ -60,6 +61,7 @@ def is_dominated(existing_front, proposed_front, keys, test_print=False):
 def pool_pareto(directory, grouping_keys, parameters, savepath):
     total_front_dict={}
     files=os.listdir(directory)
+    total_frontier=None
     for m in range(0, len(files)):
         file=files[m]
         path=os.path.join(directory, file)
@@ -69,11 +71,16 @@ def pool_pareto(directory, grouping_keys, parameters, savepath):
             continue
         front=get_observed_pareto_frontiers(client.experiment)
         frontdict={}
+        
+        
         for i in range(0, len(front)):
             key="&".join([front[i].primary_metric, front[i].secondary_metric])
             frontdict[key]=[{"parameters":front[i].param_dicts[z], "scores":{key:front[i].means[key][z] for key in grouping_keys }}
                             for z in range(0, len(front[i].param_dicts))]
         frontdict["thresholds"]=front[i].objective_thresholds
+        print(frontdict[key])
+        if len(frontdict[key])==0:
+            continue
         loaded_frontier=[]
     
         keys=frontdict.keys()
@@ -81,12 +88,15 @@ def pool_pareto(directory, grouping_keys, parameters, savepath):
         for key in keys:
             if "thresholds" not in key:
                 loaded_frontier+=frontdict[key]
+        
         if m==0:
             
             total_frontier=loaded_frontier
 
         else:
             total_frontier=is_dominated(total_frontier, loaded_frontier, grouping_keys)
+    if total_frontier is None:
+        raise ValueError("All optimisations failed, Pareto front length is 0")
     parameter_array=[]
     score_array=[]
     for front_point in total_frontier:

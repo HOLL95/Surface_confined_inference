@@ -292,6 +292,7 @@ class ContinuousHandler(BaseHandler):
             sampling_factor=kwargs["sampling_factor"]
         if self.options.experiment_type == "FTACV" or self.options.experiment_type == "DCV":
             end_time = 2 * abs(params["E_start"] - params["E_reverse"]) / params["v"]
+            
         elif self.options.experiment_type == "PSV":
             if "PSV_num_peaks" not in kwargs:
                 kwargs["PSV_num_peaks"]=50
