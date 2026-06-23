@@ -111,7 +111,6 @@ class PlotManager:
         dict
             Dictionary containing processed data and parameters for plotting
         """
-        # Set default values if not provided
         if "harmonics" not in kwargs:
             kwargs["harmonics"] = self.all_harmonics
         if "scale" not in kwargs:
@@ -121,7 +120,6 @@ class PlotManager:
         if "additional_maximum" not in kwargs:
             kwargs["additional_maximum"]=0
             
-        # Process the harmonics list
         arrayed = harmonics_list
         
         
@@ -129,27 +127,26 @@ class PlotManager:
 
         #print(maximum)
         #print(np.max(arrayed, axis=None),kwargs["additional_maximum"], "*")
-        # Get dimensions
+
         num_plots = len(arrayed)
         num_experiments = len(arrayed[0])
         num_harmonics = len(kwargs["harmonics"]) if kwargs["harmonics"] is not None else (len(arrayed[0][0]))
         
-        # Validate residual option
+
         if kwargs["residual"] == True and num_plots != 2:
             raise ValueError("Can only do two sets of harmonics for a residual plot")
         
-        # Calculate scaling factors and offsets
+
         scaled_data = []
         for m in range(num_experiments):
             exp_data = []
             for i in range(num_harmonics):
                 harmonic_data = []
-                # Calculate maximum for current harmonic across all plots
+
                 temp_currents=[arrayed[x][m][i,:] for x in range(num_plots)]
                 current_maximum = np.max(np.array([max(x) for x in temp_currents]), axis=None)
-                # Calculate offset for stacking
+
                 offset = (num_harmonics - i) * 1.1 * maximum
-                # Calculate scaling ratio
                 ratio = maximum / current_maximum if kwargs["scale"] else 1
                 
                 for j in range(num_plots):
@@ -159,8 +156,7 @@ class PlotManager:
                 
                 exp_data.append(harmonic_data)
             scaled_data.append(exp_data)
-        
-        # Prepare result dictionary
+
         result = {
             "scaled_data": scaled_data,
             "dimensions": {
@@ -170,7 +166,6 @@ class PlotManager:
             },
             "maximum": maximum
         }
-        #scaled data is returned as experiment -> harmonic -> plot
         return result
     def _check_results_loaded(self):
         if hasattr(self._cls, "_results_array") is True and hasattr(self._cls, "_best_results") is True:
@@ -208,8 +203,7 @@ class PlotManager:
         num_experiments = dimensions["num_experiments"]
         num_harmonics = dimensions["num_harmonics"]
         
-        # Process styling parameters
-        # Set default values
+
         if "colour" not in kwargs:
             kwargs["colour"] = [None]
         if "linestyle" not in kwargs:
@@ -223,7 +217,6 @@ class PlotManager:
         if "label_list" not in kwargs:
             kwargs["label_list"] = None
             
-        # Validate styling parameters
         style_keys = ["colour", "linestyle", "alpha", "lw", "patheffects"]
         for key in style_keys:
             if isinstance(kwargs[key], list) is False:
@@ -235,14 +228,12 @@ class PlotManager:
                 else:
                     raise ValueError(f"{key} needs to be the same length as the number of plots")
         
-        # Prepare for plotting
         current_len = 0
         line_list = []
         
-        # Get default colors
+
         utils_colours = kwargs.get("utils_colours", None)
         
-        # Plot each experiment
         for m in range(num_experiments):
             
             
@@ -253,25 +244,21 @@ class PlotManager:
                 for j in range(num_plots):
                     xdata, ydata = scaled_data[m][i][j]
                     
-                    # Adjust x-axis for continuous plotting
+
                     xaxis = [x + current_len for x in xdata]
                     
-                    # Set label for the first line of each experiment
                     if i == 0 and j == 0 and kwargs["label_list"] is not None:
                         label = kwargs["label_list"][m]
                     else:
                         label = None
                     
-                    # Set color
                     if isinstance(kwargs["colour"][j], list) or isinstance(kwargs["colour"][j], np.ndarray):
                         colour = kwargs["colour"][j]
                     elif kwargs["colour"][j] is None:
-                        # Use utils_colours if provided, otherwise use default
                         colour = utils_colours[m] if utils_colours is not None else f"C{m}"
                     else:
                         colour = kwargs["colour"][j]
                     
-                    # Plot the line
                     l1, = axis.plot(
                         xaxis, 
                         ydata, 
@@ -291,7 +278,6 @@ class PlotManager:
             
                 
         
-        # Remove x-axis ticks
         axis.set_xticks([])
         
         return axis, line_list
@@ -462,18 +448,17 @@ class PlotManager:
         num_experiments = len(all_data)
         num_simulations = len(all_simulations) + 1  # +1 for the data
         
-        # Initialize harmonics_list with proper dimensions (m×n×o)
         # m = num_simulations, n = num_experiments, o = length of harmonics
         harmonics_list = []
         
-        # First, calculate harmonics for the actual data
+
         data_harmonics = [
             np.array(np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics)))
             for t, i in zip(all_times, all_data)
         ]
         harmonics_list.append(data_harmonics)
         
-        # Then calculate harmonics for each simulation
+
         for q in range(0, len(all_simulations)):
             sim = all_simulations[q]
             sim_harmonics = [
@@ -484,7 +469,6 @@ class PlotManager:
         
         plot_harmonics = harmonics_list
         
-        # Create lists for styling parameters
         alphas = [1] + [0.75] * len(all_simulations)
         line_styles = ["-"] + [linestyles[l % len(linestyles)] for l in range(0, len(all_simulations))]
         
@@ -830,15 +814,24 @@ class PlotManager:
                 depth_lists.append(depthDataset)
         return depth_lists, combinations_dict, setlist
     def pareto_parameter_plot(self, **kwargs):
-       
+        
         if self._check_results_loaded() is False:
             raise ValueError("No `address` argument provided and results not loaded through directory")
+        if "params" not in kwargs:
+            all_params=self._all_parameters
+        else:
+            all_params=kwargs["params"]
         if "axes" not in kwargs:
             fig,ax=plt.subplots(len(self._all_parameters), len(self._all_parameters))
         else:
             ax=kwargs["axes"]
         if "single_colour" not in kwargs:
             kwargs["single_colour"]=None
+        if "fancy_names" not in kwargs:
+            kwargs["fancy_names"] =False
+            titles=all_params
+        else:
+            titles=sci._utils.get_titles(all_params, units=True)
         if "true_values" not in kwargs:
             kwargs["true_values"]=None
         if "show_depths" not in kwargs:
@@ -855,6 +848,8 @@ class PlotManager:
             kwargs["edgecolour"]=None
         if "size" not in kwargs:
             kwargs["size"]=1
+        if "log_params" not in kwargs:
+            kwargs["log_params"]=[]
         if "target_keys" not in kwargs:
             kwargs["target_keys"]=None
         if kwargs["target_keys"] is not None and kwargs["show_depths"] is not False:
@@ -878,11 +873,11 @@ class PlotManager:
                 kwargs["common_scale"]=True
         if "cmap" not in kwargs:
             kwargs["cmap"]=mpl.colormaps["seismic"]
-        all_params=self._all_parameters
+
         bounds=self._cls.boundaries
         groups=self.grouping_keys
         full_param_set=np.array([[y["parameters"][x] for x in all_params] for y in self._cls._results_array])
-        de_normalised_array=self._un_normalise_parameters()
+        de_normalised_array=self._un_normalise_parameters(params=all_params)
         #full_score_set=np.array([[y["scores"][x] for x in groups] for y in self._cls._results_array])
         if colorbar==True:
             colorax=[0.6, ax[0,0].get_position().bounds[1], 0.3, ax[0,0].get_position().bounds[3]]
@@ -943,7 +938,7 @@ class PlotManager:
             score_array=np.array([[x["scores"][y] for y in self.grouping_keys] for x in self._cls._results_array])
             if kwargs["information_score"] is not None:
                 depth_lists, combinations_dict, setlist=self.depths_from_dict(kwargs["information_score"], score_array)
-                combinations=list(itertools.combinations(self._all_parameters,2))
+                combinations=list(itertools.combinations(all_params,2))
                 joined_keys=list(combinations_dict.keys())
             model=DepthEucl().load_dataset(score_array)
             depthDataset=model.spatial(evaluate_dataset=True)
@@ -1015,6 +1010,10 @@ class PlotManager:
                 if i>j:  
                     xparam=all_params[j]
                     yparam=all_params[i]
+                    if yparam in kwargs["log_params"]:
+                        ax[i,j].set_yscale("log")
+                    if xparam in kwargs["log_params"]:
+                        ax[i,j].set_xscale("log")
                     if kwargs["true_values"] is not None:
                         
                        
@@ -1063,7 +1062,7 @@ class PlotManager:
                             plot_args=dict(alpha=1,edgecolor=kwargs["edgecolour"],c=colour)
                         ax[i,j].scatter(plot_axis[0], plot_axis[1], kwargs["size"], **plot_args)#
                     if j==0:
-                        ax[i,j].set_ylabel(all_params[i])
+                        ax[i,j].set_ylabel(titles[i])
                         if abs(np.mean(plot_axis[1]))<1e-2:
                             ax[i,j].yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1e}'))
                     else:
@@ -1071,6 +1070,8 @@ class PlotManager:
                 
                 elif i==j:  
                     xaxis=plot_axis[0]
+                    if all_params[i] in kwargs["log_params"]:
+                        xaxis=np.log10(xaxis)
                     n, bin_edges, patches=ax[i,j].hist(xaxis, edgecolor=kwargs["edgecolour"],bins=25, density=True)
                     if j!=0:
                         ax[i,j].set_yticks([])
@@ -1092,7 +1093,8 @@ class PlotManager:
                     ax[i,j].set_axis_off()
                 
                 if i==len(all_params)-1:
-                    ax[i,j].set_xlabel(all_params[j])
+                   
+                    ax[i,j].set_xlabel(titles[j])
                     ax[i,j].tick_params(axis='x', labelrotation=35)
                     if abs(np.mean(plot_axis[0]))<1e-2:
                         ax[i,j].xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1e}'))

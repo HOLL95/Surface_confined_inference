@@ -4,6 +4,7 @@ from .formatting import (
         dispersion_param_names,
         fancy_names,
         format_values,
+        dispersion_symbols,
         get_titles,
         nounits,
         numbered_title,

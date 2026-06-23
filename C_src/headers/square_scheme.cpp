@@ -22,7 +22,7 @@ using namespace std;
 static double last_successful_t = -1.0;
 static int function_call_count = 0;
 static int repeated_calls_at_same_t = 0;
-static const int MAX_REPEATED_CALLS = 3; // Threshold to detect step size issues
+static const int MAX_REPEATED_CALLS = 3;
 
 // Function to print derivatives when step size problems are detected
 void print_derivatives_debug(sunrealtype t, N_Vector y, N_Vector ydot, 
@@ -100,8 +100,7 @@ extern "C" int multi_e(sunrealtype t, N_Vector y, N_Vector ydot, void* user_data
     cap_Er=mono_E(*params, t,(*params)["cap_phase"])-I*(*params)["Ru"];
     cap_dE=mono_dE(*params, t, (*params)["cap_phase"]);
     static double last_print_time = -1;
-    const double MAX_RATE = 1e23;  // Adjust as needed
-    // Update rate constants
+    const double MAX_RATE = 1e23; 
     for (int j = 1; j < 7; j++) {
         string k = "k0_" + std::to_string(j);
         string a = "alpha_" + std::to_string(j);
@@ -186,7 +185,6 @@ extern "C" int Jac_multi_e(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,
 {
     auto params = static_cast<std::unordered_map<std::string, double>*>(user_data);
 
-    // Extract state variables
     double I = Ith(y, 1);
     double Q = Ith(y, 2);
     double Qminus = Ith(y, 3);
@@ -233,8 +231,7 @@ extern "C" int Jac_multi_e(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix J,
     double kd_vi=params->at("kd_vi");
     double gamma = params->at("gamma");
     
-    // k0_x*exp(-alpha_x*(E - E0_x - I*R)) replaced with kred_x
-    // k0_x*exp((1-alpha_x)*(E - E0_x - I*R)) replaced with kox_x
+
     IJth(J, 1, 1) = gamma*(Q*R*alpha_1*kred_1 + Qminus*R*alpha_2*kred_2 + Qminus*R*kox_1*(1 - alpha_1) + Q2minus*R*kox_2*(1 - alpha_2) + QH*R*alpha_4*kred_4 + QH*R*kox_3*(1 - alpha_3) + QHplus*R*alpha_3*kred_3 + QHminus*R*kox_4*(1 - alpha_4) + QH21plus*R*alpha_6*kred_6 + QH21plus*R*kox_5*(1 - alpha_5) + QH22plus*R*alpha_5*kred_5 + R*kox_6*(1 - alpha_6)*QH2)/CdlR - 1/CdlR; // dI/dI
     IJth(J, 1, 2) = gamma*(kred_1 + kox_6)/CdlR; // dI/dQ
     IJth(J, 1, 3) = gamma*(-kox_1 + kred_2 + kox_6)/CdlR; // dI/dQminus

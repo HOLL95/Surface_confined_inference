@@ -132,7 +132,6 @@ class BaseMultiExperiment:
                 for i in range(0, file.shape[0]):
                     results_array[i][key]=dict(zip(header, file[i,:]))
                     
-            # Rest of the method remains the same...
             sim_files=os.path.join(directory_path, "simulations")
             best={groupkey:{"score":1e23} for groupkey in instance.grouping_keys}
             saved=False

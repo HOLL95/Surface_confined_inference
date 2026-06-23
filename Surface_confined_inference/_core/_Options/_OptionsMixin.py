@@ -66,7 +66,6 @@ class OptionsAwareMixin:
             potential typos in option names.
 
         """
-        # Only if _internal_options is defined and active
         if hasattr(self, "_internal_options") and hasattr(self._internal_options, "get_option_names"):
 
             valid_options = self._internal_options.get_option_names()
@@ -74,11 +73,9 @@ class OptionsAwareMixin:
                 setattr(self._internal_options, name, value)
                 super().__setattr__(name, value)
                 return
-        # Check if the attribute is in the manual options list
         if hasattr(self, "_manual_options") and name in self._manual_options:
             super().__setattr__(name, value)
             return
-        # Warn about unknown attributes
         if not name.startswith("_") and name not in self._core_options:
             print(f"Warning: '{name}' is not in the list of accepted options for `{self.__class__.__name__}` and will not affect simulation behavior")
         super().__setattr__(name, value)
@@ -102,10 +99,8 @@ class OptionsAwareMixin:
         internal_options = object.__getattribute__(self, '__dict__').get('_internal_options')
         
         if internal_options is not None:
-            # Check if it has get_option_names method
             if hasattr(internal_options, "get_option_names"):
                 if name in internal_options.get_option_names():
                     return getattr(internal_options, name)
         
-        # Standard behavior - raise AttributeError
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")

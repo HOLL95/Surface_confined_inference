@@ -46,6 +46,7 @@ unit_dict={
         "SWV_linear":"",
         "SWV_squared":"",
         "SWV_cubed":"",
+         "E0_mean_offset":"V",
         }
 fancy_names={
         "E0": '$E^0$',
@@ -62,6 +63,7 @@ fancy_names={
         'CdlE3': "$C_{dlE3}$",#1.10053945995e-06,
         'gamma': '$\\Gamma$',
         'E0_skew':"$E^0$ skew",
+        "E0_mean_offset":"$E^0 \\mu_\\epsilon$",
         'k0': '$k_0$', #(reaction rate s-1)
         'alpha': "$\\alpha$",
         "E0_mean":"$E^0 \\mu$",
@@ -146,19 +148,35 @@ def get_titles(titles, **kwargs):
                     nounits=False
                 if "_"+sci._utils.dispersion_param_names[q] in titles[z]:
                     disped=True
-                    if re.search(".*_[1-9]+", titles[z]) is not None:
-                        fname, true_name=sci._utils.numbered_title(titles[z], units=False)
-                    else:
-                        fname=re.findall(f".*(?=_{sci._utils.dispersion_param_names[q]})", titles[z])[0]
+                    disp_name=sci._utils.dispersion_param_names[q]
+                    num_after_disp=re.search(f"_{disp_name}_([1-9][0-9]*)$", titles[z])
+                    if num_after_disp is not None:
+                        fname=re.findall(f".*(?=_{disp_name})", titles[z])[0]
                         true_name=fname
-                    if nounits==True:
-                        plot_units[titles[z]]=""
+                        number=num_after_disp.group(1)
+                        if nounits==True:
+                            plot_units[titles[z]]=""
+                        else:
+                            plot_units[titles[z]]=sci._utils.unit_dict[true_name]
+                        disp_suffix="_{"+sci._utils.dispersion_symbols[disp_name][1:-1]+"_"+number+"}$"
+                        if kwargs["units"]==True and not nounits and sci._utils.unit_dict[true_name]!="":
+                            params[i]=sci._utils.fancy_names[fname][:-1]+disp_suffix+" ("+sci._utils.unit_dict[true_name]+")"
+                        else:
+                            params[i]=sci._utils.fancy_names[fname][:-1]+disp_suffix
                     else:
-                        plot_units[titles[z]]=sci._utils.unit_dict[true_name]
-                    if kwargs["units"]==True and sci._utils.unit_dict[true_name]!="" and nounits==False:
-                        params[i]=sci._utils.fancy_names[fname]+sci._utils.dispersion_symbols[sci._utils.dispersion_param_names[q]] +" ("+sci._utils.unit_dict[true_name]+")" 
-                    else:
-                        params[i]=sci._utils.fancy_names[fname]+sci._utils.dispersion_symbols[sci._utils.dispersion_param_names[q]]
+                        if re.search(".*_[1-9]+", titles[z]) is not None:
+                            fname, true_name=sci._utils.numbered_title(titles[z], units=False)
+                        else:
+                            fname=re.findall(f".*(?=_{disp_name})", titles[z])[0]
+                            true_name=fname
+                        if nounits==True:
+                            plot_units[titles[z]]=""
+                        else:
+                            plot_units[titles[z]]=sci._utils.unit_dict[true_name]
+                        if kwargs["units"]==True and sci._utils.unit_dict[true_name]!="" and nounits==False:
+                            params[i]=sci._utils.fancy_names[fname]+sci._utils.dispersion_symbols[disp_name]+" ("+sci._utils.unit_dict[true_name]+")"
+                        else:
+                            params[i]=sci._utils.fancy_names[fname]+sci._utils.dispersion_symbols[disp_name]
             if disped==False:
                 if re.search(".*_[1-9]+", titles[z]) is not None:
                     params[i],true_name=sci._utils.numbered_title(titles[z], units=kwargs["units"])
@@ -167,7 +185,7 @@ def get_titles(titles, **kwargs):
                     params[i]=titles[z]
                 
 
-            
+    print(params)
     return params
 def numbered_title( name, **kwargs):
     for key in sci._utils.fancy_names.keys():
