@@ -9,13 +9,15 @@ from ._core._MultiExperiment._MultiExperiment import MultiExperiment
 from ._core._MultiExperiment._AxInterface import AxInterface
 from ._core._MultiExperiment.AxParetoFuncs import pool_pareto, exclude_copies
 from ._HPCInterface._Slurm import SingleSlurmSetup
-from ._core._SWVStepwise import SWVStepwise
-from ._core._PintsFunctions import (FourierGaussianLogLikelihood, 
+from ._core._PintsFunctions import (FourierGaussianLogLikelihood,
                                     GaussianTruncatedLogLikelihood,
                                     FourierGaussianKnownSigmaLogLikelihood,
                                     GaussianKnownSigmaTruncatedLogLikelihood)
 
 from ._core._Processing import top_hat_filter
+
+from ._core._Handlers._ParameterHandler import convert_legacy_square_wave_params
+from ._core._Generic._ParameterScan import parameter_scan_script
 
 from ._core._InputChecking import (
     check_input_dict,

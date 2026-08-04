@@ -10,6 +10,19 @@ import Surface_confined_inference as sci
 from ._Plotting import PlotManager
 
 
+def _client_run_number(filename):
+    """
+    Sort key placing `ax_client_run_{n}.json` files in run order rather than the
+    lexicographic order returned by os.listdir, so that the index of a client in
+    the sorted list is the number of the run that produced it. Anything that
+    doesn't end in a number is sorted by name after the ones that do.
+    """
+    stem=filename.rsplit(".", 1)[0]
+    try:
+        return (0, int(stem.rsplit("_", 1)[-1]), filename)
+    except ValueError:
+        return (1, 0, filename)
+
 class BaseMultiExperiment:
     """Base class for all experiment types"""
     
@@ -174,14 +187,21 @@ class BaseMultiExperiment:
             instance._best_results=best
             instance._results_array=sci.exclude_copies(results_array)
             instance._plot_manager=PlotManager(instance, instance._results_array)
-            client_files=os.listdir(os.path.join(directory_path, "clients"))
-            with open(os.path.join(directory_path, "clients", client_files[0])) as f:
-                vals=json.load(f)
-            thresholds={}
-            for i in range(0, len(vals["experiment"]["optimization_config"]["objective_thresholds"])):
-                elem=vals["experiment"]["optimization_config"]["objective_thresholds"][i]
-                thresholds[elem["metric"]["name"]]=elem["bound"]
-               
+            client_dir=os.path.join(directory_path, "clients")
+            #One set of thresholds per independent run, in run order - they only differ
+            #from each other if the runs had independent zero points, but reading them
+            #all means the list is right either way
+            client_files=sorted(os.listdir(client_dir), key=_client_run_number)
+            thresholds=[]
+            for client_file in client_files:
+                with open(os.path.join(client_dir, client_file)) as f:
+                    vals=json.load(f)
+                run_thresholds={}
+                for i in range(0, len(vals["experiment"]["optimization_config"]["objective_thresholds"])):
+                    elem=vals["experiment"]["optimization_config"]["objective_thresholds"][i]
+                    run_thresholds[elem["metric"]["name"]]=elem["bound"]
+                thresholds.append(run_thresholds)
+
             instance._thresholds=thresholds
             return instance
             

@@ -9,13 +9,41 @@ import SurfaceODESolver as sos
 
 import Surface_confined_inference as sci
 
-from ._ParameterHandler import ParameterHandler
-
+from ._ParameterHandler import ParameterHandler, convert_legacy_square_wave_params
 #context manager
 #options
 #parameter handling
 #dispersion handling
-    
+
+
+def _sw_scan_direction(params):
+    """+1 if the staircase walks up in potential, -1 if it walks down."""
+    return 1 if params["Estop"] >= params["Estart"] else -1
+
+
+def _sw_solver_dict(nd_dict):
+    """Rename the square wave parameters back to the ones the C++ kernel reads.
+
+    SW_current is compiled against the pre-rename names, so the rename stops at
+    this boundary rather than reaching into C_src. Kept a module-level function
+    of nd_dict alone so the dispersion path can use it inside worker processes.
+
+    Args:
+        nd_dict (dict): Non-dimensionalised parameters, current names
+
+    Returns:
+        dict: Copy with the names SW_current looks up
+    """
+    solver_dict = dict(nd_dict)
+    solver_dict["E_start"] = nd_dict["Estart"]
+    solver_dict["scan_increment"] = nd_dict["Estep"]
+    solver_dict["SW_amplitude"] = nd_dict["Eamp"]
+    solver_dict["delta_E"] = abs(nd_dict["Estop"] - nd_dict["Estart"])
+    solver_dict["v"] = _sw_scan_direction(nd_dict)
+    #n is not an input parameter any more, and SW_current only implements a
+    #single electron transfer, so it is 1 by construction.
+    solver_dict["N_elec"] = 1
+    return solver_dict
 
 
 def _parallel_ode_simulation(nd_dict, times, weight):
@@ -34,7 +62,7 @@ def _parallel_ode_simulation(nd_dict, times, weight):
 def _parallel_faradaic_simulation(nd_dict, times, weight):
     return weight * np.array(sos.ODEsimulate(times, nd_dict))[2, :]
 def _parallel_sw_simulation(nd_dict, times, weight):
-    return weight * np.array(sos.SW_current(times, nd_dict))
+    return weight * np.array(sos.SW_current(times, _sw_solver_dict(nd_dict)))
 def _funcswitch(experiment_type, Faradaic_only):
     """
      Select appropriate parallel simulation function based on experiment type and current type.
@@ -189,6 +217,9 @@ class BaseHandler(ABC):
         Exceptions:
             - Exception: From sci.check_input_dict if required parameters missing
         """ 
+        input_parameters = convert_legacy_square_wave_params(
+            input_parameters, self.options.experiment_type
+        )
         sci.check_input_dict(
             input_parameters, copy.deepcopy(validation_parameters), optional_arguments=[]
         )
@@ -301,6 +332,9 @@ class ContinuousHandler(BaseHandler):
             dt = 1 / (sampling_factor * params["v"])
         elif self.options.experiment_type == "FTACV" or self.options.experiment_type == "PSV":
             dt = 1 / (sampling_factor * params["omega"])
+        elif self.options.experiment_type=="SWVtanh":
+            end_time=abs(params["Estop"]-params["Estart"])/(params["Estep"]*params["omega"])
+            dt=1 / (sampling_factor * params["omega"])
         times = np.arange(0, end_time, dt)
         return times
 class SquareWaveHandler(BaseHandler):
@@ -339,24 +373,26 @@ class SquareWaveHandler(BaseHandler):
         """
         inputs=super().get_voltage(times, input_parameters, validation_parameters)
         voltages=np.zeros(len(times))
+        direction=_sw_scan_direction(inputs)
         for i in times:
             i=int(i)
-            voltages[i-1]=sos.SW_potential(i,inputs["sampling_factor"],inputs["scan_increment"],inputs["SW_amplitude"],inputs["E_start"],inputs["v"])
+            voltages[i-1]=sos.SW_potential(i,inputs["sampling_factor"],inputs["Estep"],inputs["Eamp"],inputs["Estart"],direction)
         voltages[-1]=voltages[-2]
         return voltages
     def calculate_times(self,params, **kwargs):
         """
         Calculate time indices for square wave experiments.
-        
+
         Args:
-            params (dict): Dictionary containing delta_E and scan_increment
+            params (dict): Dictionary containing Estart, Estop, Estep and sampling_factor
             **kwargs: Additional keyword arguments (unused)
-        
+
         Returns:
             numpy.ndarray: Array of integer time indices from 0 to end_time
-        
+
         """
-        end_time=(abs(params["delta_E"]/params["scan_increment"])*params["sampling_factor"])
+        window=abs(params["Estop"]-params["Estart"])
+        end_time=((window/params["Estep"])*params["sampling_factor"])
         dt=1
         return  np.arange(0, end_time, dt)
     def _get_parallel_function(self):
@@ -377,12 +413,17 @@ class SquareWaveHandler(BaseHandler):
         """
         self.SW_params={}
         sampling_factor=parameters["sampling_factor"]
-        self.SW_params["end"]=int(abs(parameters['delta_E']//parameters['scan_increment']))
+        if parameters["Estop"]==parameters["Estart"]:
+            raise ValueError("Estop and Estart are the same potential, so there is no staircase to walk")
+        direction=_sw_scan_direction(parameters)
+        self.SW_params["direction"]=direction
+        window=abs(parameters["Estop"]-parameters["Estart"])
+        self.SW_params["end"]=int(window//parameters['Estep'])
         p=np.array(range(0, self.SW_params["end"]))
         self.SW_params["b_idx"]=((sampling_factor*p)+(sampling_factor/2))-1
         self.SW_params["f_idx"]=(p*sampling_factor)-1
-        Es=parameters["E_start"]#-parameters["E_0"]
-        self.SW_params["E_p"]=(Es+parameters["v"]*(p*parameters['scan_increment']))
+        Es=parameters["Estart"]#-parameters["E_0"]
+        self.SW_params["E_p"]=(Es+direction*(p*parameters['Estep']))
         self.SW_params["sim_times"]=self.calculate_times(parameters)
 
     def SW_peak_extractor(self, current, **kwargs):
@@ -449,7 +490,7 @@ class SquareWaveHandler(BaseHandler):
         else:
             nd_dict=super().simulate(parameters, times)
             times=self.SW_params["sim_times"]
-            current = sos.SW_current(times, nd_dict)
+            current = sos.SW_current(times, _sw_solver_dict(nd_dict))
         sw_dict={"total":current}
         sw_dict["forwards"], sw_dict["backwards"], sw_dict["net"], E_p=self.SW_peak_extractor(current)
         if self.options.square_wave_return!="total":
@@ -476,9 +517,16 @@ class ExperimentHandler:
             param_interface (ParameterInterface): Interface for parameter management
         
         Returns:
-            BaseHandler: SquareWaveHandler for SquareWave experiments, 
+            BaseHandler: MechanismHandler when the `mechanism` option names a reaction
+                        network, SquareWaveHandler for SquareWave experiments,
                         ContinuousHandler for all other experiment types
         """
+        if getattr(options, "mechanism", None) is not None:
+            #A network is what selects the generated model, so `model` cannot
+            #disagree with it. Imported here so that sympy/pydiffsol/yaml are only
+            #required by the users who ask for a generated mechanism.
+            from ._MechanismHandler import MechanismHandler
+            return MechanismHandler(options, param_interface)
         if options.experiment_type=="SquareWave":
             return SquareWaveHandler(options, param_interface)
         else:

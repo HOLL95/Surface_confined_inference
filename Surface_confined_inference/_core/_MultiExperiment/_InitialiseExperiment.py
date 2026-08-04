@@ -103,8 +103,9 @@ class InitialiseMultiExperiment:
                     if experiment=="SquareWave":
                         self.classes[experiment_key]["class"].fixed_parameters = {"Cdl": 0}
                     for key in conditions_dict["Options"].keys():
-                        if key !="input_params":
+                        if key !="input_params" and key !="optim_list":
                             self.classes[experiment_key]["class"].__setattr__(key, conditions_dict["Options"][key])
+                    self.classes[experiment_key]["class"].optim_list=conditions_dict["Options"]["optim_list"]
                     if "fixed_parameters" in conditions_dict:
                         self.classes[experiment_key]["class"].fixed_parameters=conditions_dict["fixed_parameters"]
                 except Exception as e:

@@ -36,58 +36,81 @@ def _process_data(addresses, class_list, class_keys):
         else:
             class_list[experiment_key]=process_dict[cls.experiment_type](experiment_key, data,loc)
     return class_list
-def _process_ts_data(experiment_key, data,  loc):
+def _sample_zero_params(experiment_key, cls, zero_option, rng=None):
         """
-        Process FTACV data.
-        
+        Resolve a `Zero_params` option into the parameter values used for the zero point.
+
         Parameters:
         -----------
         experiment_key : str
             Unique experiment identifier.
-        data : numpy.ndarray
-            Experimental data array.
-        """        
-        cls=loc["class"]
-        zero_option=loc["Zero_params"]
-        time=data[:,0]
-        current=data[:,1]
-        norm_current = cls.nondim_i(current)
-        norm_time = cls.nondim_t(time)
-        
-        # Store in class dictionary
-        loc["data"] = norm_current
-        loc["times"] = norm_time
-        if zero_option==None:
-            return loc
+        cls : sci.SingleExperiment
+            Simulation class the zero point belongs to.
+        zero_option : None, list or str
+            Either an explicit list of parameters, "midpoint", "random" or None.
+        rng : numpy.random.Generator, optional
+            Generator used for the "random" option. A fresh default generator is
+            created if none is provided, so repeated calls give independent draws.
+
+        Returns:
+        --------
+        None if no zero point is requested, otherwise a list of parameter values.
+        """
+        if zero_option is None:
+            return None
         elif isinstance(zero_option, list):
-            zero_params=zero_option
+            return zero_option
         elif hasattr(cls, "boundaries") is False:
             raise ValueError(f"Class doesn't contain boundaries for normalisation required for method {zero_option}")
         elif zero_option=="midpoint":
-            zero_params=cls.change_normalisation_group([0.5 for x in cls.optim_list], "un_norm")
+            return cls.change_normalisation_group([0.5 for x in cls.optim_list], "un_norm")
         elif zero_option=="random":
-            zero_params=cls.change_normalisation_group(np.random.rand(len(cls.optim_list)), "un_norm")
+            if rng is None:
+                rng=np.random.default_rng()
+            return cls.change_normalisation_group(rng.random(len(cls.optim_list)), "un_norm")
         else:
             raise ValueError(f"Zero params for {experiment_key} must be one of midpoint, random, a list of parameters or None, not {zero_option}")
+def _calculate_zero_point(experiment_key, cls, zero_params, loc):
+        """
+        Simulate the zero point and store the resulting scores against the data.
+
+        Requires `loc["data"]` and `loc["times"]` to have been populated already.
+
+        Parameters:
+        -----------
+        experiment_key : str
+            Unique experiment identifier.
+        cls : sci.SingleExperiment
+            Simulation class the zero point belongs to.
+        zero_params : list
+            Parameter values for the zero point simulation.
+        loc : dict
+            Class dictionary, modified in place.
+        """
+        norm_time=loc["times"]
+        norm_current=loc["data"]
         # Generate zero point for error calculation
         dummy_zero_class = sci.SingleExperiment(
             cls.experiment_type,
             cls._internal_options.input_params,
             problem="forwards",
             normalise_parameters=False,
-            model=cls.model
+            model=cls.model,
+            #Carried over as well, otherwise a mechanism experiment silently gets
+            #a built-in model for its zero point.
+            mechanism=cls._internal_options.mechanism
         )
         dummy_zero_class.fixed_parameters=cls.fixed_parameters
         dummy_zero_class.dispersion_bins = [1]
         dummy_zero_class.optim_list = cls.optim_list
-        
+
 
         worst_case = dummy_zero_class.simulate(
-            zero_params, 
+            zero_params,
             norm_time
         )
-       
-        
+
+
         loc["zero_point"] = sci._utils.RMSE(worst_case, norm_current)
         loc["zero_sim"]=worst_case
         if cls.experiment_type!="DCV":
@@ -95,6 +118,31 @@ def _process_ts_data(experiment_key, data,  loc):
             ft_worst_case = cls.experiment_top_hat(norm_time, worst_case)
             loc["zero_point_ft"] = sci._utils.RMSE(ft_worst_case, loc["FT"])
         return loc
+def _process_ts_data(experiment_key, data,  loc):
+        """
+        Process FTACV data.
+
+        Parameters:
+        -----------
+        experiment_key : str
+            Unique experiment identifier.
+        data : numpy.ndarray
+            Experimental data array.
+        """
+        cls=loc["class"]
+        zero_option=loc["Zero_params"]
+        time=data[:,0]
+        current=data[:,1]
+        norm_current = cls.nondim_i(current)
+        norm_time = cls.nondim_t(time)
+
+        # Store in class dictionary
+        loc["data"] = norm_current
+        loc["times"] = norm_time
+        zero_params=_sample_zero_params(experiment_key, cls, zero_option)
+        if zero_params is None:
+            return loc
+        return _calculate_zero_point(experiment_key, cls, zero_params, loc)
 def _process_swv_data(experiment_key, data, loc):
         """
         Process SWV data.
@@ -129,7 +177,6 @@ def _process_swv_data(experiment_key, data, loc):
             noise_spacing = zero_params["thinning"]
             roll = zero_params["smoothing"]
             midded_current = sci._utils.moving_avg(current, roll)
-            
             for sequence in [pot, midded_current]:
                 catted_sequence = np.concatenate([
                     sequence[before][roll+10-1::noise_spacing],
@@ -146,11 +193,13 @@ def _process_swv_data(experiment_key, data, loc):
             
             # Store normalized data
             loc["data"] = cls.nondim_i(current - CS(pot))
-            #plt.plot(pot, current)
-            #plt.plot(pot[before], midded_current[before])
-            #plt.plot(pot[after], midded_current[after])
-            #plt.plot(sorted_x, sorted_y, lw=2)
-            #plt.plot(pot, CS(pot))
+            #fig,ax=plt.subplots(1,2)
+            #ax[0].plot(pot, current)
+            #ax[0].plot(pot[before], midded_current[before], linestyle="--", color="black")
+            #ax[0].plot(pot[after], midded_current[after],linestyle="--", color="black")
+            #ax[0].plot(sorted_x, sorted_y, lw=2)
+            #ax[0].plot(pot, CS(pot))
+            #ax[1].plot(pot, loc["data"])
             #plt.show()
         else:
              loc["data"] = cls.nondim_i(current)

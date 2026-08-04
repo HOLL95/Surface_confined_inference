@@ -58,6 +58,12 @@ class BaseExperiment:
                 data["Options"]["parallel_cpu"]=data["Options"]["num_cpu"]
                 data["Options"].pop("num_cpu")
             
+        if data["Options"].get("model")=="mechanism":
+            #Saved before the `mechanism` option alone selected the generated
+            #model. The network stored alongside it now carries that on its own,
+            #and "mechanism" is no longer an allowed `model` value.
+            data["Options"].pop("model")
+
         experiment_class =  getattr(importlib.import_module(data["class"]["module"]),class_name)
         experiment_type= data["Options"]["experiment_type"]
         data["Options"].pop("experiment_type")

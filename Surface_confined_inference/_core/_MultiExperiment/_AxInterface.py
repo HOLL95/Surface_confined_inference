@@ -57,6 +57,12 @@ class AxInterface(sci.OptionsAwareMixin):
             return int((memory * 1024) // self._internal_options.num_cpu)
     def run(self,job_number):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
+        if self._internal_options.independent_zero_points==True:
+            #Each run gets its own reference point, and therefore its own thresholds,
+            #so the client can't be the one built once in setup_client
+            resampled=cls.resample_zero_points(seed=job_number)
+            print(f"Run {job_number} resampled the zero point of: {', '.join(resampled)}")
+            self.ax_client=self.build_ax_client(cls, self.get_zero_point_scores(cls))
         for i in range(0, self._internal_options.num_iterations):
             parameters, trial_index = self.ax_client.get_next_trial()
             self.ax_client.complete_trial(trial_index=trial_index, raw_data=cls.optimise_simple_score(parameters))
@@ -215,12 +221,18 @@ class AxInterface(sci.OptionsAwareMixin):
             if hasattr(cls._internal_options, "num_cpu"):
                 max_cpu=max(max_cpu, cls._internal_options.num_cpu)
         self._internal_options.num_cpu=max_cpu
-        thresholds=self.get_zero_point_scores()
+        if self._internal_options.independent_zero_points==True and len(self._cls.randomised_zero_point_keys)==0:
+            raise ValueError("independent_zero_points requires at least one experiment with `Zero_params` set to \"random\", so that there is something to resample")
+        self.ax_client=self.build_ax_client(self._cls, self.get_zero_point_scores())
+        self._cls.save_class(dir_path=os.path.join(self._internal_options.results_directory,"evaluator"), include_data=True)
+        if self._internal_options.simulate_front==True:
+            for classkey in self._cls.class_keys:
+                Path(os.path.join(self._internal_options.results_directory, "simulations", classkey)).mkdir(exist_ok=True,parents=True)
+    def build_ax_client(self, cls, thresholds):
         if self._internal_options.GPU !="none":
-         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-         self.ax_client=AxClient(torch_device=torch.device("cuda"))
+            ax_client=AxClient(torch_device=torch.device("cuda"))
         else:
-            self.ax_client=AxClient()
+            ax_client=AxClient()
         param_arg=[
                     {
                         "name": x,
@@ -228,19 +240,19 @@ class AxInterface(sci.OptionsAwareMixin):
                         "value_type":"float",
                         "bounds": [0.0, 1.0],
                     }
-                    if "offset" not in x else 
-                    
+                    if "offset" not in x else
+
                     {
                         "name": x,
                         "type": "range",
                         "value_type":"float",
                         "bounds": [0.0, 0.2],
                     }
-                    
-                    for x in self._cls._all_parameters 
+
+                    for x in cls._all_parameters
                 ]
 
-        objectives={key:ObjectiveProperties(minimize=True, threshold=thresholds[key]) for key in self._cls.grouping_keys}
+        objectives={key:ObjectiveProperties(minimize=True, threshold=thresholds[key]) for key in cls.grouping_keys}
         input_dict=dict(
             name=self._internal_options.name,
             parameters=param_arg,
@@ -250,16 +262,15 @@ class AxInterface(sci.OptionsAwareMixin):
         )
         if len(self._internal_options.input_constraints)>0:
             input_dict["parameter_constraints"]=self._internal_options.input_constraints
-        self.ax_client.create_experiment(**input_dict)
-        self._cls.save_class(dir_path=os.path.join(self._internal_options.results_directory,"evaluator"), include_data=True)
-        if self._internal_options.simulate_front==True:
-            for classkey in self._cls.class_keys:
-                Path(os.path.join(self._internal_options.results_directory, "simulations", classkey)).mkdir(exist_ok=True,parents=True)
-    def get_zero_point_scores(self):
+        ax_client.create_experiment(**input_dict)
+        return ax_client
+    def get_zero_point_scores(self, cls=None):
+        if cls is None:
+            cls=self._cls
         zero_dict={}
-        for classkey in self._cls.class_keys:
-            zero_dict[classkey]=self._cls.classes[classkey]["zero_sim"]
-        return self._cls.simple_score(zero_dict)
+        for classkey in cls.class_keys:
+            zero_dict[classkey]=cls.classes[classkey]["zero_sim"]
+        return cls.simple_score(zero_dict)
     def spawn_bulk_simulation(self, ):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt")) as f:

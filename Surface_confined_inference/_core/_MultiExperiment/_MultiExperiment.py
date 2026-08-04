@@ -8,7 +8,7 @@ import numpy as np
 
 import Surface_confined_inference as sci
 
-from ._FileReader import _process_data
+from ._FileReader import _calculate_zero_point, _process_data, _sample_zero_params
 from ._Grouping import initialise_grouping
 from ._InitialiseExperiment import InitialiseMultiExperiment, validate_input_dict
 from ._ParameterManager import ParameterManager
@@ -35,6 +35,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
             if self.classes[key]["class"].experiment_type in ["FTACV","PSV"]:
                 self._all_harmonics=self._all_harmonics.union(set(self.classes[key]["class"].Fourier_harmonics))
             else:
+                
                 if self._internal_options.SWV_e0_shift==True:
                     if "SquareWave" in self.classes[key]["class"].experiment_type:
                         if "anodic" not in key and "cathodic" not in key:
@@ -123,8 +124,47 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                 current_score+=classscore
             score_dict[groupkey]=current_score
         return score_dict
-    def results_table(self, parameters, mode="table"):
-        self._manager.results_table(parameters, self.class_keys, mode)
+    @property
+    def randomised_zero_point_keys(self):
+        """
+        Class keys whose zero point is drawn at random from within the boundaries, and
+        so can be redrawn by `resample_zero_points`.
+        """
+        return [x for x in self.class_keys if self.classes[x].get("Zero_params")=="random"]
+    def resample_zero_points(self, seed=None, class_keys=["all"]):
+        """
+        Redraw the zero point of every experiment configured with `Zero_params="random"`,
+        taking a fresh independent sample from within the boundaries for each of them.
+
+        Intended for cases where each independent optimisation run should be scored
+        against its own reference point, rather than sharing the one generated when the
+        data was first read.
+
+        Args:
+            seed: Seed for the generator used to draw the parameters, `None` for
+                non-reproducible draws.
+            class_keys list of strs: classes to resample, by default all of them.
+                Classes not configured with `Zero_params="random"` are left alone.
+        Returns:
+            list of strs: the class keys that were resampled
+        """
+        rng=np.random.default_rng(seed)
+        if class_keys[0]=="all":
+            ckeys=self.class_keys
+        else:
+            ckeys=class_keys
+        resampled=[]
+        for ckey in ckeys:
+            if ckey not in self.randomised_zero_point_keys:
+                continue
+            loc=self.classes[ckey]
+            cls=loc["class"]
+            zero_params=_sample_zero_params(ckey, cls, "random", rng=rng)
+            self.classes[ckey]=_calculate_zero_point(ckey, cls, zero_params, loc)
+            resampled.append(ckey)
+        return resampled
+    def results_table(self, parameters, mode="table", **kwargs):
+        return self._manager.results_table(parameters, self.class_keys, mode=mode, **kwargs)
     def scale(self, value, groupkey, classkey):
         value=copy.deepcopy(value)
         cls=self.classes[classkey]["class"]

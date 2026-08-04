@@ -21,4 +21,5 @@ CLAUDE.md
 tests/saved
 results/
 slurm_logs/
+saved/
 

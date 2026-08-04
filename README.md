@@ -185,17 +185,26 @@ exp = sci.SingleExperiment("DCV", params)
 
 **Key parameters**:
 - `omega`: Square wave frequency (Hz)
-- `SW_amplitude`: Pulse amplitude (V)
-- `scan_increment`: Staircase step (V)
-- `delta_E` : Voltage range (V)
-- `E_start` : Starting potential (V)
-- `scan_direction` : Increasing or decreasing from E_start
+- `Eamp`: Pulse amplitude (V)
+- `Estep`: Staircase step (V)
+- `Estart` : Starting potential (V)
+- `Estop` : Final potential (V) - the scan direction is the sign of `Estop-Estart`
+- `sampling_factor` : Points per square wave cycle
 
 **Configuration**:
 ```python
 exp = sci.SingleExperiment("SWV", params)
 exp.square_wave_return = "net"  # or "forward", "backward"
 ```
+
+`SWVtanh` takes the same parameters, except that it replaces `sampling_factor`
+with `smoothing` (the width of the tanh gates as a fraction of the pulse width),
+since the smoothed staircase is integrated on a continuous time grid.
+
+Dictionaries written against the older names (`E_start`, `scan_increment`,
+`SW_amplitude`, `delta_E` as a window *width*, and `v` as a `+-1` scan direction)
+are converted automatically with a `DeprecationWarning`; see
+`sci.convert_legacy_square_wave_params`.
 
 ### PSV (Purely Sinusoidal Voltammetry)
 

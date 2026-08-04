@@ -4,6 +4,8 @@ import itertools
 import numpy as np
 import tabulate
 
+import Surface_confined_inference as sci
+
 
 class ParameterManager:
     def __init__(self, all_parameters, grouping_keys, classes, SWV_e0_shift, group_to_class):
@@ -131,13 +133,15 @@ class ParameterManager:
         simulation_values=self.parse_input(parameters)
         un_normed_values={}
         l_optim_list=0
+        longest_list=[]
         for classkey in class_keys:
-            
+
             cls=self.classes[classkey]["class"]
             current_len=max(len(cls.optim_list), l_optim_list)
             if current_len>l_optim_list:
                 l_optim_list=current_len
-                longest_list=cls.optim_list
+                #copied, otherwise the padding below extends the class's own optim_list
+                longest_list=list(cls.optim_list)
             normed_params_list=simulation_values[classkey]
             un_normed_values[classkey]=dict(zip(cls.optim_list, cls.change_normalisation_group(normed_params_list, "un_norm")))
             if mode=="simulation":
@@ -155,7 +159,7 @@ class ParameterManager:
             [classkey]+[sci._utils.format_values(un_normed_values[classkey][x],3)+","
                 if x in un_normed_values[classkey] else "*"
                 for x in longest_list]
-            for classkey in self.class_keys
+            for classkey in class_keys
         ]
         table=tabulate.tabulate(table_data, headers=header_list, tablefmt="grid")
         if mode=="table":

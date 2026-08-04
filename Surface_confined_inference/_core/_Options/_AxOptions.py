@@ -36,6 +36,9 @@ class AxInterfaceOptions(OptionsManager):
                                 min_value=1,
                                 doc="Number of independent runs"
                                 )
+    independent_zero_points=BoolOption("independent_zero_points",
+                                default=False,
+                                doc="If True, each independent run redraws the zero point of every experiment set to `Zero_params=\"random\"`, sampling independently from within the boundaries, so that each run gets its own objective thresholds")
     num_iterations=NumberOption("num_iterations",
                                 default=100, 
                                 min_value=10,

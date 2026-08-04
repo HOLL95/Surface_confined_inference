@@ -99,10 +99,10 @@ zero_sw = {
 # SWV experiments will be run in both anodic (oxidation) and cathodic (reduction) directions
 directions = ["anodic", "cathodic"]
 
-# Configuration for each scan direction
+# Configuration for each scan direction - the direction is the sign of Estop-Estart
 directions_dict = {
-    "anodic": {"v": 1, "E_start": -0.8},    # Scan from negative to positive potential
-    "cathodic": {"v": -1, "E_start": 0}     # Scan from positive to negative potential
+    "anodic": {"Estart": -0.8, "Estop": 0},    # Scan from negative to positive potential
+    "cathodic": {"Estart": 0, "Estop": -0.8}   # Scan from positive to negative potential
 }
 
 # SWV-specific options
@@ -117,12 +117,11 @@ for i in range(0, len(sw_freqs)):
     for j in range(0, len(directions)):
         params = {
             "omega": sw_freqs[i],            # Frequency (Hz)
-            "scan_increment": 5e-3,          # Potential step size (V)
-            "delta_E": 0.8,                  # Total potential scan range (V)
-            "SW_amplitude": 5e-3,            # Square wave pulse amplitude (V)
+            "Estep": 5e-3,                   # Potential step size (V)
+            "Eamp": 5e-3,                    # Square wave pulse amplitude (V)
             "sampling_factor": 200,          # Points per square wave cycle
-            "E_start": directions_dict[directions[j]]["E_start"],  # Starting potential
-            "v": directions_dict[directions[j]]["v"]               # Scan direction (+1 or -1)
+            "Estart": directions_dict[directions[j]]["Estart"],  # Starting potential
+            "Estop": directions_dict[directions[j]]["Estop"]     # Final potential
         }
         experiments_dict = sci.construct_experimental_dictionary(
             experiments_dict,

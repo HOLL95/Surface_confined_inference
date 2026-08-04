@@ -36,7 +36,6 @@ class DummyVoltageSimulator(sci.SingleExperiment):
         param_dict["Temp"]=298
         param_dict["area"]=0.07
         param_dict["Surface_coverage"]=1e-10
-        param_dict["N_elec"]=1
         return param_dict
     def n_outputs(self):
         return 1

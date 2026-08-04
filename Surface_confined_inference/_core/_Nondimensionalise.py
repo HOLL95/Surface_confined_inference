@@ -31,11 +31,10 @@ class NDParams:
         self.T = input_parameters["Temp"]
         self.c_E0 = (self.R * self.T) / self.F
         V_nondim = ["FTACV", "DCV", "TrumpetPlot"]
-        Omega_nondim = ["PSV", "SquareWave"]
-        K_nondim = ["SquareWave"]
+        Omega_nondim = ["PSV", "SquareWave","SWVtanh"]
+        K_nondim = ["SquareWave", "Generic", "SWVtanh"]
         if experiment_type in V_nondim:
             time_constant = input_parameters["v"]
-
         elif experiment_type in Omega_nondim:
             time_constant = input_parameters["omega"]*self.c_E0
         self.c_T0 = abs(self.c_E0 / time_constant)
@@ -68,6 +67,8 @@ class NDParams:
             for key in dim_dict:
                 if key[0] == "E" or key == "delta_E":
                     function_dict[key] = self.e_nondim
+                elif key.startswith("lambda"):
+                    function_dict[key] = self.e_nondim
                 elif key[0] == "k" and "scale" not in key:
                     function_dict[key] = self.t_nondim
                 elif key == "Ru":
@@ -97,29 +98,6 @@ class NDParams:
                     function_dict[key] = lambda x:x
             function_dict["cap_phase"] = lambda x:x
         self.function_dict=function_dict
-    def redimensionalise(self, nondim_dict):
-        """
-        Convert non-dimensional parameters back to dimensional form.
-        """
-        dim_dict = {}
-        for key in nondim_dict:
-            if key[0] == "E" or key == "delta_E":
-                dim_dict[key] = self.e_redim(nondim_dict[key])
-            elif key[0] == "k" and "scale" not in key:
-                dim_dict[key] = self.t_redim(nondim_dict[key])
-            elif key == "Ru":
-                dim_dict[key] = self.Ru_redim(nondim_dict[key])
-            elif key == "Cdl":
-                dim_dict[key] = self.Cdl_redim(nondim_dict[key])
-            elif key == "gamma":
-                dim_dict[key] = self.gamma_redim(nondim_dict[key])
-            elif key == "omega":
-                dim_dict[key] = self.omega_redim(nondim_dict[key])
-            elif key == "v":
-                dim_dict[key] = self.v_redim(nondim_dict[key])
-            else:
-                dim_dict[key] = nondim_dict[key]
-        return dim_dict
     """
     Nondimensional and redimensional functions
     """

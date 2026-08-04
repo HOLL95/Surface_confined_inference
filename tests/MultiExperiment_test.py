@@ -35,23 +35,21 @@ class TestMultiExperiment:
         }
         zero_ft=[-0.425, 100, 8e-11,100, 1.8e-4,0.5]
         directions=["anodic","cathodic"]
-        directions_dict={"anodic":{"v":1, "E_start":-0.8},"cathodic":{"v":-1, "E_start":0}}
+        directions_dict={"anodic":{"Estart":-0.8, "Estop":0},"cathodic":{"Estart":0, "Estop":-0.8}}
         sw_options=dict(square_wave_return="net", dispersion_bins=[30], optim_list=["E0","k0","gamma","alpha"])
         for i in range(0, len(sw_freqs)):
-            
+
             for j in range(0, len(directions)):
                 params={"omega":sw_freqs[i],
-                "scan_increment":5e-3,#abs(pot[1]-pot[0]),
-                "delta_E":0.8,
-                "SW_amplitude":5e-3,
+                "Estep":5e-3,#abs(pot[1]-pot[0]),
+                "Eamp":5e-3,
                 "sampling_factor":200,
-                "E_start":directions_dict[directions[j]]["E_start"],
-                "v":directions_dict[directions[j]]["v"]}
+                "Estart":directions_dict[directions[j]]["Estart"],
+                "Estop":directions_dict[directions[j]]["Estop"]}
                 experiments_dict=sci.construct_experimental_dictionary(experiments_dict, {**{"Parameters":params}, **{"Options":sw_options}, "Zero_params":zero_sw}, "SWV","{0}_Hz".format(sw_freqs[i]), directions[j])
         labels=["3_Hz", "9_Hz", "15_Hz"]
         self.common={
-            "Temp":278, 
-            "N_elec":1,
+            "Temp":278,
             "area":0.036,
             "Surface_coverage":1e-10
 
@@ -121,7 +119,35 @@ class TestMultiExperiment:
         simulations=loaded_class.evaluate(sim_params)
         for ckey in loaded_class.class_keys:
             assert sci._utils.RMSE(loaded_class.classes[ckey]["data"], simulations[ckey])<1e-2
-if __name__ == '__main__':    
+    def test_resample_zero_points(self):
+        for label in ["3_Hz", "9_Hz", "15_Hz"]:
+            self.experiments_dict["FTACV"][label]["280_mV"]["Zero_params"]="random"
+        cls=sci.MultiExperiment(self.experiments_dict, common=self.common, synthetic=True, normalise=True, boundaries=self.boundaries)
+        cls.group_list=self.group_list
+        cls.file_list=self.files
+        ftacv_keys=["FTACV-3_Hz-280_mV","FTACV-9_Hz-280_mV","FTACV-15_Hz-280_mV"]
+        assert cls.randomised_zero_point_keys==ftacv_keys
+        assert cls.resample_zero_points(seed=0)==ftacv_keys
+        first={x:cls.classes[x]["zero_point"] for x in ftacv_keys}
+        swv_first={x:cls.classes[x]["zero_point"] for x in cls.class_keys if x not in ftacv_keys}
+        #Same seed reproduces the draw, a different seed doesn't
+        cls.resample_zero_points(seed=0)
+        assert first=={x:cls.classes[x]["zero_point"] for x in ftacv_keys}
+        cls.resample_zero_points(seed=1)
+        second={x:cls.classes[x]["zero_point"] for x in ftacv_keys}
+        for key in ftacv_keys:
+            assert first[key]!=second[key]
+        #Experiments without a random zero point are untouched
+        assert swv_first=={x:cls.classes[x]["zero_point"] for x in cls.class_keys if x not in ftacv_keys}
+        #Each experiment is drawn independently of the others
+        draws={x:set() for x in ftacv_keys}
+        for seed in range(0, 5):
+            cls.resample_zero_points(seed=seed)
+            for key in ftacv_keys:
+                draws[key].add(cls.classes[key]["zero_point"])
+        for key in ftacv_keys:
+            assert len(draws[key])==5
+if __name__ == '__main__':
     unittest.main()
     #v=TestMultiExperiment()
     #v.setup_method(None)

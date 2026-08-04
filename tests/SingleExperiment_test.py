@@ -23,7 +23,6 @@ class TestSingleExperiment:
                 "delta_E": 0.15,
                 "area": 0.07,
                 "Temp": 298,
-                "N_elec": 1,
                 "phase": 0,
                 "Surface_coverage": 1e-10,
                 "v": 25e-3,
@@ -35,7 +34,6 @@ class TestSingleExperiment:
                 "delta_E": 0.15,
                 "area": 0.07,
                 "Temp": 298,
-                "N_elec": 1,
                 "phase": 0,
                 "Surface_coverage": 1e-10,
             },
@@ -45,22 +43,19 @@ class TestSingleExperiment:
                 "E_reverse": 0.3,
                 "area": 0.07,
                 "Temp": 298,
-                "N_elec": 1,
                 "Surface_coverage": 1e-10,
                 "v": 25e-3,
             },
         "SquareWave":
             {
-                "scan_increment":2e-3,
+                "Estep":2e-3,
                 "omega":10,
-                "delta_E":0.7,
-                "SW_amplitude":10e-3,
+                "Estop":0.3,
+                "Eamp":10e-3,
                 "sampling_factor":200,
-                "E_start":-0.4,
+                "Estart":-0.4,
                 "Temp":278,
-                "v":1,
                 "area":0.07,
-                "N_elec":1,
                 "Surface_coverage":1e-10
             }
         }

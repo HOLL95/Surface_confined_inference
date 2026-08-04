@@ -5,11 +5,14 @@ import numpy as np
 import Surface_confined_inference as sci
 
 from ._Handlers._BaseVoltammetry import ExperimentHandler, ParameterInterface
-from ._Handlers._ParameterHandler import ParameterHandler
+from ._Handlers._ParameterHandler import (
+    ParameterHandler,
+    convert_legacy_square_wave_params,
+)
 
 
 class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
-    _change_options=["experiment_type", "GH_quadrature", "dispersion_bins", "phase_only", "square_wave_return", "input_params"]
+    _change_options=["experiment_type", "GH_quadrature", "dispersion_bins", "phase_only", "square_wave_return", "input_params", "model", "mechanism"]
     def __init__(self, experiment_type, experiment_parameters, options_handler=None, **kwargs):
         """
         A class for performing electrochemical experiments with parameter estimation capabilities. SingleExperiment is an "orchestrator" class
@@ -31,11 +34,14 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         
         Member Methods:
             __init__, dim_i, dim_e, dim_t, nondim_i, nondim_e, nondim_t, n_parameters, 
-            n_outputs, redimensionalise, optim_list (property), boundaries (property), 
+            n_outputs, optim_list (property), boundaries (property),
             fixed_parameters (property), _intitialise_phandler, experiment_top_hat, 
             change_normalisation_group, get_voltage, calculate_times, simulate, save_class, 
             __setattr__
         """
+        experiment_parameters = convert_legacy_square_wave_params(
+            experiment_parameters, experiment_type
+        )
         kwargs["experiment_type"] = experiment_type
         kwargs["input_params"]=experiment_parameters
         self._input_parameters=experiment_parameters
@@ -277,6 +283,11 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             None: Saves to file
         """
         save_dict={"Options":self._internal_options.as_dict(),}
+        if save_dict["Options"].get("mechanism") is not None:
+            #Persist the parsed network, not whatever the user passed: a path is
+            #meaningless on the machine that reloads this.
+            from ._Generic._MechanismProcess import mechanism_source
+            save_dict["Options"]["mechanism"]=mechanism_source(save_dict["Options"]["mechanism"])
         if self._options_handler is not None:
             save_dict["Options_handler"]={"name":self._options_handler.__name__, "module":self._options_handler.__module__}
         else:
@@ -307,6 +318,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
             Various: From input parameter validation
         """
         if name=="input_params":
+            value=convert_legacy_square_wave_params(value, self._internal_options.experiment_type)
             value=ParameterHandler.validate_input_parameters(value, self._internal_options.experiment_type)
         if name=="experiment_type" and hasattr(self._internal_options, "experiment_type"):
             if value!=self._internal_options.experiment_type:

@@ -8,6 +8,117 @@ from warnings import warn
 import Surface_confined_inference as sci
 
 
+#The square wave input parameters are named after the ones SWVtanh introduced,
+#so that the discrete (`SquareWave`) and the smoothed (`SWVtanh`) staircase are
+#configured the same way. Two of the changes are not pure renames: `delta_E` was
+#the *width* of the potential window whereas `Estop` is the potential the
+#staircase ends at, and the `v=+-1` scan direction is now carried by the sign of
+#`Estop-Estart` rather than being an input of its own.
+_SQUARE_WAVE_EXPERIMENTS = ("SquareWave", "SWVtanh")
+_SQUARE_WAVE_RENAMES = {
+    "E_start": "Estart",
+    "scan_increment": "Estep",
+    "SW_amplitude": "Eamp",
+}
+_SQUARE_WAVE_CONSUMED = ("delta_E", "v", "N_elec")
+
+
+def convert_legacy_square_wave_params(input_params, experiment_type):
+    """Translate a pre-rename square wave input dictionary onto the current names.
+
+    Args:
+        input_params (dict): Input parameters, possibly using the old names
+        experiment_type (str): Experiment type; anything outside the square wave
+            family is returned untouched, since `delta_E` and `v` still mean the
+            AC amplitude and the scan rate for FTACV/PSV/DCV
+
+    Returns:
+        dict: The same dictionary if it uses the current names, otherwise a
+        converted copy
+
+    Raises:
+        ValueError: If old and new names for the same quantity are both present,
+            if `delta_E` cannot be converted because `Estart` is missing, if the
+            given `v` disagrees with the direction `Estop` implies, or if
+            `N_elec` is anything other than 1
+
+    Warns:
+        DeprecationWarning: Listing every conversion that was applied
+    """
+    if experiment_type not in _SQUARE_WAVE_EXPERIMENTS:
+        return input_params
+    legacy = [
+        key
+        for key in list(_SQUARE_WAVE_RENAMES) + list(_SQUARE_WAVE_CONSUMED)
+        if key in input_params
+    ]
+    if len(legacy) == 0:
+        return input_params
+    converted = copy.deepcopy(input_params)
+    changes = []
+    for old, new in _SQUARE_WAVE_RENAMES.items():
+        if old not in converted:
+            continue
+        if new in converted:
+            raise ValueError(
+                f"{experiment_type} inputs contain both {new} and the name it "
+                f"replaced ({old}); remove {old}"
+            )
+        converted[new] = converted.pop(old)
+        changes.append(f"{old} -> {new}")
+    if "N_elec" in converted:
+        n_elec = converted.pop("N_elec")
+        if n_elec != 1:
+            raise ValueError(
+                f"N_elec={n_elec} is no longer an input parameter and cannot be "
+                "converted: the square wave solver only implements a single "
+                "electron transfer"
+            )
+        changes.append("N_elec dropped (the solver is single electron)")
+    direction = converted.pop("v", None)
+    if direction is not None:
+        if direction == 0:
+            raise ValueError(
+                "v was the +-1 square wave scan direction, so v=0 cannot be "
+                "converted into a potential window"
+            )
+        changes.append("v dropped (the scan direction is the sign of Estop-Estart)")
+    if "delta_E" in converted:
+        window = converted.pop("delta_E")
+        if "Estop" in converted:
+            raise ValueError(
+                f"{experiment_type} inputs contain both Estop and the potential "
+                "window it replaced (delta_E); remove delta_E"
+            )
+        if "Estart" not in converted:
+            raise ValueError(
+                "delta_E was the width of the potential window, so converting it "
+                "into the final potential Estop needs Estart as well"
+            )
+        sign = 1 if direction is None or direction > 0 else -1
+        #Rounded because Estart+window is not quite the potential that was meant
+        #(-0.4+0.7 is 0.30000000000000004), and the number of steps is a floor
+        #division of Estop-Estart, so that noise would silently cost a step.
+        converted["Estop"] = round(converted["Estart"] + sign * abs(window), 12)
+        changes.append(f"delta_E={window} -> Estop={converted['Estop']}")
+    elif direction is not None and "Estop" in converted and "Estart" in converted:
+        implied = 1 if converted["Estop"] >= converted["Estart"] else -1
+        if implied != (1 if direction > 0 else -1):
+            raise ValueError(
+                f"v={direction} disagrees with the direction Estart="
+                f"{converted['Estart']} to Estop={converted['Estop']} implies; "
+                "drop v and set Estop on the side of Estart you want to scan to"
+            )
+    warn(
+        "The {0} input parameters have been renamed onto the SWVtanh set, "
+        "converting automatically ({1}). Update the input dictionary to silence "
+        "this warning.".format(experiment_type, ", ".join(changes)),
+        DeprecationWarning,
+        stacklevel=3,
+    )
+    return converted
+
+
 @dataclass(frozen=True)
 class DispersionContext:
     """
@@ -293,7 +404,14 @@ class ParameterHandler:
         self.options=kwargs["options"]
         self.fixed_parameters=kwargs["fixed_parameters"]
         self.boundaries=kwargs["boundaries"]
-        if self.options.model=="square_scheme":
+        if self.options.mechanism is not None:
+            #The generated model names its own parameters (E0_1, k0_1, lambda_1,
+            #kcatf_1 ...), so the required set comes from the network rather than
+            #from the fixed list the C++ models share. Imported here so that the
+            #mechanism dependencies stay optional.
+            from .._Generic._MechanismProcess import load_network, required_parameters
+            essential_p=required_parameters(load_network(self.options.mechanism))
+        elif self.options.model=="square_scheme":
             roman_switch={**{x:x*"i" for x in range(1, 4)}, **{x:"{0}v{1}".format(max(5-x, 0)*"i",max(x-5, 0)*"i") for x in range(4, 7)}}
             essential_p=[]
             for i in range(1, 7):
@@ -301,8 +419,12 @@ class ParameterHandler:
                 essential_p+=[f"{x}_{roman_switch[i]}" for x in ["kp", "kd"]]
         else:
             essential_p=["E0","k0","alpha"]
-        
-        if self.options.experiment_type!="SquareWave":
+
+        if self.options.mechanism is not None:
+            #No polynomial capacitance in the generated model, and no alpha:
+            #the rate law carries its own coefficients.
+            self._essential_parameters=essential_p
+        elif self.options.experiment_type!="SquareWave":
             self._essential_parameters = essential_p+["gamma","Cdl", "CdlE1","CdlE2","CdlE3", "Ru","phase"]
         else:
             self._essential_parameters=essential_p+["gamma","Cdl", "CdlE1","CdlE2","CdlE3"]

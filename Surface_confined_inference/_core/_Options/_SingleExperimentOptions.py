@@ -4,14 +4,20 @@ This module provides option classes for different types of electrochemical exper
 """
 import numbers
 import os
+from sympy import Basic
 
 from ._OptionsDescriptor import (
     BoolOption,
     EnumOption,
+    DictOption,
     ExclusiveDictOption,
     NumberOption,
     OptionDescriptor,
     SequenceOption,
+    TypedOption,
+    NoneOption, 
+    AnyOfOption,
+    FileOption,
 )
 from ._OptionsMeta import OptionsManager, OptionsMeta
 
@@ -21,15 +27,40 @@ class BaseExperimentOptions(OptionsManager):
     
     experiment_type = EnumOption(
         "experiment_type",
-        allowed_values=["FTACV", "PSV", "DCV", "SquareWave"],
+        allowed_values=["FTACV", "PSV", "DCV", "SquareWave", "Generic", "SWVtanh"],
         default=None,
-        doc="Type of experiment (FTACV, PSV, DCV, SquareWave)."
+        doc="Type of experiment (FTACV, PSV, DCV, SquareWave, Generic)."
     )
     model=EnumOption(
         "model",
         allowed_values=["single_electron", "square_scheme"],
         default="single_electron",
-        doc="Model for system. Currently single electron redox reaction or 3x3 square scheme. "
+        doc="Built-in C++ model for the system, either a single electron redox reaction "
+            "or a 3x3 square scheme. Ignored when `mechanism` is set, since the ODE "
+            "system is then generated from the reaction network instead."
+    )
+    mechanism = AnyOfOption(
+        "mechanism",
+        validators=[FileOption, DictOption, NoneOption],
+        default=None,
+        doc="Reaction network to generate the ODE system from: a path to a YAML file, "
+            "a YAML document as a string, or an already-parsed mapping. Setting this is "
+            "what selects the generated model over the built-in `model`. save_class "
+            "always writes the parsed mapping, since a path does not travel between "
+            "machines."
+    )
+    poly_degree = NumberOption(
+        "poly_degree",
+        default=15,
+        min_value=2,
+        doc="Number of coefficients in the polynomial expansion of log(k) in "
+            "overpotential, for model='mechanism'. Butler-Volmer is exact at 2."
+    )
+    diffsl_solver = EnumOption(
+        "diffsl_solver",
+        allowed_values=["tsit45", "bdf", "tr_bdf2", "esdirk34"],
+        default="tsit45",
+        doc="Solver used for model='mechanism'."
     )
     GH_quadrature = BoolOption(
         "GH_quadrature",
@@ -44,7 +75,7 @@ class BaseExperimentOptions(OptionsManager):
     
     kinetics = EnumOption(
         "kinetics",
-        allowed_values=["ButlerVolmer", "Marcus", "Nernst"],
+        allowed_values=["ButlerVolmer", "Marcus"],
         default="ButlerVolmer",
         doc="Type of electrochemical kinetics to use."
     )
@@ -92,8 +123,19 @@ class BaseExperimentOptions(OptionsManager):
         doc="Number of CPUs for parallel simulations for dispersion"
     )
 
-    
-    
+    @property
+    def effective_model(self):
+        """Which model will actually be simulated: `mechanism` wins over `model`.
+
+        Read-only, and not an option itself, so it stays out of `as_dict` and
+        out of the saved file.
+        """
+        if self.mechanism is not None:
+            return "mechanism"
+        return self.model
+
+
+
 
 class FTACVOptions(BaseExperimentOptions):
     """Options specific to FTACV experiments."""
@@ -143,7 +185,7 @@ class FTACVOptions(BaseExperimentOptions):
     input_params=ExclusiveDictOption(
         "input_params",
         value_type=numbers.Number,
-        target=["E_start", "E_reverse","v", "omega", "phase", "delta_E",]+["area", "Temp", "N_elec", "Surface_coverage"],
+        target=["E_start", "E_reverse","v", "omega", "phase", "delta_E",]+["area", "Temp",  "Surface_coverage"],
         default={},
         doc="Necessary input params for FTACV"
     )
@@ -167,7 +209,7 @@ class PSVOptions(FTACVOptions):
     input_params=ExclusiveDictOption(
         "input_params",
         value_type=numbers.Number,
-        target=["Edc","omega", "phase", "delta_E"]+["area", "Temp", "N_elec", "Surface_coverage"],
+        target=["Edc","omega", "phase", "delta_E"]+["area", "Temp",  "Surface_coverage"],
         doc="Necessary input params for PSV"
     )
 
@@ -181,7 +223,7 @@ class DCVOptions(BaseExperimentOptions):
     input_params=ExclusiveDictOption(
         "input_params",
         value_type=numbers.Number,
-        target=["E_start", "E_reverse","v"]+["area", "Temp", "N_elec", "Surface_coverage"],
+        target=["E_start", "E_reverse","v"]+["area", "Temp", "Surface_coverage"],
         doc="Necessary input params for DCV"
     )
     # Add DCV-specific options here
@@ -207,22 +249,72 @@ class SquareWaveOptions(BaseExperimentOptions):
         value_type=numbers.Number,
         target=[
                 "omega",
-                "E_start", 
-                "scan_increment",
+                "Estart",
+                "Estop",
+                "Eamp",
+                "Estep",
                 "sampling_factor",
-                "delta_E",
-                "v",
-                "SW_amplitude",
-            ]+["area", "Temp", "N_elec", "Surface_coverage"],
-        doc="Necessary input params for DCV"
+            ]+["area", "Temp",  "Surface_coverage"],
+        doc="Necessary input params for SWV. Estop is the potential the staircase "
+            "ends at, so the scan direction is the sign of Estop-Estart. Older "
+            "dictionaries using E_start/delta_E/scan_increment/SW_amplitude/v are "
+            "converted, with a DeprecationWarning, by "
+            "`convert_legacy_square_wave_params`."
+    )
+class SquareWavetanhOptions(SquareWaveOptions):
+    """Options specific to tanh-smoothed SquareWave experiments.
+
+    The same inputs as SquareWave, except that the smoothed staircase is
+    integrated on a continuous time grid, so the width of the tanh gates
+    (`smoothing`, as a fraction of the pulse width) replaces the number of points
+    per pulse (`sampling_factor`).
+    """
+
+    def __init__(self, **kwargs):
+        # Set default experiment type
+        kwargs.setdefault("experiment_type", "SWVtanh")
+        super().__init__(**kwargs)
+
+    input_params=ExclusiveDictOption(
+        "input_params",
+        value_type=numbers.Number,
+        target=[
+                "omega",
+                "Estart",
+                "Estop",
+                "Eamp",
+                "Estep",
+                "smoothing"
+            ]+["area", "Temp",  "Surface_coverage"],
+        doc="Necessary input params for SWVtanh"
+    )
+class GenericOptions(BaseExperimentOptions):
+    """Options specific to Generic experiments."""
+    
+    def __init__(self, **kwargs):
+        # Set default experiment type
+        kwargs.setdefault("experiment_type", "Generic")
+        super().__init__(**kwargs)
+    
+    potential_input=TypedOption(
+        "potential_input",
+        allowed_types=[Basic],
+        doc="Potential input constructed using sympy"
     )
 
+    input_params=DictOption(
+        "input_params",
+        required_keys=["area", "Temp", "Surface_coverage"],
+        doc="Necessary input params for generic input"
+    )
 class SingleExperimentOptions(BaseExperimentOptions):
     _experiment_classes = {
         "FTACV": FTACVOptions,
         "PSV": PSVOptions,
         "DCV": DCVOptions,
-        "SquareWave": SquareWaveOptions
+        "SquareWave": SquareWaveOptions,
+        "Generic":GenericOptions,
+        "SWVtanh":SquareWavetanhOptions
     }
     
     def __init__(self, options_handler=None, **kwargs):

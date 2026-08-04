@@ -261,6 +261,54 @@ class ComposedOption(OptionDescriptor):
                 raise ValueError(f"Item {i} in {self.name} failed validation with all validators:\n{error_msg}")
 
 
+class NoneOption(OptionDescriptor):
+    """Descriptor for options that must be None, intended for use inside AnyOfOption."""
+
+    def validate(self, value: Any) -> None:
+        """Validate that the value is None."""
+        if value is not None:
+            raise TypeError(f"{self.name} must be None, got {type(value).__name__}")
+
+
+class AnyOfOption(OptionDescriptor):
+    """Descriptor for options where the value must be validated by at least one of the provided validators."""
+
+    def __init__(self, name: str, validators: List[OptionDescriptor], default: Any = None, doc: str = None):
+        """
+        Initialize an AnyOfOption with a list of validator options.
+
+        Args:
+            name: Name of the option
+            validators: List of OptionDescriptor classes or instances to validate against.
+                        Classes are instantiated with this option's name, instances are used
+                        as provided (allowing e.g. FileOption(name, must_exist=False))
+            default: Default value
+            doc: Documentation string
+        """
+        super().__init__(name, default, doc)
+        self.validators = validators
+
+    def validate(self, value: Any) -> None:
+        """
+        Validate that the value is valid according to at least one validator.
+
+        Raises:
+            ValueError: If the value fails validation by all validators
+        """
+        validation_errors = []
+
+        for validator in self.validators:
+            candidate = validator(self.name) if isinstance(validator, type) else validator
+            try:
+                candidate.validate(value)
+                return
+            except (TypeError, ValueError) as e:
+                validation_errors.append(str(e))
+
+        error_msg = ' '.join(validation_errors)
+        raise ValueError(f"{self.name} failed validation with all validators:\n{error_msg}")
+
+
 class FileOption(TypedOption):
     """Descriptor for file path options with existence checking."""
     
