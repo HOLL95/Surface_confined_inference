@@ -20,30 +20,61 @@ from .SyntheticFuncs import create_times
 class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
     _manual_options=["class_keys", "classes", "input_params", "group_to_conditions", "group_to_class", "group_to_parameters"]
     _allowed_experiments=["FTACV","PSV","DCV","SWV","SquareWave","Trumpet"]
+    #Options that change which parameters the optimiser sees, and so require them to be
+    #re-validated and re-derived whenever the option is set, in whatever order that happens.
+    #group_list is not a member because its own setter has to re-derive them before it can
+    #build the plot manager
+    _reinitialisation_options=["SWV_e0_shift", "seperated_parameters"]
     def __init__(self, input_params, **kwargs):
         self._internal_options = sci.MultiExperimentOptions(**kwargs)
-        
+        self._manager=None
+
         self.input_params=input_params
-        
+
         self.file_list=self._internal_options.file_list
-        
+
         self.class_keys=list(self.classes.keys())
-        self._all_parameters=set()
+        base_parameters=set()
         self._all_harmonics=set()
         for key in self.class_keys:
-            self._all_parameters=self._all_parameters.union(self.classes[key]["class"].optim_list)
+            base_parameters=base_parameters.union(self.classes[key]["class"].optim_list)
             if self.classes[key]["class"].experiment_type in ["FTACV","PSV"]:
                 self._all_harmonics=self._all_harmonics.union(set(self.classes[key]["class"].Fourier_harmonics))
-            else:
-                
-                if self._internal_options.SWV_e0_shift==True:
-                    if "SquareWave" in self.classes[key]["class"].experiment_type:
-                        if "anodic" not in key and "cathodic" not in key:
-                            raise ValueError(f"If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {key}")
         self._all_harmonics=list(self._all_harmonics)
-        self._all_parameters=list(self._all_parameters)
-        
-            
+        #The union of the class optim_lists, which never changes. _all_parameters is what the
+        #optimiser sees, and is re-derived from _base_parameters by _refresh_parameters
+        self._base_parameters=list(base_parameters)
+        self._all_parameters=list(self._base_parameters)
+        self._validate_options()
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+        if name in self._reinitialisation_options:
+            self._validate_options()
+            self._refresh_parameters()
+    def _validate_options(self):
+        """
+        Validation of the options in `_reinitialisation_options` against the experiment classes,
+        run both on initialisation and whenever one of them is set afterwards.
+        """
+        if self._internal_options.SWV_e0_shift==True:
+            for key in self.class_keys:
+                if "SquareWave" in self.classes[key]["class"].experiment_type:
+                    if "anodic" not in key and "cathodic" not in key:
+                        raise ValueError(f"If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {key}")
+    def _refresh_parameters(self):
+        """
+        Re-derive the simulation parameters from the current options. Only possible once the
+        experiments have been grouped, as the groups are what parameters can be separated
+        between - before then the options are simply stored, and applied by the `group_list`
+        setter.
+        """
+        if self._manager is None:
+            return
+        self._manager.SWV_e0_shift=self._internal_options.SWV_e0_shift
+        self.group_to_parameters, self._all_parameters=self._manager.initialise_simulation_parameters(self._internal_options.seperated_parameters)
+        if getattr(self, "_plot_manager", None) is not None:
+            self._plot_manager.group_to_parameters=self.group_to_parameters
+            self._plot_manager._all_parameters=self._all_parameters
     @property
     def input_params(self):
         return self._input_params
@@ -79,8 +110,8 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         self._internal_options._group_list=group_list
         self.group_to_conditions, self.group_to_class=initialise_grouping(group_list, self.classes)
         self._grouping_keys=list(self.group_to_conditions.keys())
-        self._manager=ParameterManager(self._all_parameters, self.grouping_keys, self.classes, self._internal_options.SWV_e0_shift, self.group_to_class)
-        self.group_to_parameters,_=self._manager.initialise_simulation_parameters(self._internal_options.seperated_parameters)
+        self._manager=ParameterManager(self._base_parameters, self.grouping_keys, self.classes, self._internal_options.SWV_e0_shift, self.group_to_class)
+        self._refresh_parameters()
         if self._internal_options.synthetic==True:
             self.classes=create_times(self.classes, self.class_keys)
         self._plot_manager=PlotManager(self)
@@ -94,10 +125,10 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         return self._internal_options._seperated_parameters
     @seperated_parameters.setter
     def seperated_parameters(self, seperation_dict):
-        self.group_list
+        #Storing only - the re-derivation is done by __setattr__, as `seperated_parameters` is
+        #a member of _reinitialisation_options
         self._internal_options.seperated_parameters=seperation_dict
-        self.group_to_parameters, self._all_parameters=self._manager.initialise_simulation_parameters(seperation_dict)
-    
+
     def evaluate(self, parameters):
         simulation_params_dict=self._manager.parse_input(parameters)
         simulation_values_dict={}

@@ -1,5 +1,6 @@
 import copy
 import itertools
+import re
 
 import numpy as np
 import tabulate
@@ -9,19 +10,21 @@ import Surface_confined_inference as sci
 
 class ParameterManager:
     def __init__(self, all_parameters, grouping_keys, classes, SWV_e0_shift, group_to_class):
-        self.all_parameters=all_parameters
+        #The parameters as defined by the optim_lists of the individual classes. Kept separate
+        #from all_parameters, which is derived from them, so that the derivation always starts
+        #from the same place and can be repeated whenever the options it depends on change
+        self._base_parameters=list(all_parameters)
+        self.all_parameters=list(all_parameters)
         self.grouping_keys=grouping_keys
         self.SWV_e0_shift=SWV_e0_shift
         self.classes=classes
         self.group_to_class=group_to_class
     def initialise_simulation_parameters(self, seperated_param_dictionary={}):
-        group_to_parameters={x:copy.deepcopy(self.all_parameters) for x in self.grouping_keys}
-        if len(seperated_param_dictionary)==0:
-            self.group_to_parameters=group_to_parameters
-            return group_to_parameters, self.all_parameters
+        base_parameters=self._base_parameters
+        group_to_parameters={x:copy.deepcopy(base_parameters) for x in self.grouping_keys}
         new_all_parameters=[]
         for key in seperated_param_dictionary:
-            if key not in self.all_parameters:
+            if key not in base_parameters:
                 raise ValueError(f"{key} not in optim_list of any class")
             all_idx=list(itertools.chain(*seperated_param_dictionary[key]))
             set_idx=set(all_idx)#existing_values
@@ -48,31 +51,41 @@ class ParameterManager:
                     group_key=self.grouping_keys[element[j]]
                     p_idx=group_to_parameters[group_key].index(key)
                     group_to_parameters[group_key][p_idx]=f"{key}_{m+1}"
-        common_params=[x for x in self.all_parameters if x not in seperated_param_dictionary]
-        
-        self.all_parameters=new_all_parameters+common_params
+        common_params=[x for x in base_parameters if x not in seperated_param_dictionary]
+
+        all_parameters=new_all_parameters+common_params
         if self.SWV_e0_shift==True:
-            if "E0_mean" not in seperated_param_dictionary and "E0" not in seperated_param_dictionary:
-                if "E0_mean" in self.all_parameters:
-                    self.all_parameters+=["E0_mean_offset"]
-                elif "E0" in self.all_parameters:
-                    self.all_parameters+=["E0_offset"]
-            else:
-                if "E0_mean" in seperated_param_dictionary:
-                    target="E0_mean"
-                elif "E0" in seperated_param_dictionary:
-                    target="E0"
-                for groupkey in self.grouping_keys:
-                    exp=[self.classes[x]["class"].experiment_type=="SquareWave" for x in self.experiment_grouping[groupkey]]
-                    if all(exp)==True:
-                        optim_list=group_to_parameters[group_key]
-                        param=[x for x in optim_list if re.search(target+r"_\d", x)][0]+"_offset"
-                        if param not in self.all_parameters:
-                            self.all_parameters+=[param]
-                    elif any(exp)==True:
-                        raise ValueError("If SWV_e0_shift is set to True, all members of a SWV group have to be SquareWave experiments")
+            all_parameters+=self._e0_offset_parameters(seperated_param_dictionary, group_to_parameters, all_parameters)
+        self.all_parameters=all_parameters
         self.group_to_parameters=group_to_parameters
         return group_to_parameters, self.all_parameters
+    def _e0_offset_parameters(self, seperated_param_dictionary, group_to_parameters, all_parameters):
+        """
+        The offset parameters required to shift the anodic and cathodic SWV experiments in
+        opposite directions. If E0 is common to every group then one offset is enough, but if
+        it has been separated then each group needs the offset belonging to its own copy of E0.
+        """
+        offsets=[]
+        if "E0_mean" not in seperated_param_dictionary and "E0" not in seperated_param_dictionary:
+            if "E0_mean" in all_parameters:
+                offsets+=["E0_mean_offset"]
+            elif "E0" in all_parameters:
+                offsets+=["E0_offset"]
+            return offsets
+        if "E0_mean" in seperated_param_dictionary:
+            target="E0_mean"
+        else:
+            target="E0"
+        for groupkey in self.grouping_keys:
+            exp=[self.classes[x]["class"].experiment_type=="SquareWave" for x in self.group_to_class[groupkey]]
+            if all(exp)==True:
+                optim_list=group_to_parameters[groupkey]
+                param=[x for x in optim_list if re.search(target+r"_\d", x)][0]+"_offset"
+                if param not in offsets:
+                    offsets+=[param]
+            elif any(exp)==True:
+                raise ValueError("If SWV_e0_shift is set to True, all members of a SWV group have to be SquareWave experiments")
+        return offsets
     def parse_input(self, parameters):
         in_optimisation=False
         try:
@@ -107,6 +120,10 @@ class ParameterManager:
                         if "offset" in param:
                             idx=param.find("_offset")
                             true_param=param[:idx]
+                            #Only the offset belonging to this group's copy of E0 applies here,
+                            #any others belong to a different group
+                            if true_param not in parameter_list:
+                                continue
                             if true_param not in cls.optim_list:
                                 for param2 in cls.optim_list:
                                     changed_param=param2+"_"
@@ -117,7 +134,7 @@ class ParameterManager:
                             elif "cathodic" in classkey:
                                 sim_values[true_param]-=valuedict[param]
                             else:
-                                raise ValueError(f"If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {key}")
+                                raise ValueError(f"If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {classkey}")
                 optimisation_parameters[classkey]=[sim_values[x] for x in cls.optim_list]
         for key in self.classes.keys():
             if key not in optimisation_parameters:
