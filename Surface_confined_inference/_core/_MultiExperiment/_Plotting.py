@@ -282,17 +282,24 @@ class PlotManager:
         
         return axis, line_list
     def results(self,  **kwargs):
-        possible_args=set(["parameters", "pareto_index", "best"])
+        possible_args=set(["parameters", "pareto_index", "best", "dimensional_parameters"])
         kwargset=set(kwargs.keys())
         intersect=possible_args-kwargset
-        if len(intersect)!=2:
+        if len(intersect)!=len(possible_args)-1:
             raise ValueError(f"Only one of ({possible_args}) allowed as arg - found {intersect}")
         else:
             arg=list(kwargset.intersection(possible_args))[0]
         total_all_simulations=[]
         
-        if arg=="parameters":
-            param_values=np.array(kwargs[arg])
+        if arg=="parameters" or arg=="dimensional_parameters":
+            if isinstance(kwargs[arg], dict):
+                kwargs[arg]=[kwargs[arg]]
+            if any([isinstance(x, dict) for x in kwargs[arg]]):
+                param_values=np.array([[y[x] for x in self._all_parameters] for y in kwargs[arg]])
+            else:
+                param_values=np.array(kwargs[arg])
+            if arg=="dimensional_parameters" and self._cls._internal_options.normalise is True:
+                param_values=self._scale_parameters(param_values, params=self._all_parameters, mode="normalise")
             simulate_all=True
         else:
             if self._check_results_loaded() is True:
@@ -325,9 +332,9 @@ class PlotManager:
                 dims=param_values.shape
             for i in range(0, dims[0]):
                 values=param_values[i,:]
+                
                 if all([x>=0 and x<=1 for x in values]) != self._cls._internal_options.normalise: 
                     print(f"Warning - are values correctly normalised? Loaded class has normalised set to {self._cls._internal_options.normalise}")
-                #print("here")
                 vals=self._cls.evaluate(values)
                 total_all_simulations.append(vals)
                 
@@ -718,6 +725,45 @@ class PlotManager:
                 return axis
         else:
             raise NotImplementedError("Manual `address` loading currently not implemented")
+    def _scale_parameters(self, parameter_array, params=None, mode="un_normalise"):
+        """
+        Args:
+            parameter_array (np.ndarray): array of parameter values, either of shape (m,) or (n,m), where
+                                            m=len(params)
+            params (list, optional): list of parameter names defining the column order of `parameter_array`.
+                                        Defaults to self._all_parameters, and needs to contain all of them
+            mode (str, optional): either "un_normalise" (0->1 to true values) or "normalise" (true values to 0->1)
+        Returns:
+            np.ndarray: array of the same shape as `parameter_array`, with each column scaled according to the
+                        boundaries associated with its parameter. Columns containing "_offset" are left unchanged
+        """
+        if mode not in ["normalise","un_normalise"]:
+            raise ValueError("mode needs to be either `normalise` or `un_normalise`, not {0}".format(mode))
+        if params is None:
+            params=self._cls._all_parameters
+        else:
+            for key in self._cls._all_parameters:
+                if key not in params:
+                    raise ValueError("Need {0} in list of params".format(key))
+        parameter_array=np.array(parameter_array)
+        original_shape=parameter_array.shape
+        if parameter_array.ndim==1:
+            parameter_array=parameter_array.reshape(1,-1)
+        elif parameter_array.ndim!=2:
+            raise ValueError("Parameter array needs to be of shape (m,) or (n,m), not {0}".format(original_shape))
+        if parameter_array.shape[1]!=len(params):
+            raise ValueError("Parameter array has {0} columns, but {1} parameters were provided".format(parameter_array.shape[1], len(params)))
+        scaler=getattr(sci._utils, mode)
+        return_array=np.zeros(parameter_array.shape)
+        for i in range(0, len(params)):
+            norm_param=params[i]
+            if "_offset" in norm_param:
+                return_array[:,i]=parameter_array[:,i]
+            else:
+                if norm_param not in self._cls.boundaries.keys():
+                    norm_param="_".join(params[i].split("_")[:-1])
+                return_array[:,i]=[scaler(x, self._cls.boundaries[norm_param]) for x in parameter_array[:,i]]
+        return return_array.reshape(original_shape)
     def _un_normalise_parameters(self,params=None):
         if params is None:
             params=self._cls._all_parameters
@@ -727,17 +773,8 @@ class PlotManager:
                     raise ValueError("Need {0} in list of params".format(key))
         if self._check_results_loaded() is False:
             raise ValueError("Need to load results through `sci.BaseMultiExperiment.resuls_loader()`")
-        return_array=np.zeros((len(self._cls._results_array),len(params),))
-        for i in range(0, len(params)):
-            norm_param=params[i]
-            if "_offset" in norm_param:
-                assign=[y["parameters"][norm_param] for y in self._cls._results_array]
-            else:
-                if norm_param not in self._cls.boundaries.keys():
-                    norm_param="_".join(params[i].split("_")[:-1])
-                assign=[sci._utils.un_normalise(y["parameters"][params[i]], self._cls.boundaries[norm_param]) for y in self._cls._results_array]
-            return_array[:,i]=assign
-        return return_array
+        parameter_array=np.array([[y["parameters"][x] for x in params] for y in self._cls._results_array])
+        return self._scale_parameters(parameter_array, params=params, mode="un_normalise")
     def _get_2d_neighours(self,xscores, yscores, **kwargs):
             from sklearn.neighbors import BallTree
             points = np.column_stack([xscores, yscores])

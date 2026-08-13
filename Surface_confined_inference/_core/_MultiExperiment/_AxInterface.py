@@ -275,7 +275,7 @@ class AxInterface(sci.OptionsAwareMixin):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt")) as f:
             num_points=int(f.readline())
-        node_chunks=min(num_points, 300)
+        node_chunks=num_points
         process_per_chunk=int(np.floor(num_points//node_chunks))+1
         quit_point=int(np.ceil(node_chunks/process_per_chunk))
         start=time.time()
