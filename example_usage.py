@@ -11,7 +11,6 @@ inputs={
         "delta_E": 0.15,         # AC amplitude (V)
         "area": 0.07,            # Electrode area (cm^2)
         "Temp": 298,             # Temperature (K)
-        "N_elec": 1,             # Number of electrons transferred
         "phase": 0,              # Phase offset (radians)
         "Surface_coverage": 1e-10,  # Initial surface coverage (mol/cm^2)
         "v": 25e-3,              # Scan rate (V/s)

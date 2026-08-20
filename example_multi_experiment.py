@@ -61,8 +61,7 @@ labels = ["3_Hz", "9_Hz", "15_Hz"]
 # Common parameters shared across ALL experiments (both FTACV and SWV)
 # These are fixed experimental conditions
 common = {
-    "Temp": 278,              # Temperature (K)
-    "N_elec": 1,              # Number of electrons transferred in redox reaction
+    "Temp": 278,              # Temperature (K)         
     "area": 0.036,            # Electrode area (cm^2)
     "Surface_coverage": 1e-10 # Surface coverage (mol/cm^2)
 }

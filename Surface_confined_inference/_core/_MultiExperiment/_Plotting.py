@@ -281,6 +281,36 @@ class PlotManager:
         axis.set_xticks([])
         
         return axis, line_list
+    def _resolve_grouping_keys(self, best_arg):
+        """
+        Turn the `best` argument into a list of grouping keys.
+
+        Accepts "all", a single grouping key or index into `grouping_keys`, or a
+        list of either.
+        """
+        if isinstance(best_arg, str) and best_arg=="all":
+            return list(self.grouping_keys)
+        if isinstance(best_arg, (list, tuple, np.ndarray)) is False:
+            best_arg=[best_arg]
+        keys=[]
+        for element in best_arg:
+            if isinstance(element, (int, np.integer)):
+                if element<0 or element>=len(self.grouping_keys):
+                    raise ValueError("`best` index {0} out of range for {1} grouping keys".format(element, len(self.grouping_keys)))
+                keys.append(self.grouping_keys[element])
+            elif isinstance(element, str):
+                if element not in self.grouping_keys:
+                    raise ValueError("`best` key {0} not found in grouping keys ({1})".format(element, self.grouping_keys))
+                keys.append(element)
+            else:
+                raise ValueError("`best` elements need to be either grouping keys or indexes into grouping keys, not {0}".format(type(element)))
+        return keys
+    def _best_index(self, groupkey):
+        """
+        Index into `_results_array` of the entry with the lowest score for `groupkey`
+        """
+        scores=[x["scores"][groupkey] for x in self._cls._results_array]
+        return int(np.argmin(scores))
     def results(self,  **kwargs):
         possible_args=set(["parameters", "pareto_index", "best", "dimensional_parameters"])
         kwargset=set(kwargs.keys())
@@ -303,25 +333,30 @@ class PlotManager:
             simulate_all=True
         else:
             if self._check_results_loaded() is True:
-                if arg in ["pareto_index", "best"]:
-                    if arg=="best" and kwargs[arg]=="all":
-                        kwargs[arg]=list(range(0, len(self.grouping_keys)))
-                    elif isinstance(kwargs[arg], int):
+                if arg=="best":
+                    #`best` refers to grouping keys - for each requested key the plotted
+                    #entry is the one in `_results_array` with the lowest score for that key
+                    best_keys=self._resolve_grouping_keys(kwargs[arg])
+                    kwargs[arg]=best_keys
+                    result_indexes=[self._best_index(x) for x in best_keys]
+                else:
+                    if isinstance(kwargs[arg], (int, np.integer)):
                         kwargs[arg]=[kwargs[arg]]
-                    simulate_all=True
-                    for i in range(0, len(kwargs[arg])):
-                        element=self._cls._results_array[kwargs[arg][i]]
-                        if "saved_simulation" in element:
-                            simulate_all=False
-                        else:
-                            if simulate_all==False:
-                                raise ValueError("Saved simulation not found")
-                    if simulate_all==True:
-                        param_values=[]
-                        for i in range(0, len(kwargs[arg])):
-                            element=self._cls._results_array[kwargs[arg][i]]
-                            param_values.append([element["parameters"][x] for x in self._cls._all_parameters])
-                        param_values=np.array(param_values)
+                    result_indexes=list(kwargs[arg])
+                simulate_all=True
+                for i in range(0, len(result_indexes)):
+                    element=self._cls._results_array[result_indexes[i]]
+                    if "saved_simulation" in element:
+                        simulate_all=False
+                    else:
+                        if simulate_all==False:
+                            raise ValueError("Saved simulation not found")
+                if simulate_all==True:
+                    param_values=[]
+                    for i in range(0, len(result_indexes)):
+                        element=self._cls._results_array[result_indexes[i]]
+                        param_values.append([element["parameters"][x] for x in self._cls._all_parameters])
+                    param_values=np.array(param_values)
             else:
                 raise ValueError(f"For {arg} argument results have to be loaded through `BaseMultiExperiment.results_loader()`")
         if simulate_all==True:
@@ -341,9 +376,9 @@ class PlotManager:
                 
         elif simulate_all==False:
             kwargs["deced"]=True
-            for i in range(0, len(kwargs[arg])):
+            for i in range(0, len(result_indexes)):
                     simulations={}
-                    element=self._cls._results_array[kwargs[arg][i]]
+                    element=self._cls._results_array[result_indexes[i]]
                     for classkey in self._cls.class_keys:
                         vals=np.loadtxt(element["saved_simulation"][classkey]["address"])
                         simulations[classkey]=vals[:,element["saved_simulation"][classkey]["col"]]
@@ -370,7 +405,7 @@ class PlotManager:
                     if kwargs["savename"].split(".")[-1]=="png":
                         raise ValueError("Dont put .png at the end of savename ({0})".format(kwargs["savename"]))
                     if arg=="best":
-                        savename=kwargs["savename"]+"_"+self.grouping_keys[i]
+                        savename=kwargs["savename"]+"_"+kwargs["best"][i]
                     else:
                         savename=kwargs["savename"]+"_index_"+str(i)
                 else:
@@ -379,15 +414,13 @@ class PlotManager:
                 oldsavename=kwargs["savename"]
                 kwargs["savename"]=savename
                 if arg=="best":
-                    kwargs["target_key"]=[self.grouping_keys[i]]
-                if "best" in kwargs:
-                    kwargs["target_key"]=self.grouping_keys[kwargs["best"][i]]
+                    kwargs["target_key"]=[kwargs["best"][i]]
                 self.plot_results([scaled_simulations[i]], **kwargs)  
                 kwargs["savename"]=oldsavename
 
         else:
-            if "best" in kwargs:
-                    kwargs["target_key"]=[self.grouping_keys[x] for x in kwargs["best"]]
+            if arg=="best":
+                    kwargs["target_key"]=list(kwargs["best"])
             self.plot_results(scaled_simulations, **kwargs)
     def process_simulation_dict(self, input_list):
         total_all_simulations=[]
