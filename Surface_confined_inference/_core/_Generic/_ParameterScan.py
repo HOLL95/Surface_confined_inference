@@ -39,7 +39,17 @@ _LIBRARIES = (
     ("matplotlib.pyplot", "plt"),
     ("copy", "copy"),
     ("itertools", "it"),
+    ("multiprocessing", "mp"),
+    ("os", "os"),
 )
+
+#Where the generated script writes its figures when the caller does not name a
+#directory. Relative, so it lands beside wherever the script is run from.
+_FIGURE_DIRECTORY = "parameter_scan_figures"
+
+#Saved figures are named <what was swept>.png under that directory; the input
+#scan draws only one figure, so its name is fixed.
+_INPUT_SCAN_FIGURE = "input_scan"
 
 
 def _sweep(name, range_size):
@@ -168,12 +178,18 @@ def _input_scan():
         "\tfor spare in axes[len(scanned_inputs):]:",
         "\t\tspare.set_axis_off()",
         "\tfig.tight_layout()",
-        "\tplt.show()",
+        "\tfinish_figure(fig, '{0}')".format(_INPUT_SCAN_FIGURE),
+        "\tshow_figures()",
     ]
 
 
 def _loop(mode):
     """The sweep itself.
+
+    Every simulation goes through `run_sweep`, so the points behind one figure
+    are gathered first and drawn once they are all back. That keeps the pool to
+    one batch per figure -- `range_size` points in individual mode, the whole
+    `range_size` by `range_size` grid in pairwise -- rather than a call each.
 
     The swept value is written into fixed_parameters and optim_list is left
     empty, rather than the other way round. Assigning either one rebuilds the
@@ -189,35 +205,122 @@ def _loop(mode):
         return [
             "for parameter in parameter_ranges.keys():",
             "\tfig, ax = plt.subplots()",
-            "\tfor j in range(0, range_size):",
-            "\t\tvalue = parameter_ranges[parameter][j]",
-            "\t\texperiment.fixed_parameters = {**fixed_parameters, parameter: value}",
-            "\t\tcurrent = experiment.dim_i(experiment.simulate([], times))",
+            "\tvalues = parameter_ranges[parameter]",
+            "\tcurrents = run_sweep([{parameter: value} for value in values])",
+            "\tfor value, current in zip(values, currents):",
             "\t\tax.plot(x_vals, current, label=f'{parameter}={value}')",
             "\tax.set_xlabel(x_label)",
             "\tax.set_ylabel('Current (A)')",
             "\tax.legend()",
-            "plt.show()",
+            "\tfinish_figure(fig, parameter)",
+            "show_figures()",
         ]
     return [
         "combinations = list(it.combinations(parameter_ranges.keys(), 2))",
+        "grid = list(it.product(range(range_size), range(range_size)))",
         "for param1, param2 in combinations:",
         "\tfig, ax = plt.subplots(range_size, range_size)",
+        "\tcurrents = run_sweep([{param1: parameter_ranges[param1][j],",
+        "\t\tparam2: parameter_ranges[param2][q]} for j, q in grid])",
+        "\tfor (j, q), current in zip(grid, currents):",
+        "\t\tvalue2 = parameter_ranges[param2][q]",
+        "\t\tax[j, q].plot(x_vals, current, label=f'{param2}={value2}')",
         "\tfor j in range(0, range_size):",
-        "\t\tvalue1 = parameter_ranges[param1][j]",
-        "\t\tfor q in range(0, range_size):",
-        "\t\t\tvalue2 = parameter_ranges[param2][q]",
-        "\t\t\texperiment.fixed_parameters = {**fixed_parameters,",
-        "\t\t\t\tparam1: value1, param2: value2}",
-        "\t\t\tcurrent = experiment.dim_i(experiment.simulate([], times))",
-        "\t\t\tax[j, q].plot(x_vals, current, label=f'{param2}={value2}')",
-        "\t\tax[j, 0].set_ylabel(f'{param1}={value1}')",
+        "\t\tax[j, 0].set_ylabel(f'{param1}={parameter_ranges[param1][j]}')",
         "\tfor q in range(0, range_size):",
         "\t\tax[-1, q].set_xlabel(x_label)",
         "\tfig.suptitle(f'{param1} vs {param2}')",
         "\tplt.tight_layout()",
-        "plt.show()",
+        "\tfinish_figure(fig, f'{param1}_vs_{param2}')",
+        "show_figures()",
     ]
+
+
+def _figures():
+    """`finish_figure` and `show_figures`, what every figure ends up in.
+
+    Saving and closing as each figure is finished, rather than holding them all
+    open for one `plt.show()` at the end, is what makes a long sweep survivable:
+    a pairwise sweep over six parameters draws fifteen figures of
+    `range_size` squared axes each, and matplotlib keeps every one of them alive
+    until it is closed. It also means a sweep left running unattended leaves its
+    results on disk rather than behind a window nobody was there to dismiss.
+
+    Setting `figure_directory` to None in the script restores the old
+    behaviour: nothing is written, the figures stay open, and `show_figures`
+    blocks at the end of the sweep.
+    """
+    return [
+        "def finish_figure(fig, name):",
+        '\t"""Write one figure to `figure_directory` and close it."""',
+        "\tif figure_directory is None:",
+        "\t\treturn",
+        "\tos.makedirs(figure_directory, exist_ok=True)",
+        "\tfig.savefig(os.path.join(figure_directory, f'{name}.png'))",
+        "\t#Closing is the point: an open figure holds its axes and data alive.",
+        "\tplt.close(fig)",
+        "",
+        "",
+        "def show_figures():",
+        '\t"""Display the sweep\'s figures, unless they were saved and closed."""',
+        "\tif figure_directory is None:",
+        "\t\tplt.show()",
+    ]
+
+
+def _runner():
+    """`simulate_point` and `run_sweep`, what the sweep runs each point through.
+
+    Both sit at the top level of the generated script so `pool.map` can pickle
+    `simulate_point` by name; a sweep point, a dict of floats, and the current
+    it returns are then all that crosses between processes. The experiment
+    itself never does -- a compiled pydiffsol Ode does not pickle, which is why
+    MechanismHandler refuses the multiprocessing dispersion path -- so each
+    worker uses one of its own, inherited across the fork on Linux or built by
+    re-running the setup above when the start method is spawn.
+
+    The pool is made on first use and kept, rather than one per figure: under
+    spawn every new worker rebuilds the model, so a pool per figure would pay
+    that again for each of them.
+    """
+    return [
+        "def simulate_point(overrides):",
+        '\t"""Simulate one sweep point. `overrides` maps parameter name to value."""',
+        "\texperiment.fixed_parameters = {**fixed_parameters, **overrides}",
+        "\treturn experiment.dim_i(experiment.simulate([], times))",
+        "",
+        "",
+        "pool = None",
+        "",
+        "",
+        "def run_sweep(points):",
+        '\t"""Simulate every point behind one figure, over `parallel_cpu` processes."""',
+        "\tglobal pool",
+        "\tif parallel_cpu == 1:",
+        "\t\treturn [simulate_point(x) for x in points]",
+        "\tif pool is None:",
+        "\t\tpool = mp.Pool(processes=parallel_cpu)",
+        "\t#chunksize=1 hands out one point at a time. The default batches them",
+        "\t#into contiguous chunks, which is the wrong shape here: a sweep point",
+        "\t#is seconds of work and neighbouring points cost wildly different",
+        "\t#amounts (a high Ru is far stiffer than a low one), so a fixed split",
+        "\t#leaves one worker with every slow point while the rest sit idle.",
+        "\treturn pool.map(simulate_point, points, chunksize=1)",
+    ]
+
+
+def _guarded(lines):
+    """Put `lines` under `if __name__ == "__main__":`.
+
+    Workers started with the spawn start method import the script again, so
+    anything that draws or sweeps has to sit behind the guard or every worker
+    would do it too. The setup above the guard is left exposed on purpose: that
+    is what rebuilds the experiment a spawned worker needs.
+    """
+    body = []
+    for line in lines:
+        body.extend("\t" + part if part else "" for part in line.split("\n"))
+    return ['if __name__ == "__main__":'] + body
 
 
 def parameter_scan_script(
@@ -228,6 +331,8 @@ def parameter_scan_script(
     potential_scan=True,
     range_size=4,
     potential_input=None,
+    parallel_cpu=1,
+    figure_directory=_FIGURE_DIRECTORY,
 ):
     """Generate a script that sweeps every parameter a mechanism declares.
 
@@ -245,17 +350,50 @@ def parameter_scan_script(
         range_size (int): points per sweep
         potential_input: sympy expression for the potential, for
             experiment_type="Generic"
+        parallel_cpu (int): worker processes the sweep is spread over. 1
+            simulates in the script's own process; above that, the points
+            behind each figure are mapped over a pool of this many. Written
+            into the script as a variable, so it can be changed there without
+            regenerating.
+        figure_directory (str | os.PathLike | None): each figure is written
+            here as a PNG named after what it sweeps, and closed as soon as it
+            is saved. The directory is created by the script if it does not
+            exist. None instead keeps every figure open and shows them at the
+            end of the sweep. Written into the script as a variable, like
+            `parallel_cpu`.
 
     Returns:
         str: the generated source
 
     Raises:
-        ValueError: for an unknown mode or experiment type, or if the mechanism
-            declares no parameter this knows how to sweep
+        ValueError: for an unknown mode or experiment type, a `parallel_cpu`
+            below one, a `figure_directory` that is neither a path nor None, or
+            if the mechanism declares no parameter this knows how to sweep
     """
     if mode not in _MODES:
         raise ValueError(
             "`mode` keyword needs to be one of {0}, not {1!r}".format(_MODES, mode)
+        )
+    #bool is an int, and `parallel_cpu=True` asking for one worker is far more
+    #likely a mistyped flag than a deliberate serial sweep.
+    if not isinstance(parallel_cpu, int) or isinstance(parallel_cpu, bool):
+        raise ValueError(
+            "`parallel_cpu` keyword needs to be an integer, not {0!r}".format(
+                parallel_cpu
+            )
+        )
+    if parallel_cpu < 1:
+        raise ValueError(
+            "`parallel_cpu` keyword needs to be at least 1, not {0}".format(
+                parallel_cpu
+            )
+        )
+    if figure_directory is not None and not isinstance(
+        figure_directory, (str, os.PathLike)
+    ):
+        raise ValueError(
+            "`figure_directory` keyword needs to be a path, or None to show "
+            "the figures instead of saving them, not {0!r}".format(figure_directory)
         )
     input_names = _input_names(experiment_type, potential_input)
     #The cell parameters do not enter the waveform, so perturbing them would
@@ -329,6 +467,14 @@ def parameter_scan_script(
         ),
         "",
         "potential_scan = {0}".format(potential_scan),
+        #Read by run_sweep, so raising it here is all it takes to spread an
+        #already generated sweep over more cores.
+        "parallel_cpu = {0}".format(parallel_cpu),
+        #Read by finish_figure and show_figures; None there shows the figures
+        #rather than writing them.
+        "figure_directory = {0!r}".format(
+            None if figure_directory is None else os.fspath(figure_directory)
+        ),
         #Scaled, not offset, so one list covers parameters of wildly different
         #magnitude. The cost is that a parameter sitting at zero (Estart on a
         #sweep starting from 0, phase on an unshifted FTACV) cannot move -- edit
@@ -350,7 +496,14 @@ def parameter_scan_script(
 
     source = (
         "\n".join(
-            [imports, ""] + setup + [""] + _input_scan() + [""] + _loop(mode)
+            [imports, ""]
+            + setup
+            + ["", ""]
+            + _figures()
+            + ["", ""]
+            + _runner()
+            + ["", ""]
+            + _guarded(_input_scan() + [""] + _loop(mode))
         )
         + "\n"
     )

@@ -193,14 +193,14 @@ def _process_swv_data(experiment_key, data, loc):
             
             # Store normalized data
             loc["data"] = cls.nondim_i(current - CS(pot))
-            #fig,ax=plt.subplots(1,2)
-            #ax[0].plot(pot, current)
-            #ax[0].plot(pot[before], midded_current[before], linestyle="--", color="black")
-            #ax[0].plot(pot[after], midded_current[after],linestyle="--", color="black")
-            #ax[0].plot(sorted_x, sorted_y, lw=2)
-            #ax[0].plot(pot, CS(pot))
-            #ax[1].plot(pot, loc["data"])
-            #plt.show()
+            """fig,ax=plt.subplots(1,2)
+            ax[0].plot(pot, current)
+            ax[0].plot(pot[before], midded_current[before], linestyle="--", color="black")
+            ax[0].plot(pot[after], midded_current[after],linestyle="--", color="black")
+            ax[0].plot(sorted_x, sorted_y, lw=2)
+            ax[0].plot(pot, CS(pot))
+            ax[1].plot(pot, loc["data"])
+            plt.show()"""
         else:
              loc["data"] = cls.nondim_i(current)
         
