@@ -73,6 +73,10 @@ class AxInterfaceOptions(OptionsManager):
     front_decimation=NumberOption("front_decimation",
                                     default=8,
                                     doc="Amount to decimate front by for simulating")
+    max_simulation_tasks=NumberOption("max_simulation_tasks",
+                                    default=300,
+                                    min_value=1,
+                                    doc="Maximum number of slurm array tasks used to simulate the pareto front; points are split evenly between them")
     GPU=StringOption("GPU", 
                 default="none",
                 doc="Argument to be submitted to SLURM for GPU acceleration in ax"

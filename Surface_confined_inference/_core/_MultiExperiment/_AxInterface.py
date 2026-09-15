@@ -50,6 +50,13 @@ class AxInterface(sci.OptionsAwareMixin):
                 }
             if self._environ=="IN_ARC":
              self._environ_args["mem_gb"]="slurm_mem_per_cpu"
+    def __getstate__(self):
+        #submitit cloudpickles self for every submitted bound method (once per array task).
+        #The MultiExperiment holds all experimental data (~60MB), and every remote method
+        #reloads it from results_directory/evaluator, so leave it out of the pickle
+        state=self.__dict__.copy()
+        state.pop("_cls", None)
+        return state
     def set_memory(self, memory):
         if self._environ=="IN_VIKING":
             return memory
@@ -77,10 +84,10 @@ class AxInterface(sci.OptionsAwareMixin):
         if timeout is None:
             timeout=self._internal_options.max_run_time*60
         arg_dict = {
-            self._environ_args["timeout_min"]: self._internal_options.max_run_time*60,
+            self._environ_args["timeout_min"]: timeout,
             self._environ_args["cpus_per_task"]: self._internal_options.num_cpu,
             self._environ_args["slurm_partition"]: "nodes",
-            self._environ_args["slurm_job_name"]: self._internal_options.name+"_"+"name",
+            self._environ_args["slurm_job_name"]: self._internal_options.name+"_"+name,
             self._environ_args["slurm_account"]: self._internal_options.project,
             self._environ_args["mem_gb"]: self.set_memory(self._internal_options.GB_ram)
         }
@@ -275,15 +282,20 @@ class AxInterface(sci.OptionsAwareMixin):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
         with open(os.path.join(self._internal_options.results_directory, "pareto_points", "num_points.txt")) as f:
             num_points=int(f.readline())
-        node_chunks=num_points
-        process_per_chunk=int(np.floor(num_points//node_chunks))+1
-        quit_point=int(np.ceil(node_chunks/process_per_chunk))
+        node_chunks=min(num_points, self._internal_options.max_simulation_tasks)
+        process_per_chunk=int(np.ceil(num_points/node_chunks))
+        quit_point=int(np.ceil(num_points/process_per_chunk))
         start=time.time()
         cls.evaluate(np.random.rand(len(cls._all_parameters)))
         dummy_time=time.time()-start
         total_time=int((int(dummy_time/60)+5)*process_per_chunk)
         simulation_executor=self.init_sim_executor("simulation", timeout=total_time)
-        jobs = simulation_executor.map_array(self.run_bulk_simulation, range(0, quit_point), [process_per_chunk]*quit_point)
+        #Module-level function rather than a bound method, so each task's pickle only holds these arguments
+        jobs = simulation_executor.map_array(run_bulk_simulation,
+                                            [self._internal_options.results_directory]*quit_point,
+                                            [self._internal_options.front_decimation]*quit_point,
+                                            range(0, quit_point),
+                                            [process_per_chunk]*quit_point)
         job_ids = [job.job_id for job in jobs]
 
    
@@ -291,49 +303,6 @@ class AxInterface(sci.OptionsAwareMixin):
         with open(id_path, "w") as f:
             f.write(":".join(job_ids))
 
-    def run_bulk_simulation(self, index, chunk_size):
-        print("spawn3")
-        cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
-        with open(os.path.join(self._internal_options.results_directory, "pareto_points", "parameters.txt")) as f:
-            param_values = np.loadtxt(f, skiprows=1)
-            f.seek(0)
-            params = f.readline().strip().split()[1:]
-        dec_factor=self._internal_options.front_decimation
-
-        save_dict={}
-        for classkey in cls.class_keys:
-            if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
-                dec_time=decimate(copy.deepcopy(cls.classes[classkey]["times"]), dec_factor)
-                size=chunk_size+1
-                save_dict[classkey]=np.zeros((len(dec_time), size))
-                save_dict[classkey][:,0]=dec_time
-            else:
-                save_dict[classkey]=None
-
-        counter=1
-
-        for i in range(index*chunk_size, ((index+1)*chunk_size)):
-            if param_values.shape[0]-1<i:
-             break
-            parameters=dict(zip(params, param_values[i,:]))
-            param_value_list=[parameters[x] for x in cls._all_parameters]
-            simulation_dict=cls.evaluate(param_value_list)
-            for classkey in cls.class_keys:
-                if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
-                    dec_current=decimate(simulation_dict[classkey], dec_factor)
-                else:                 
-                    dec_current=simulation_dict[classkey]
-                if save_dict[classkey] is not None:
-                 save_dict[classkey][:,counter]=dec_current
-                else:
-                 save_dict[classkey]=np.zeros((len(dec_current), chunk_size+1))
-                 save_dict[classkey][:,0]=list(range(0, len(dec_current)))
-                 save_dict[classkey][:,counter]=dec_current
-            counter+=1
-        for classkey in cls.class_keys:
-            filepath=os.path.join(self._internal_options.results_directory, "simulations", classkey, "simulations_%d_%d.txt" % (index*chunk_size, ((index+1)*chunk_size)))
-            with open(filepath, "w") as f:
-                np.savetxt(f, save_dict[classkey])
     def spawn_rclone(self, simulated_front, dependency=None):
         if simulated_front==True:
             jobid_path = os.path.join(self._internal_options.results_directory, "pareto_points", "jobids_bulk_sim.txt")
@@ -350,6 +319,50 @@ class AxInterface(sci.OptionsAwareMixin):
        
         command=["rclone", "copy", self._internal_options.results_directory, self._internal_options.rclone_directory]
         subprocess.run("module load rclone && "+ " ".join(command), shell=True, executable="/bin/bash")
+
+
+def run_bulk_simulation(results_directory, dec_factor, index, chunk_size):
+    print("spawn3")
+    cls=sci.BaseMultiExperiment.from_directory(os.path.join(results_directory,"evaluator"))
+    with open(os.path.join(results_directory, "pareto_points", "parameters.txt")) as f:
+        param_values = np.loadtxt(f, skiprows=1)
+        f.seek(0)
+        params = f.readline().strip().split()[1:]
+
+    save_dict={}
+    for classkey in cls.class_keys:
+        if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
+            dec_time=decimate(copy.deepcopy(cls.classes[classkey]["times"]), dec_factor)
+            size=chunk_size+1
+            save_dict[classkey]=np.zeros((len(dec_time), size))
+            save_dict[classkey][:,0]=dec_time
+        else:
+            save_dict[classkey]=None
+
+    counter=1
+
+    for i in range(index*chunk_size, ((index+1)*chunk_size)):
+        if param_values.shape[0]-1<i:
+         break
+        parameters=dict(zip(params, param_values[i,:]))
+        param_value_list=[parameters[x] for x in cls._all_parameters]
+        simulation_dict=cls.evaluate(param_value_list)
+        for classkey in cls.class_keys:
+            if cls.classes[classkey]["class"].experiment_type in ["FTACV","PSV"]:
+                dec_current=decimate(simulation_dict[classkey], dec_factor)
+            else:
+                dec_current=simulation_dict[classkey]
+            if save_dict[classkey] is not None:
+             save_dict[classkey][:,counter]=dec_current
+            else:
+             save_dict[classkey]=np.zeros((len(dec_current), chunk_size+1))
+             save_dict[classkey][:,0]=list(range(0, len(dec_current)))
+             save_dict[classkey][:,counter]=dec_current
+        counter+=1
+    for classkey in cls.class_keys:
+        filepath=os.path.join(results_directory, "simulations", classkey, "simulations_%d_%d.txt" % (index*chunk_size, ((index+1)*chunk_size)))
+        with open(filepath, "w") as f:
+            np.savetxt(f, save_dict[classkey])
         
 
         

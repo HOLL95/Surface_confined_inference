@@ -300,11 +300,13 @@ def _runner():
         "\t\treturn [simulate_point(x) for x in points]",
         "\tif pool is None:",
         "\t\tpool = mp.Pool(processes=parallel_cpu)",
-        "\t#chunksize=1 hands out one point at a time. The default batches them",
-        "\t#into contiguous chunks, which is the wrong shape here: a sweep point",
-        "\t#is seconds of work and neighbouring points cost wildly different",
-        "\t#amounts (a high Ru is far stiffer than a low one), so a fixed split",
-        "\t#leaves one worker with every slow point while the rest sit idle.",
+        "\t#chunksize=1 hands out one point at a time rather than in fixed",
+        "\t#contiguous batches. Points cost wildly different amounts -- a high",
+        "\t#Ru is far stiffer to solve than a low one -- so a fixed split can",
+        "\t#strand the slow ones on one worker. Dispatching per point costs",
+        "\t#microseconds against a solve measured in seconds. On a sweep whose",
+        "\t#total is dominated by one very slow point it makes no odds either",
+        "\t#way; it is the sweeps with many moderately uneven points it helps.",
         "\treturn pool.map(simulate_point, points, chunksize=1)",
     ]
 
