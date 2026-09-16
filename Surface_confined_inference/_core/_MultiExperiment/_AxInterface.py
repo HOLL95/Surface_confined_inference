@@ -66,12 +66,14 @@ class AxInterface(sci.OptionsAwareMixin):
             return int((memory * 1024) // self._internal_options.num_cpu)
     def run(self,job_number):
         cls=sci.BaseMultiExperiment.from_directory(os.path.join(self._internal_options.results_directory,"evaluator"))
+        #The zero point (and so the client's thresholds) is calculated here rather than in
+        #setup_client, so the simulations run as part of the job and not at submission
+        self.apply_zero_parameters(cls)
         if self._internal_options.independent_zero_points==True:
-            #Each run gets its own reference point, and therefore its own thresholds,
-            #so the client can't be the one built once in setup_client
+            #Each run gets its own reference point, and therefore its own thresholds
             resampled=cls.resample_zero_points(seed=job_number)
             print(f"Run {job_number} resampled the zero point of: {', '.join(resampled)}")
-            self.ax_client=self.build_ax_client(cls, self.get_zero_point_scores(cls))
+        self.ax_client=self.build_ax_client(cls, self.get_zero_point_scores(cls))
         for i in range(0, self._internal_options.num_iterations):
             parameters, trial_index = self.ax_client.get_next_trial()
             self.ax_client.complete_trial(trial_index=trial_index, raw_data=cls.optimise_simple_score(parameters))
@@ -232,8 +234,8 @@ class AxInterface(sci.OptionsAwareMixin):
         self._internal_options.num_cpu=max_cpu
         if self._internal_options.independent_zero_points==True and len(self._cls.randomised_zero_point_keys)==0:
             raise ValueError("independent_zero_points requires at least one experiment with `Zero_params` set to \"random\", so that there is something to resample")
-        self.apply_zero_parameters(self._cls)
-        self.ax_client=self.build_ax_client(self._cls, self.get_zero_point_scores())
+        #Only checked here - the zero point itself is calculated in each run
+        self.check_zero_parameters(self._cls)
         self._cls.save_class(dir_path=os.path.join(self._internal_options.results_directory,"evaluator"), include_data=True)
         if self._internal_options.simulate_front==True:
             for classkey in self._cls.class_keys:
@@ -285,6 +287,21 @@ class AxInterface(sci.OptionsAwareMixin):
         zero_parameters=self._internal_options.zero_parameters
         if len(zero_parameters)==0:
             return
+        self.check_zero_parameters(cls)
+        #SWV E0 offsets default to no shift
+        values={x:zero_parameters.get(x, 0) for x in cls._all_parameters}
+        class_params=cls._manager.parse_input(values)
+        for classkey in cls.class_keys:
+            loc=cls.classes[classkey]
+            cls.classes[classkey]=_calculate_zero_point(classkey, loc["class"], class_params[classkey], loc)
+    def check_zero_parameters(self, cls):
+        """
+        Check the `zero_parameters` option provides a value for every parameter being optimised
+        (other than SWV E0 offsets), and nothing else.
+        """
+        zero_parameters=self._internal_options.zero_parameters
+        if len(zero_parameters)==0:
+            return
         #Keyed by the optimiser's parameter names, so separated parameters (e.g. E0_std_1, E0_std_2)
         #are given individually, and mapped onto each class the same way as in `evaluate`
         missing=[x for x in cls._all_parameters if "_offset" not in x and x not in zero_parameters]
@@ -293,12 +310,6 @@ class AxInterface(sci.OptionsAwareMixin):
         unknown=[x for x in zero_parameters if x not in cls._all_parameters]
         if len(unknown)>0:
             raise ValueError(f"zero_parameters contains parameters not being optimised: {', '.join(unknown)} (expected {', '.join(cls._all_parameters)})")
-        #SWV E0 offsets default to no shift
-        values={x:zero_parameters.get(x, 0) for x in cls._all_parameters}
-        class_params=cls._manager.parse_input(values)
-        for classkey in cls.class_keys:
-            loc=cls.classes[classkey]
-            cls.classes[classkey]=_calculate_zero_point(classkey, loc["class"], class_params[classkey], loc)
     def get_zero_point_scores(self, cls=None):
         if cls is None:
             cls=self._cls
