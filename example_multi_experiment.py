@@ -232,6 +232,7 @@ ax_class=sci.AxInterface(name="Example_submission",
 			num_iterations=100,
 			num_cpu=1,#Only for dispersion simulation, won't get any speedup if it's non-dispersed
 			simulate_front=False,#Simulate each pareto point for results
+			#zero_parameters={"E0":-0.425, "k0":100, "gamma":8e-11, "Ru":100, "Cdl":1.8e-4, "alpha":0.5},#Optional single worst-case parameter set for the reference point of every experiment
 			in_cluster=False)
 ax_class.setup_client(cls)
 #Uncomment this to run inference locally

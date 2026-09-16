@@ -113,7 +113,8 @@ def _calculate_zero_point(experiment_key, cls, zero_params, loc):
 
         loc["zero_point"] = sci._utils.RMSE(worst_case, norm_current)
         loc["zero_sim"]=worst_case
-        if cls.experiment_type!="DCV":
+        #No Fourier transform for DCV, and a top hat is meaningless for square wave data
+        if cls.experiment_type not in ["DCV", "SquareWave", "SWV"]:
             loc["FT"] = cls.experiment_top_hat(norm_time, norm_current)#
             ft_worst_case = cls.experiment_top_hat(norm_time, worst_case)
             loc["zero_point_ft"] = sci._utils.RMSE(ft_worst_case, loc["FT"])

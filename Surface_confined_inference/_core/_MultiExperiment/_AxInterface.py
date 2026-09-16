@@ -16,6 +16,7 @@ from scipy.signal import decimate
 import Surface_confined_inference as sci
 
 from .AxParetoFuncs import pool_pareto
+from ._FileReader import _calculate_zero_point
 
 
 class AxInterface(sci.OptionsAwareMixin):
@@ -231,6 +232,7 @@ class AxInterface(sci.OptionsAwareMixin):
         self._internal_options.num_cpu=max_cpu
         if self._internal_options.independent_zero_points==True and len(self._cls.randomised_zero_point_keys)==0:
             raise ValueError("independent_zero_points requires at least one experiment with `Zero_params` set to \"random\", so that there is something to resample")
+        self.apply_zero_parameters(self._cls)
         self.ax_client=self.build_ax_client(self._cls, self.get_zero_point_scores())
         self._cls.save_class(dir_path=os.path.join(self._internal_options.results_directory,"evaluator"), include_data=True)
         if self._internal_options.simulate_front==True:
@@ -272,6 +274,26 @@ class AxInterface(sci.OptionsAwareMixin):
             input_dict["parameter_constraints"]=self._internal_options.input_constraints
         ax_client.create_experiment(**input_dict)
         return ax_client
+    def apply_zero_parameters(self, cls):
+        """
+        Recalculate the zero point of every experiment (SWV included) by simulating the
+        parameter values given in the `zero_parameters` option, so that the initial
+        hypervolume reference point comes from a single, manually specified parameter set.
+        Does nothing if `zero_parameters` is empty. Each experiment's `Zero_params` is left
+        alone, so experiments marked "random" can still be resampled per run.
+        """
+        zero_parameters=self._internal_options.zero_parameters
+        if len(zero_parameters)==0:
+            return
+        missing=set()
+        for classkey in cls.class_keys:
+            missing.update([x for x in cls.classes[classkey]["class"].optim_list if x not in zero_parameters])
+        if len(missing)>0:
+            raise ValueError(f"zero_parameters is missing values for: {', '.join(sorted(missing))}")
+        for classkey in cls.class_keys:
+            loc=cls.classes[classkey]
+            params=[zero_parameters[x] for x in loc["class"].optim_list]
+            cls.classes[classkey]=_calculate_zero_point(classkey, loc["class"], params, loc)
     def get_zero_point_scores(self, cls=None):
         if cls is None:
             cls=self._cls
