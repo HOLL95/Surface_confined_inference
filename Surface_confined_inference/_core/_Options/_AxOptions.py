@@ -42,7 +42,7 @@ class AxInterfaceOptions(OptionsManager):
                                 doc="If True, each independent run redraws the zero point of every experiment set to `Zero_params=\"random\"`, sampling independently from within the boundaries, so that each run gets its own objective thresholds")
     zero_parameters=DictOption("zero_parameters",
                                 default={},
-                                doc="Parameter values ({name: value}) used to simulate the worst case for every experiment (including SWV) when building the initial hypervolume reference point, replacing each experiment's `Zero_params`. Leave empty to use `Zero_params`")
+                                doc="Parameter values ({name: value}, using the names in MultiExperiment._all_parameters, so including any separated parameters) used to simulate the worst case for every experiment (including SWV) when building the initial hypervolume reference point, replacing each experiment's `Zero_params`. Leave empty to use `Zero_params`")
     num_iterations=NumberOption("num_iterations",
                                 default=100, 
                                 min_value=10,

@@ -285,15 +285,20 @@ class AxInterface(sci.OptionsAwareMixin):
         zero_parameters=self._internal_options.zero_parameters
         if len(zero_parameters)==0:
             return
-        missing=set()
-        for classkey in cls.class_keys:
-            missing.update([x for x in cls.classes[classkey]["class"].optim_list if x not in zero_parameters])
+        #Keyed by the optimiser's parameter names, so separated parameters (e.g. E0_std_1, E0_std_2)
+        #are given individually, and mapped onto each class the same way as in `evaluate`
+        missing=[x for x in cls._all_parameters if "_offset" not in x and x not in zero_parameters]
         if len(missing)>0:
-            raise ValueError(f"zero_parameters is missing values for: {', '.join(sorted(missing))}")
+            raise ValueError(f"zero_parameters is missing values for: {', '.join(missing)}")
+        unknown=[x for x in zero_parameters if x not in cls._all_parameters]
+        if len(unknown)>0:
+            raise ValueError(f"zero_parameters contains parameters not being optimised: {', '.join(unknown)} (expected {', '.join(cls._all_parameters)})")
+        #SWV E0 offsets default to no shift
+        values={x:zero_parameters.get(x, 0) for x in cls._all_parameters}
+        class_params=cls._manager.parse_input(values)
         for classkey in cls.class_keys:
             loc=cls.classes[classkey]
-            params=[zero_parameters[x] for x in loc["class"].optim_list]
-            cls.classes[classkey]=_calculate_zero_point(classkey, loc["class"], params, loc)
+            cls.classes[classkey]=_calculate_zero_point(classkey, loc["class"], class_params[classkey], loc)
     def get_zero_point_scores(self, cls=None):
         if cls is None:
             cls=self._cls
