@@ -171,20 +171,25 @@ def _process_swv_data(experiment_key, data, loc):
         # Apply baseline correction
         if zero_params is not None:
             signal_region = zero_params["potential_window"]
-            before = np.where(pot < signal_region[0])
-            after = np.where(pot > signal_region[1])
-            
-            noise_data = []
             noise_spacing = zero_params["thinning"]
             roll = zero_params["smoothing"]
+            before = np.where(pot < signal_region[0])
+            after = np.where(pot > signal_region[1])
+            midpoints=np.arange(before[0][-1]+1, after[0][0]-1, noise_spacing)
+            noise_data = []
+            noise_indices=np.append(before, after)
+            
             midded_current = sci._utils.moving_avg(current, roll)
+            noise_current=np.append(midded_current[before], midded_current[after])
             for sequence in [pot, midded_current]:
                 catted_sequence = np.concatenate([
-                    sequence[before][roll+10-1::noise_spacing],
-                    sequence[after][roll+10-1::noise_spacing]
+                    sequence[before][roll+noise_spacing::noise_spacing],
+                    sequence[after][roll+noise_spacing::noise_spacing]
                 ])
                 noise_data.append(catted_sequence)
             
+            noise_data[1]=np.append(noise_data[1], np.interp(midpoints, noise_indices, noise_current))
+            noise_data[0]=np.append(noise_data[0], [pot[x] for x in midpoints])
             sort_args = np.argsort(noise_data[0])
             sorted_x = [noise_data[0][x] for x in sort_args]
             sorted_y = [noise_data[1][x] for x in sort_args]
