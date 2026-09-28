@@ -163,3 +163,25 @@ def get_dc_voltage(cls, times):
 
 
         
+def json_numpy_default(obj):
+    """
+    `default` hook for json.dump/dumps that converts numpy scalars and arrays to
+    their native python equivalents.
+
+    Numpy floats subclass python float, so they serialise silently, but numpy
+    integers do not subclass int - an integer-valued parameter (e.g. an omega
+    taken from np.arange(5, 55, 10)) would otherwise raise
+    "Object of type int64 is not JSON serializable" on saving.
+
+    Args:
+        obj: the object json could not serialise
+    Returns:
+        A json-serialisable version of obj
+    Raises:
+        TypeError: if obj is not a numpy type
+    """
+    if isinstance(obj, np.generic):
+        return obj.item()
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")

@@ -305,7 +305,7 @@ class SingleExperiment(sci.BaseExperiment,sci.OptionsAwareMixin):
         if path[-5:]!=".json":
             path+=".json"
         with open(path, "w") as f:
-            json.dump(save_dict, f)
+            json.dump(save_dict, f, default=sci._utils.json_numpy_default)
     def __setattr__(self, name, value):
         """
         Custom attribute setter with validation for experiment options.

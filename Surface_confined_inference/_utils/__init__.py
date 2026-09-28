@@ -23,4 +23,5 @@ from .utilities import (
         temporary_options,
         un_normalise,
         get_dc_voltage,
+        json_numpy_default,
 )

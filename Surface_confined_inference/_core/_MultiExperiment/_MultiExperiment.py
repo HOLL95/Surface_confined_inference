@@ -241,16 +241,16 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
                                     raise TypeError(f"Not castable to number when saving class:{classkey} element:{attr}, item:{self.classes[classkey][attr]}, type:{type(self.classes[classkey][attr])}")
             if "Zero_params" in self.classes[classkey]:
                 with open(os.path.join(data_path, "Zero_params.json"), "w") as f:
-                    json.dump(self.classes[classkey]["Zero_params"], f)
+                    json.dump(self.classes[classkey]["Zero_params"], f, default=sci._utils.json_numpy_default)
             if len(data_dict)!=0:    
                 data_path = os.path.join(indv_class_path,"data", f"{classkey}-data.json")
                 with open(data_path, "w") as f:
-                    json.dump(data_dict, f)
+                    json.dump(data_dict, f, default=sci._utils.json_numpy_default)
         multi_dict=self._internal_options.as_dict()
         multi_dict["include_data"]=kwargs["include_data"]
         multi_dict={key:recursive_list_cast(multi_dict[key]) for key in multi_dict.keys()}
         with open(os.path.join(dir_path, "multi_options.json"),"w") as f:
-            json.dump(multi_dict, f)
+            json.dump(multi_dict, f, default=sci._utils.json_numpy_default)
     def check_grouping(self,):
         self._plot_manager.plot_results([], savename=None, show_legend=True, deced=False)
     def results(self, **kwargs):
