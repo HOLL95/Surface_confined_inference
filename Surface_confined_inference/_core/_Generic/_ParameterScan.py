@@ -281,18 +281,19 @@ def _loop(mode):
         "\tplt.tight_layout()",
         "\tfinish_figure(fig, f'{param1}_vs_{param2}')",
         "\tif harmonics is not None:",
-        "\t\t#One column per value of param1, each overlaying every param2.",
+        "\t\t#One figure per value of param1, each overlaying every param2,",
+        "\t\t#gathered in a subfolder per pair.",
         "\t\tby_point = dict(zip(grid, currents))",
-        "\t\tfig, axes = plt.subplots(len(harmonics), range_size,",
-        "\t\t\tfigsize=harmonics_figsize, squeeze=False)",
         "\t\tfor j in range(0, range_size):",
-        "\t\t\tplot_harmonic_set(axes[:, j], param2,",
+        "\t\t\tvalue1 = parameter_ranges[param1][j]",
+        "\t\t\tfig, axes = plt.subplots(len(harmonics), 1,",
+        "\t\t\t\tfigsize=harmonics_figsize, squeeze=False)",
+        "\t\t\tplot_harmonic_set(axes[:, 0], param2,",
         "\t\t\t\t[(parameter_ranges[param2][q], by_point[(j, q)])",
         "\t\t\t\t\tfor q in range(0, range_size)],",
-        "\t\t\t\ttitle=f'{param1}={parameter_ranges[param1][j]}',",
-        "\t\t\t\tylabel='Current (A)' if j == 0 else '')",
-        "\t\tfig.suptitle(f'{param1} vs {param2}')",
-        "\t\tfinish_figure(fig, f'{param1}_vs_{param2}_harmonics')",
+        "\t\t\t\ttitle=f'{param1}={value1}', ylabel='Current (A)')",
+        "\t\t\tfinish_figure(fig, os.path.join(",
+        "\t\t\t\tf'{param1}_vs_{param2}_harmonics', f'{param1}={value1}'))",
         "show_figures()",
     ]
 
@@ -316,8 +317,10 @@ def _figures():
         '\t"""Write one figure to `figure_directory` and close it."""',
         "\tif figure_directory is None:",
         "\t\treturn",
-        "\tos.makedirs(figure_directory, exist_ok=True)",
-        "\tfig.savefig(os.path.join(figure_directory, f'{name}.png'))",
+        "\tfilename = os.path.join(figure_directory, f'{name}.png')",
+        "\t#`name` may carry a subfolder of its own, as the pairwise harmonics do.",
+        "\tos.makedirs(os.path.dirname(filename), exist_ok=True)",
+        "\tfig.savefig(filename)",
         "\t#Closing is the point: an open figure holds its axes and data alive.",
         "\tplt.close(fig)",
         "",
@@ -441,8 +444,9 @@ def parameter_scan_script(
             `parallel_cpu`.
         harmonics (list[int] | False | None): harmonics drawn, with
             sci.plot.plot_harmonics, in a separate figure alongside each total
-            current figure -- one column of them in individual mode, one column
-            per value of the first parameter in pairwise. None plots 1 to 8 if
+            current figure. In pairwise mode each value of the first parameter
+            gets its own figure, overlaying every value of the second, saved
+            under a `<param1>_vs_<param2>_harmonics` subfolder. None plots 1 to 8 if
             the waveform has a sinusoidal component (an `omega` input) and none
             otherwise; False plots none. Written into the script as a variable,
             where None turns them off. They are plotted as absolute values,
