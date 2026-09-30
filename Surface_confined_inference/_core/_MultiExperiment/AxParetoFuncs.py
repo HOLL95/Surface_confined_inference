@@ -1,7 +1,14 @@
 import os
 
-from ax.plot.pareto_utils import get_observed_pareto_frontiers
-from ax.service.ax_client import AxClient
+
+from Surface_confined_inference._utils._optional import AX_HINT, MissingDependency
+
+try:
+    from ax.plot.pareto_utils import get_observed_pareto_frontiers
+    from ax.service.ax_client import AxClient
+except ImportError:
+    get_observed_pareto_frontiers = MissingDependency("ax-platform", AX_HINT)
+    AxClient = MissingDependency("ax-platform", AX_HINT)
 from numpy import savetxt
 
 

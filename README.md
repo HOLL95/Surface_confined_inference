@@ -123,6 +123,18 @@ source env/bin/activate  # On Windows: env\Scripts\activate
 python -m pip install -e . 
 ```
 
+This installs the core package and compiles the C solver. Optional variants:
+
+| Want | Command |
+|---|---|
+| Core only (C solver, no Ax/torch) | `pip install -e .` |
+| Everything | `pip install -e .[full]` |
+| Ax/torch optimisation only | `pip install -e .[ax]` |
+| Plotting extras (scikit-learn, data-depth) | `pip install -e .[depth]` |
+| Skip compiling the C solver | `SCI_NO_COMPILE=1 pip install -e .` (combine with any extra) |
+
+Without the C solver, simulation calls raise an `ImportError`. Without `[ax]`, `AxInterface` does the same.
+
 #### Step 4: Verify installation
 
 ```bash

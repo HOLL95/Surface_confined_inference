@@ -25,16 +25,14 @@ packages=["numpy",
                     "pytest-cov",
                     "submitit",
                     "tabulate",
-                    "ax-platform",
-                    "torch",  
+                    "sympy",
+                    "pyyaml",
+                    "pydiffsol",
                     "pints @ git+https://github.com/pints-team/pints"]
-environs=["IN_ARC", "IN_VIKING"]
-in_cluster=False
-for environ in environs:
-    if  os.environ.get(environ, '').lower() in ('true', '1', 'yes'):
-        in_cluster=True
-if in_cluster==False:
-    packages+=[ "scikit-learn", "data-depth"]
+# Optional heavy dependencies, e.g. `pip install -e .[full]`
+extras={"ax": ["ax-platform", "torch"],
+        "depth": ["scikit-learn", "data-depth"]}
+extras["full"]=sorted(set(extras["ax"]+extras["depth"]))
     
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.
@@ -146,6 +144,10 @@ class CMakeBuild(build_ext):
 
 package_dir = os.path.join(os.path.dirname(__file__))
 
+# Set SCI_NO_COMPILE=1 to skip building the C extension
+skip_c=os.environ.get("SCI_NO_COMPILE", "").lower() in ("true", "1", "yes")
+ext_modules=[] if skip_c else [CMakeExtension("SurfaceODESolver", sourcedir="C_src")]
+
 
 
 # The information here can also be placed in setup.cfg - better separation of
@@ -153,7 +155,7 @@ package_dir = os.path.join(os.path.dirname(__file__))
 setup(
     name="SurfaceODESolver",
     version="0.0.1",
-    ext_modules=[CMakeExtension("SurfaceODESolver", sourcedir="C_src")],
+    ext_modules=ext_modules,
     cmdclass={"build_ext": CMakeBuild},
     packages=find_packages(
         include=["Surface_confined_inference", "Surface_confined_inference.*"]
@@ -161,5 +163,6 @@ setup(
     package_dir={"": package_dir},
     zip_safe=False,
     install_requires=packages,
+    extras_require=extras,
     python_requires=">=3.7",
 )

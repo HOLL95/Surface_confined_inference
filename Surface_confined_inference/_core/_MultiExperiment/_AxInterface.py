@@ -8,9 +8,17 @@ from pathlib import Path
 
 import numpy as np
 import submitit
-import torch
-from ax.service.ax_client import AxClient
-from ax.service.utils.instantiation import ObjectiveProperties
+
+from Surface_confined_inference._utils._optional import AX_HINT, MissingDependency
+
+try:
+    import torch
+    from ax.service.ax_client import AxClient
+    from ax.service.utils.instantiation import ObjectiveProperties
+except ImportError:
+    torch = MissingDependency("torch", AX_HINT)
+    AxClient = MissingDependency("ax-platform", AX_HINT)
+    ObjectiveProperties = MissingDependency("ax-platform", AX_HINT)
 from scipy.signal import decimate
 
 import Surface_confined_inference as sci
@@ -21,6 +29,8 @@ from ._FileReader import _calculate_zero_point
 
 class AxInterface(sci.OptionsAwareMixin):
     def __init__(self,**kwargs):
+        if not AxClient:
+            AxClient()  # raises ImportError with install hint
         self._internal_options = sci.AxInterfaceOptions(**kwargs)
         dirs=["clients","evaluator","pareto_points"]
         for dir in dirs:

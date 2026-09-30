@@ -5,7 +5,11 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 import numpy as np
-import SurfaceODESolver as sos
+try:
+    import SurfaceODESolver as sos
+except ImportError:
+    from Surface_confined_inference._utils._optional import C_HINT, MissingDependency
+    sos = MissingDependency("SurfaceODESolver", C_HINT)
 
 import Surface_confined_inference as sci
 

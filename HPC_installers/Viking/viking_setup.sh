@@ -4,4 +4,4 @@ module load pybind11/2.11.1-GCCcore-12.3.0
 module load SUNDIALS/6.6.0-foss-2023a
 alias python="python3.11"
 export IN_VIKING="true"
-python -m pip install -e .
+python -m pip install -e .[ax]
