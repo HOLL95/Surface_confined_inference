@@ -51,6 +51,15 @@ _FIGURE_DIRECTORY = "parameter_scan_figures"
 #scan draws only one figure, so its name is fixed.
 _INPUT_SCAN_FIGURE = "input_scan"
 
+#Figure sizes in inches, (width, height), for the total current figures and for
+#the harmonic figures drawn alongside them.
+_CURRENT_FIGSIZE = (8, 8)
+_HARMONICS_FIGSIZE = (6, 9)
+
+#Harmonics plotted when the caller does not choose, for experiments with a
+#sinusoidal component.
+_DEFAULT_HARMONICS = list(range(1, 9))
+
 
 def _sweep(name, range_size):
     """Source for one parameter's sweep, and the value to hold it at otherwise.
@@ -106,6 +115,39 @@ def _input_names(experiment_type, potential_input):
     #Waveform parameters first, then the cell parameters, each alphabetically.
     waveform = sorted(names - set(_CELL_INPUTS))
     return waveform + [x for x in _CELL_INPUTS if x in names]
+
+
+def _positive_numbers(values):
+    """True for a sequence of numbers, all above zero (bool excluded)."""
+    try:
+        return all(
+            isinstance(x, (int, float, np.integer, np.floating))
+            and not isinstance(x, bool)
+            and x > 0
+            for x in values
+        )
+    except TypeError:
+        return False
+
+
+def _oscillates(input_names, potential_input):
+    """Whether the waveform has a sinusoid, and so harmonics worth plotting.
+
+    Taken from an `omega` input parameter: FTACV and PSV declare one, DCV and
+    the square-wave experiments do not. A Generic experiment declares only the
+    cell parameters, so its potential expression is checked for the symbol
+    instead.
+    """
+    if "omega" in input_names:
+        return True
+    if potential_input is None:
+        return False
+    symbols = getattr(potential_input, "free_symbols", None)
+    if symbols is None:
+        import sympy
+
+        symbols = sympy.sympify(potential_input).free_symbols
+    return "omega" in {str(x) for x in symbols}
 
 
 def _mechanism_literal(mechanism):
@@ -204,7 +246,7 @@ def _loop(mode):
     if mode == "individual":
         return [
             "for parameter in parameter_ranges.keys():",
-            "\tfig, ax = plt.subplots()",
+            "\tfig, ax = plt.subplots(figsize=current_figsize)",
             "\tvalues = parameter_ranges[parameter]",
             "\tcurrents = run_sweep([{parameter: value} for value in values])",
             "\tfor value, current in zip(values, currents):",
@@ -213,13 +255,19 @@ def _loop(mode):
             "\tax.set_ylabel('Current (A)')",
             "\tax.legend()",
             "\tfinish_figure(fig, parameter)",
+            "\tif harmonics is not None:",
+            "\t\tfig, axes = plt.subplots(len(harmonics), 1,",
+            "\t\t\tfigsize=harmonics_figsize, squeeze=False)",
+            "\t\tplot_harmonic_set(axes[:, 0], parameter, zip(values, currents),",
+            "\t\t\tylabel='Current (A)')",
+            "\t\tfinish_figure(fig, f'{parameter}_harmonics')",
             "show_figures()",
         ]
     return [
         "combinations = list(it.combinations(parameter_ranges.keys(), 2))",
         "grid = list(it.product(range(range_size), range(range_size)))",
         "for param1, param2 in combinations:",
-        "\tfig, ax = plt.subplots(range_size, range_size)",
+        "\tfig, ax = plt.subplots(range_size, range_size, figsize=current_figsize)",
         "\tcurrents = run_sweep([{param1: parameter_ranges[param1][j],",
         "\t\tparam2: parameter_ranges[param2][q]} for j, q in grid])",
         "\tfor (j, q), current in zip(grid, currents):",
@@ -232,6 +280,19 @@ def _loop(mode):
         "\tfig.suptitle(f'{param1} vs {param2}')",
         "\tplt.tight_layout()",
         "\tfinish_figure(fig, f'{param1}_vs_{param2}')",
+        "\tif harmonics is not None:",
+        "\t\t#One column per value of param1, each overlaying every param2.",
+        "\t\tby_point = dict(zip(grid, currents))",
+        "\t\tfig, axes = plt.subplots(len(harmonics), range_size,",
+        "\t\t\tfigsize=harmonics_figsize, squeeze=False)",
+        "\t\tfor j in range(0, range_size):",
+        "\t\t\tplot_harmonic_set(axes[:, j], param2,",
+        "\t\t\t\t[(parameter_ranges[param2][q], by_point[(j, q)])",
+        "\t\t\t\t\tfor q in range(0, range_size)],",
+        "\t\t\t\ttitle=f'{param1}={parameter_ranges[param1][j]}',",
+        "\t\t\t\tylabel='Current (A)' if j == 0 else '')",
+        "\t\tfig.suptitle(f'{param1} vs {param2}')",
+        "\t\tfinish_figure(fig, f'{param1}_vs_{param2}_harmonics')",
         "show_figures()",
     ]
 
@@ -265,6 +326,18 @@ def _figures():
         '\t"""Display the sweep\'s figures, unless they were saved and closed."""',
         "\tif figure_directory is None:",
         "\t\tplt.show()",
+        "",
+        "",
+        "def plot_harmonic_set(axes, parameter, curves, **kwargs):",
+        '\t"""Draw `harmonics` of each (value, current) in `curves` down `axes`."""',
+        "\t#plot_harmonics takes one `<label>_data` keyword per trace, and labels",
+        "\t#the trace with whatever comes before `_data`.",
+        "\ttraces = {f'{parameter}={value}_data': {'time': x_vals,",
+        "\t\t'current': current, 'harmonics': list(harmonics)}",
+        "\t\tfor value, current in curves}",
+        "\tsci.plot.plot_harmonics(axes_list=axes, xlabel=x_label,",
+        "\t\tplot_func=harmonics_plot_func, **traces, **kwargs)",
+        "\taxes[0].figure.tight_layout()",
     ]
 
 
@@ -335,6 +408,9 @@ def parameter_scan_script(
     potential_input=None,
     parallel_cpu=1,
     figure_directory=_FIGURE_DIRECTORY,
+    harmonics=None,
+    current_figsize=_CURRENT_FIGSIZE,
+    harmonics_figsize=_HARMONICS_FIGSIZE,
 ):
     """Generate a script that sweeps every parameter a mechanism declares.
 
@@ -363,14 +439,29 @@ def parameter_scan_script(
             exist. None instead keeps every figure open and shows them at the
             end of the sweep. Written into the script as a variable, like
             `parallel_cpu`.
+        harmonics (list[int] | False | None): harmonics drawn, with
+            sci.plot.plot_harmonics, in a separate figure alongside each total
+            current figure -- one column of them in individual mode, one column
+            per value of the first parameter in pairwise. None plots 1 to 8 if
+            the waveform has a sinusoidal component (an `omega` input) and none
+            otherwise; False plots none. Written into the script as a variable,
+            where None turns them off. They are plotted as absolute values,
+            set by `harmonics_plot_func` in the script (np.real for the
+            oscillation itself).
+        current_figsize (tuple): (width, height) in inches of the total current
+            figures. Written into the script as a variable.
+        harmonics_figsize (tuple): (width, height) in inches of the harmonic
+            figures. Written into the script as a variable.
 
     Returns:
         str: the generated source
 
     Raises:
         ValueError: for an unknown mode or experiment type, a `parallel_cpu`
-            below one, a `figure_directory` that is neither a path nor None, or
-            if the mechanism declares no parameter this knows how to sweep
+            below one, a `figure_directory` that is neither a path nor None,
+            harmonics that are not positive integers, a figure size that is not
+            two positive numbers, or if the mechanism declares no parameter this
+            knows how to sweep
     """
     if mode not in _MODES:
         raise ValueError(
@@ -397,7 +488,37 @@ def parameter_scan_script(
             "`figure_directory` keyword needs to be a path, or None to show "
             "the figures instead of saving them, not {0!r}".format(figure_directory)
         )
+    for name, size in (
+        ("current_figsize", current_figsize),
+        ("harmonics_figsize", harmonics_figsize),
+    ):
+        if not _positive_numbers(size) or len(size) != 2:
+            raise ValueError(
+                "`{0}` keyword needs to be (width, height) in inches, not "
+                "{1!r}".format(name, size)
+            )
+    if harmonics is not None and harmonics is not False:
+        if (
+            not _positive_numbers(harmonics)
+            or len(harmonics) == 0
+            or not all(isinstance(x, (int, np.integer)) for x in harmonics)
+        ):
+            raise ValueError(
+                "`harmonics` keyword needs to be a list of positive integers, "
+                "None or False, not {0!r}".format(harmonics)
+            )
+        #Plain ints, so the list is written into the script as `[1, 2, 3]`
+        #rather than numpy reprs.
+        harmonics = [int(x) for x in harmonics]
     input_names = _input_names(experiment_type, potential_input)
+    if harmonics is None:
+        harmonics = (
+            list(_DEFAULT_HARMONICS)
+            if _oscillates(input_names, potential_input)
+            else None
+        )
+    elif harmonics is False:
+        harmonics = None
     #The cell parameters do not enter the waveform, so perturbing them would
     #draw the same curve three times over.
     waveform_names = [x for x in input_names if x not in _CELL_INPUTS]
@@ -481,6 +602,13 @@ def parameter_scan_script(
         #magnitude. The cost is that a parameter sitting at zero (Estart on a
         #sweep starting from 0, phase on an unshifted FTACV) cannot move -- edit
         #the list here if one of those is the parameter of interest.
+        #Read by the sweep loop and plot_harmonic_set. None skips the harmonic
+        #figures altogether, which is what a waveform with no sinusoid gets.
+        "harmonics = {0!r}".format(harmonics),
+        #The envelope of each harmonic; np.real draws the oscillation itself.
+        "harmonics_plot_func = np.abs",
+        "current_figsize = {0!r}".format(tuple(current_figsize)),
+        "harmonics_figsize = {0!r}".format(tuple(harmonics_figsize)),
         "input_scan_scalars = {0}".format(list(_INPUT_SCALARS)),
         "scanned_inputs = {0}".format(waveform_names),
         "",
