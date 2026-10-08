@@ -36,6 +36,16 @@ def _process_data(addresses, class_list, class_keys):
         else:
             class_list[experiment_key]=process_dict[cls.experiment_type](experiment_key, data,loc)
     return class_list
+def _zero_option(loc):
+    """
+    The zero point option of an experiment: `Zero_params` itself for time series
+    experiments, or the optional "zero_point" entry of the baseline dict for SWV
+    (whose `Zero_params` otherwise only configures baseline subtraction).
+    """
+    zero_params=loc.get("Zero_params")
+    if isinstance(zero_params, dict):
+        return zero_params.get("zero_point")
+    return zero_params
 def _sample_zero_params(experiment_key, cls, zero_option, rng=None):
         """
         Resolve a `Zero_params` option into the parameter values used for the zero point.
@@ -158,6 +168,8 @@ def _process_swv_data(experiment_key, data, loc):
         current = data[:-1, 1]
         cls = loc["class"]
         zero_params=loc["Zero_params"]
+        if zero_params is not None and not isinstance(zero_params, dict):
+            raise ValueError(f"Zero_params for SWV experiment {experiment_key} must be a dict (or None) with the keys potential_window, thinning and smoothing, and optionally zero_point")
         # Configure class
         
         
@@ -211,6 +223,11 @@ def _process_swv_data(experiment_key, data, loc):
              loc["data"] = cls.nondim_i(current)
         
         loc["times"] = times
-        loc["zero_sim"]=np.zeros(len(current))
-        loc["zero_point"] = sci._utils.RMSE(np.zeros(len(current)), loc["data"])
-        return loc
+        #Without a zero_point option the worst case is a flat line at zero, otherwise it is
+        #simulated from the requested (e.g. random) parameters, as for the other experiments
+        zero_sim_params=_sample_zero_params(experiment_key, cls, _zero_option(loc))
+        if zero_sim_params is None:
+            loc["zero_sim"]=np.zeros(len(current))
+            loc["zero_point"] = sci._utils.RMSE(np.zeros(len(current)), loc["data"])
+            return loc
+        return _calculate_zero_point(experiment_key, cls, zero_sim_params, loc)

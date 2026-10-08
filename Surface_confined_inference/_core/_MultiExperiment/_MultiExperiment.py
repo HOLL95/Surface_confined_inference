@@ -8,7 +8,7 @@ import numpy as np
 
 import Surface_confined_inference as sci
 
-from ._FileReader import _calculate_zero_point, _process_data, _sample_zero_params
+from ._FileReader import _calculate_zero_point, _process_data, _sample_zero_params, _zero_option
 from ._Grouping import initialise_grouping
 from ._InitialiseExperiment import InitialiseMultiExperiment, validate_input_dict
 from ._ParameterManager import ParameterManager
@@ -161,7 +161,7 @@ class MultiExperiment(sci.BaseMultiExperiment, sci.OptionsAwareMixin):
         Class keys whose zero point is drawn at random from within the boundaries, and
         so can be redrawn by `resample_zero_points`.
         """
-        return [x for x in self.class_keys if self.classes[x].get("Zero_params")=="random"]
+        return [x for x in self.class_keys if _zero_option(self.classes[x])=="random"]
     def resample_zero_points(self, seed=None, class_keys=["all"]):
         """
         Redraw the zero point of every experiment configured with `Zero_params="random"`,
