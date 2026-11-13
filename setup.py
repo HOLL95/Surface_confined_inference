@@ -146,7 +146,8 @@ package_dir = os.path.join(os.path.dirname(__file__))
 
 # Set SCI_NO_COMPILE=1 to skip building the C extension
 skip_c=os.environ.get("SCI_NO_COMPILE", "").lower() in ("true", "1", "yes")
-ext_modules=[] if skip_c else [CMakeExtension("SurfaceODESolver", sourcedir="C_src")]
+ext_modules=[] if skip_c else [CMakeExtension("SurfaceODESolver", sourcedir="C_src"),
+                               CMakeExtension("SurfaceODESensitivity", sourcedir="C_src/sensitivity")]
 
 
 

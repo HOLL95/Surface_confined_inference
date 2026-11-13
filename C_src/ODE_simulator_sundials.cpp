@@ -144,6 +144,16 @@ py::object ODEsimulate(std::vector<double> times, std::unordered_map<std::string
     if (check_retval(&retval, "CVodeSVtolerances", 1)) { return (return_val); }
     int max_steps = 10000;  // or whatever number you need
     int flag = CVodeSetMaxNumSteps(cvode_mem, max_steps);
+    /* Limit the BDF order to 2. At the default maximum order (5) the error test does not control the error in the
+     * current: I relaxes (rate 1/(Ru*Cdlp)) onto Cdlp*dE/dt + gamma*theta', and d(theta')/d(theta)=-(kox+kred) is
+     * 1e2-1e6, so a theta error that passes the test (rtol*|theta|+atol) becomes a current error of
+     * gamma*(kox+kred)*dtheta. Measured against a converged reference, order 5 at rtol=atol=1e-6 gives maximum errors of
+     * 1-17% of max|I| (clusters of ~10 samples, mostly in the redox wave and where |E-E0| is large); order 2 gives ~1e-4
+     * at ~1.7x the cost, and is more accurate and cheaper than order 5 at rtol=atol=1e-8.
+     * Only applied to the single electron transfer model (model 0), the one it was validated on. */
+    if (params["model"]!=1){
+        if (CVodeSetMaxOrd(cvode_mem, 2) < 0) { fprintf(stderr, "CVodeSetMaxOrd failed\n"); }
+    }
 
 
     /* Create dense SUNMatrix for use in linear solves */
