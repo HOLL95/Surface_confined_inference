@@ -30,7 +30,7 @@ packages=["numpy",
                     "pydiffsol",
                     "pints @ git+https://github.com/pints-team/pints"]
 # Optional heavy dependencies, e.g. `pip install -e .[full]`
-extras={"ax": ["ax-platform", "torch"],
+extras={"ax": ["ax-platform>=1.3.1", "torch"],
         "depth": ["scikit-learn", "data-depth"]}
 extras["full"]=sorted(set(extras["ax"]+extras["depth"]))
     
