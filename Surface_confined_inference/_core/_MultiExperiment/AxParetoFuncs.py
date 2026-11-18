@@ -96,10 +96,8 @@ def pool_pareto(directory, grouping_keys, parameters, savepath):
             if "thresholds" not in key:
                 loaded_frontier+=frontdict[key]
         
-        if m==0:
-            
+        if total_frontier is None:
             total_frontier=loaded_frontier
-
         else:
             total_frontier=is_dominated(total_frontier, loaded_frontier, grouping_keys)
     if total_frontier is None:

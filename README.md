@@ -129,7 +129,7 @@ This installs the core package and compiles the C solver. Optional variants:
 |---|---|
 | Core only (C solver, no Ax/torch) | `pip install -e .` |
 | Everything | `pip install -e .[full]` |
-| Ax/torch optimisation only | `pip install -e .[ax]` |
+| Ax/torch optimisation only (needs Python >=3.11) | `pip install -e .[ax]` |
 | Plotting extras (scikit-learn, data-depth) | `pip install -e .[depth]` |
 | Skip compiling the C solver | `SCI_NO_COMPILE=1 pip install -e .` (combine with any extra) |
 
