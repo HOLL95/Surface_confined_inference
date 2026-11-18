@@ -4,7 +4,7 @@
 # SUNDIALS discovery mirrors ../CMakeLists.txt: IN_VIKING / IN_ARC environment variables select the cluster module, otherwise CVODE_PATH
 # (or -DSUNDIALS_DIR) names the directory holding SUNDIALSConfig.cmake. Works with SUNDIALS 6.x and 7.x (the source detects the version).
 cmake_minimum_required(VERSION 3.12)
-project(SurfaceODESensitivity LANGUAGES CXX)
+project(SurfaceODESensitivity LANGUAGES C CXX)   # C is needed: SUNDIALS built with MPI links MPI::MPI_C, so find_package(MPI) must find the C component
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -19,9 +19,10 @@ foreach(CLUSTER IN_ARC IN_VIKING)
     set(${CLUSTER} $ENV{${CLUSTER}})
   endif()
 endforeach()
+find_package(MPI COMPONENTS C CXX)
 
 if(IN_VIKING STREQUAL "true")
-  set(SUNDIALS_DIR /opt/apps/eb/software/SUNDIALS/6.6.0-foss-2023a//lib64/cmake/sundials/)
+  set(SUNDIALS_DIR /opt/apps/eb/software/SUNDIALS/7.0.0-foss-2023a//lib64/cmake/sundials/)
   set(pybind11_DIR /opt/apps/eb/software/pybind11/2.11.1-GCCcore-12.3.0/share/cmake/pybind11)
   find_package(SUNDIALS REQUIRED PATHS ${SUNDIALS_DIR})
   find_package(pybind11 REQUIRED PATHS ${pybind11_DIR})

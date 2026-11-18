@@ -31,7 +31,7 @@ foreach(CLUSTER ${CLUSTER_LIST})
 endforeach()
 
 if (IN_VIKING STREQUAL "true")
-  set(SUNDIALS_DIR /opt/apps/eb/software/SUNDIALS/6.6.0-foss-2023a//lib64/cmake/sundials/)
+  set(SUNDIALS_DIR /opt/apps/eb/software/SUNDIALS/7.0.0-foss-2023a//lib64/cmake/sundials/)
   set(pybind11_DIR  /opt/apps/eb/software/pybind11/2.11.1-GCCcore-12.3.0/share/cmake/pybind11)
   find_package(SUNDIALS REQUIRED PATHS ${SUNDIALS_DIR})
   find_package(pybind11 REQUIRED PATHS ${pybind11_DIR})

@@ -30,7 +30,10 @@ packages=["numpy",
                     "pydiffsol",
                     "pints @ git+https://github.com/pints-team/pints"]
 # Optional heavy dependencies, e.g. `pip install -e .[full]`
+<<<<<<< HEAD
 # ax-platform>=1.3.1: earlier releases call np.percentile(..., interpolation=...), which NumPy 2 removed (crashes when BoTorch first fits). Needs Python>=3.11
+=======
+>>>>>>> 813606953a951e4560d583d6f8819d51898b927a
 extras={"ax": ["ax-platform>=1.3.1", "torch"],
         "depth": ["scikit-learn", "data-depth"]}
 extras["full"]=sorted(set(extras["ax"]+extras["depth"]))
